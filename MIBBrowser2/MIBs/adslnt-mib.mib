@@ -1,0 +1,615 @@
+ADSLNT-MIB DEFINITIONS ::= BEGIN
+
+-- imports
+
+IMPORTS
+   MODULE-IDENTITY, OBJECT-TYPE, enterprises
+      FROM SNMPv2-SMI
+   TEXTUAL-CONVENTION, RowStatus, TimeInterval, TruthValue, DisplayString
+      FROM SNMPv2-TC
+   ifIndex
+      FROM SNMPv2-MIB
+   adslAtucIntervalNumber, adslAturIntervalNumber, adslAtucChanIntervalNumber 
+      FROM ADSL-LINE-MIB
+   entPhysicalIndex
+      FROM ENTITY-MIB;
+
+-- the path to the root
+
+sni OBJECT IDENTIFIER ::= { enterprises 231 }
+
+siemensUnits OBJECT IDENTIFIER ::= { sni 7 }
+
+oenProductMibs OBJECT IDENTIFIER ::= { siemensUnits 1 }
+
+sn OBJECT IDENTIFIER ::= { oenProductMibs 4 }
+
+-- adslNT MIB
+
+adslNt MODULE-IDENTITY
+   LAST-UPDATED "0011220000Z"
+   ORGANIZATION "SIEMENS AG, ICN WN CS EP A14"
+   CONTACT-INFO
+      "ICN WN CS EP A14
+       Hofmannstr. 51
+       81359 Munich, Germany
+
+       Markus Fuchs
+       Tel:   +49 (0)89 722 21714
+       Fax:   +49 (0)89 722 62211
+       Email: Markus.Fuchs@icn.siemens.de"
+   DESCRIPTION
+      "The MIB for ADSL Network Teminations"
+   ::= { sn 8 }
+
+adslNtMIBObjects OBJECT IDENTIFIER ::= { adslNt 1 }
+
+
+--------------------------------------------------------------------------
+-- adslNtModel group
+
+adslNtModelTable OBJECT-TYPE
+   SYNTAX      SEQUENCE OF AdslNtModelEntry
+   MAX-ACCESS  not-accessible
+   STATUS      current
+   DESCRIPTION
+      "contains Model of ADSL Network Termination"
+   ::= { adslNtMIBObjects 1 }
+
+adslNtModelEntry OBJECT-TYPE
+   SYNTAX      AdslNtModelEntry
+   MAX-ACCESS  not-accessible
+   STATUS      current
+   DESCRIPTION "an entry in adslNtModelTable"
+   INDEX       { ifIndex }
+   ::= { adslNtModelTable 1}
+
+AdslNtModelEntry ::= SEQUENCE {
+   adslNtModel                  INTEGER (0..65535),
+   adslNtModelString            DisplayString
+}
+
+adslNtModel OBJECT-TYPE
+   SYNTAX      INTEGER {
+                  autodetect (1), -- NT will be automatically detected (default)
+                  unmanaged  (2), -- unmanaged NT
+                  twinNt     (3)  -- Siemens TwinNT
+               }
+   MAX-ACCESS  read-write
+   STATUS      current
+   DESCRIPTION
+      "This Object is used to choose the appropriate initialization sequence"
+   ::= { adslNtModelEntry 1 }
+
+adslNtModelString OBJECT-TYPE
+   SYNTAX      DisplayString
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+      "The SLMI tries to autodetect the NT. This Object contains the model of the
+       ADSL Network Termination in plain ASCII."
+   ::= { adslNtModelEntry 2 }
+
+
+--------------------------------------------------------------------------
+-- adslNtGeneralConfig group
+
+adslNtGeneralConfigTable OBJECT-TYPE
+   SYNTAX      SEQUENCE OF AdslNtGeneralConfigEntry
+   MAX-ACCESS  not-accessible
+   STATUS      current
+   DESCRIPTION
+      "This group is used for the general configuration
+       of the TwinNT 4000 ADSL Network Termination"
+   ::= { adslNtMIBObjects 2 }
+
+adslNtGeneralConfigEntry OBJECT-TYPE
+   SYNTAX      AdslNtGeneralConfigEntry
+   MAX-ACCESS  not-accessible
+   STATUS      current
+   DESCRIPTION "an entry in adslNtGeneralConfigTable"
+   INDEX       { ifIndex }
+   ::= { adslNtGeneralConfigTable 1}
+
+AdslNtGeneralConfigEntry ::= SEQUENCE {
+   adslNtGeneralConfigAtmLock       INTEGER (0..65535),
+   adslNtGeneralConfigEthLock       INTEGER (0..65535),
+   adslNtGeneralConfigPhysLoopOn    INTEGER (0..65535),
+   adslNtGeneralConfigLoopbackLocId OCTET STRING
+}
+
+adslNtGeneralConfigAtmLock OBJECT-TYPE
+   SYNTAX      INTEGER {
+                  unlock (1), -- unlock the ATM port
+                  lock   (2)  -- lock the ATM port
+               }
+   MAX-ACCESS  read-write
+   STATUS      current
+   DESCRIPTION
+      "With this object it is possible to lock or unlock the ATM port"
+   ::= { adslNtGeneralConfigEntry 1 }
+
+adslNtGeneralConfigEthLock OBJECT-TYPE
+   SYNTAX      INTEGER {
+                  unlock (1), -- unlock the ETH port
+                  lock   (2)  -- lock the ETH port
+               }
+   MAX-ACCESS  read-write
+   STATUS      current
+   DESCRIPTION
+      "With this object it is possible to lock or unlock the ETH port"
+   ::= { adslNtGeneralConfigEntry 2 }
+
+adslNtGeneralConfigPhysLoopOn OBJECT-TYPE
+   SYNTAX      INTEGER {
+                  loopoff (1), -- physical loop off
+                  loopon  (2)  -- physical loop on
+               }
+   MAX-ACCESS  read-write
+   STATUS      current
+   DESCRIPTION
+      "With this object it is possible to establish a physical loop back in the NT"
+   ::= { adslNtGeneralConfigEntry 3 }
+
+adslNtGeneralConfigLoopbackLocId OBJECT-TYPE
+   SYNTAX      OCTET STRING (SIZE(16))
+   MAX-ACCESS  read-write
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the Loopback Location ID of the NT"
+   ::= { adslNtGeneralConfigEntry 4 }
+
+
+--------------------------------------------------------------------------
+-- adslNtGeneralStatus group
+
+adslNtGeneralStatusTable OBJECT-TYPE
+   SYNTAX      SEQUENCE OF AdslNtGeneralStatusEntry
+   MAX-ACCESS  not-accessible
+   STATUS      current
+   DESCRIPTION
+      "contains general information of NT"
+   ::= { adslNtMIBObjects 3 }
+
+adslNtGeneralStatusEntry OBJECT-TYPE
+   SYNTAX      AdslNtGeneralStatusEntry
+   MAX-ACCESS  not-accessible
+   STATUS      current
+   DESCRIPTION "an entry in adslNtGeneralStatusTable"
+   INDEX       { ifIndex }
+   ::= { adslNtGeneralStatusTable 1}
+
+AdslNtGeneralStatusEntry ::= SEQUENCE {
+   adslNtGeneralStatusAlive            INTEGER (0..65535),
+   adslNtGeneralStatusSelftestResult   INTEGER (0..65535),
+   adslNtGeneralStatusStartupInfo      INTEGER (0..65535),
+   adslNtGeneralStatusTcaIFDefect      INTEGER,
+   adslNtGeneralStatusAtmIFDefect      INTEGER,
+   adslNtGeneralStatusEthIFDefect      INTEGER,
+   adslNtGeneralStatusFirmwareVersion  DisplayString, 
+   adslNtGeneralStatusSoftwareVersion  DisplayString, 
+   adslNtGeneralStatusFWCode           DisplayString
+}
+
+adslNtGeneralStatusAlive OBJECT-TYPE
+   SYNTAX      INTEGER {
+                  alive    (1),
+                  notalive (2)
+               }
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the alive status of the NT
+       1 ... the Inband Communication Cannel SLMI-NT is functional
+       2 ... the Inband Communication Cannel SLMI-NT is not functional
+       The SLMI sends autonomously every 20 seconds a command KeepAlive
+       to the TWIN and waits for the response - the variable is updated
+       accordingly"
+   ::= { adslNtGeneralStatusEntry 1 }
+
+adslNtGeneralStatusSelftestResult OBJECT-TYPE
+   SYNTAX      INTEGER (0..65535)
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+      "During startup the NT performs a selftest. This Object contains
+       the result of this selftest
+         bit0 ... Core / TcNt status
+         bit1 ... Ethernet IF status
+         bit2 ... ATMF status
+         bit3 ... CRC status
+         0 ... no defect
+         1 ... defect"
+   ::= { adslNtGeneralStatusEntry 2 }
+
+adslNtGeneralStatusStartupInfo OBJECT-TYPE
+   SYNTAX      INTEGER (0..65535)
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the startup info of the NT
+
+         bit 0,1
+         00 ... coldstart (SW_reset, HW_reset)
+         01 ... warmstart
+         10 ... WDT
+         11 ... First time power up
+
+         bit 2
+         0 ... no ACK_PEND active
+         1 ... ACK_PEND active (not used)
+
+         bit 3
+         0 ... no download in progress
+         1 ... download in progress
+
+         bit 4
+         0 ... no SW error escalation
+         1 ... SW error escalation (SW_failure, WDT) (not used)
+
+         bit 5
+         000 ... wait for RestartAnn1 (not used)
+         001 ... wait for RestartConf
+         010 ... wait for RestartAnn2 (not used)
+         011 ... active, administrative locked (not used)
+         100 ... active, administrative unlocked"
+   ::= { adslNtGeneralStatusEntry 3 }
+
+adslNtGeneralStatusTcaIFDefect OBJECT-TYPE
+   SYNTAX      INTEGER {
+                  nodefect (1),
+                  defect   (2)
+               }
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the status of the Transmission Convergence Adaptor
+         nodefect:   no defect
+         defect  :   (LOS, LCD, TxError defect)"
+   ::= { adslNtGeneralStatusEntry 4 }
+
+adslNtGeneralStatusAtmIFDefect OBJECT-TYPE
+   SYNTAX      INTEGER {
+                  nodefect (1),
+                  defect   (2)
+               }
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the status of the ATM Interface
+         nodefect:   no defect
+         defect  :   (LOS, LCD, TxError defect)"
+   ::= { adslNtGeneralStatusEntry 5 }
+
+adslNtGeneralStatusEthIFDefect OBJECT-TYPE
+   SYNTAX      INTEGER {
+                  nodefect (1),
+                  defect   (2)
+               }
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the status of the Ethernet Interface
+         nodefect:   no defect
+         defect  :   (LOS, LCD, TxError defect)"
+   ::= { adslNtGeneralStatusEntry 6 }
+
+adslNtGeneralStatusFirmwareVersion OBJECT-TYPE
+   SYNTAX      DisplayString
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the Firmware Version of the NT"
+   ::= { adslNtGeneralStatusEntry 7 }
+
+adslNtGeneralStatusSoftwareVersion OBJECT-TYPE
+   SYNTAX      DisplayString
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the Software Version of the NT"
+   ::= { adslNtGeneralStatusEntry 8 }
+
+adslNtGeneralStatusFWCode OBJECT-TYPE
+   SYNTAX      DisplayString
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the Firmware Code of the NT"
+   ::= { adslNtGeneralStatusEntry 9 }
+
+--------------------------------------------------------------------------
+-- adslNtAtmConfig group
+
+adslNtAtmConfigTable OBJECT-TYPE
+   SYNTAX      SEQUENCE OF AdslNtAtmConfigEntry
+   MAX-ACCESS  not-accessible
+   STATUS      current
+   DESCRIPTION
+      "contains Objects for the configuration of the ATM port of the NT"
+   ::= { adslNtMIBObjects 4 }
+
+adslNtAtmConfigEntry OBJECT-TYPE
+   SYNTAX      AdslNtAtmConfigEntry
+   MAX-ACCESS  not-accessible
+   STATUS      current
+   DESCRIPTION "an entry in adslNtAtmConfigTable"
+   INDEX       { ifIndex,adslNtAtmConfigVpi }
+   ::= { adslNtAtmConfigTable 1}
+
+AdslNtAtmConfigEntry ::= SEQUENCE {
+   adslNtAtmConfigVpi            INTEGER (0..65535),
+   adslNtAtmConfigTrafficMode    INTEGER,
+   adslNtAtmConfigPcr            Integer32,
+   adslNtAtmConfigRowStatus      RowStatus
+}
+
+adslNtAtmConfigVpi OBJECT-TYPE
+   SYNTAX      INTEGER (0..65535)
+   MAX-ACCESS  not-accessible
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the Virtual Path Identifier"
+   ::= { adslNtAtmConfigEntry 1 }
+
+adslNtAtmConfigTrafficMode OBJECT-TYPE
+   SYNTAX      INTEGER {
+                  cbr (1),
+                  ubr (2)
+               }
+   MAX-ACCESS  read-create
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the Traffic Mode"
+   ::= { adslNtAtmConfigEntry 2 }
+
+adslNtAtmConfigPcr OBJECT-TYPE
+   SYNTAX      Integer32
+   MAX-ACCESS  read-create
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the Peak Cell Rate in kbit per second / base 1000"
+   ::= { adslNtAtmConfigEntry 3 }
+
+adslNtAtmConfigRowStatus OBJECT-TYPE
+   SYNTAX      RowStatus
+   MAX-ACCESS  read-create
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the RowStatus for the adslNtAtmConfigTable"
+   ::= { adslNtAtmConfigEntry 4 }
+
+
+--------------------------------------------------------------------------
+-- adslNtAtmStatus group
+
+adslNtAtmStatusTable OBJECT-TYPE
+   SYNTAX      SEQUENCE OF AdslNtAtmStatusEntry
+   MAX-ACCESS  not-accessible
+   STATUS      current
+   DESCRIPTION
+      "contains the status of the ATM port"
+   ::= { adslNtMIBObjects 5 }
+
+adslNtAtmStatusEntry OBJECT-TYPE
+   SYNTAX      AdslNtAtmStatusEntry
+   MAX-ACCESS  not-accessible
+   STATUS      current
+   DESCRIPTION "an entry in adslNtAtmStatusTable"
+   INDEX       { ifIndex,adslNtAtmConfigVpi }
+   ::= { adslNtAtmStatusTable 1}
+
+AdslNtAtmStatusEntry ::= SEQUENCE {
+   adslNtAtmStatusConfigDataResponse   INTEGER (0..65535)
+}
+
+adslNtAtmStatusConfigDataResponse OBJECT-TYPE
+   SYNTAX      INTEGER (0..65535)
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the response of the NT to the command PutATMFConfigData
+          0x01 ... NT announces autonomous reboot (fatal error occured in message)
+          0x02 ... No NT reboot"
+   ::= { adslNtAtmStatusEntry 1 }
+
+
+--------------------------------------------------------------------------
+-- adslNtEthConfig group
+
+adslNtEthConfigTable OBJECT-TYPE
+   SYNTAX      SEQUENCE OF AdslNtEthConfigEntry
+   MAX-ACCESS  not-accessible
+   STATUS      current
+   DESCRIPTION
+      "contains Objects for the configuration of the Ethernet port of the NT"
+   ::= { adslNtMIBObjects 6 }
+
+adslNtEthConfigEntry OBJECT-TYPE
+   SYNTAX      AdslNtEthConfigEntry
+   MAX-ACCESS  not-accessible
+   STATUS      current
+   DESCRIPTION "an entry in adslNtEthConfigTable"
+   INDEX       { ifIndex }
+   ::= { adslNtEthConfigTable 1}
+
+AdslNtEthConfigEntry ::= SEQUENCE {
+   adslNtEthConfigVci                  INTEGER (0..65535),
+   adslNtEthConfigVpi                  INTEGER (0..65535),
+   adslNtEthConfigIpAddrCpSide         IpAddress,
+   adslNtEthConfigIpMaskCpSide         IpAddress,
+   adslNtEthConfigIpAddrRoutingCpSide  IpAddress,
+   adslNtEthConfigOperatingMode        INTEGER,
+   adslNtEthConfigTrafficMode          INTEGER,
+   adslNtEthConfigPcr                  Integer32,
+   adslNtEthConfigRowStatus            RowStatus
+}
+
+adslNtEthConfigVci OBJECT-TYPE
+   SYNTAX      INTEGER (0..65535)
+   MAX-ACCESS  read-create
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the Vci"
+   ::= { adslNtEthConfigEntry 1 }
+
+adslNtEthConfigVpi OBJECT-TYPE
+   SYNTAX      INTEGER (0..65535)
+   MAX-ACCESS  read-create
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the Vpi"
+   ::= { adslNtEthConfigEntry 2 }
+
+adslNtEthConfigIpAddrCpSide OBJECT-TYPE
+   SYNTAX      IpAddress
+   MAX-ACCESS  read-create
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the IP Address of the Ethernet port"
+   ::= { adslNtEthConfigEntry 3 }
+
+adslNtEthConfigIpMaskCpSide OBJECT-TYPE
+   SYNTAX      IpAddress
+   MAX-ACCESS  read-create
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the Subnet-Mask of the Ethernet port"
+   ::= { adslNtEthConfigEntry 4 }
+
+adslNtEthConfigIpAddrRoutingCpSide OBJECT-TYPE
+   SYNTAX      IpAddress
+   MAX-ACCESS  read-create
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the IP-Address of the next hop router"
+   ::= { adslNtEthConfigEntry 5 }
+
+adslNtEthConfigOperatingMode OBJECT-TYPE
+   SYNTAX      INTEGER {
+                  bridging       (1),
+                  ipforwarding   (2),
+                  tunneling      (3)
+               }
+   MAX-ACCESS  read-create
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the Operating Mode
+       NOTE: tunneling (3) is currently not supported by the NT"
+   ::= { adslNtEthConfigEntry 6 }
+
+adslNtEthConfigTrafficMode OBJECT-TYPE
+   SYNTAX      INTEGER {
+                  cbr (1),
+                  ubr (2)
+               }
+   MAX-ACCESS  read-create
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the Traffic Mode"
+   ::= { adslNtEthConfigEntry 7 }
+
+adslNtEthConfigPcr OBJECT-TYPE
+   SYNTAX      Integer32
+   MAX-ACCESS  read-create
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the peak cell rate"
+   ::= { adslNtEthConfigEntry 8 }
+
+adslNtEthConfigRowStatus OBJECT-TYPE
+   SYNTAX      RowStatus
+   MAX-ACCESS  read-create
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the RowStatus for the adslNtEthConfigTable"
+   ::= { adslNtEthConfigEntry 9 }
+
+
+--------------------------------------------------------------------------
+-- adslNtEthStatus group
+
+adslNtEthStatusTable OBJECT-TYPE
+   SYNTAX      SEQUENCE OF AdslNtEthStatusEntry
+   MAX-ACCESS  not-accessible
+   STATUS      current
+   DESCRIPTION
+      "contains the status of the Ethernet port"
+   ::= { adslNtMIBObjects 7 }
+
+adslNtEthStatusEntry OBJECT-TYPE
+   SYNTAX      AdslNtEthStatusEntry
+   MAX-ACCESS  not-accessible
+   STATUS      current
+   DESCRIPTION "an entry in adslNtEthStatusTable"
+   INDEX       { ifIndex }
+   ::= { adslNtEthStatusTable 1}
+
+AdslNtEthStatusEntry ::= SEQUENCE {
+   adslNtEthStatusConfigDataResponse   INTEGER (0..65535),
+   adslNtEthStatusATMTPDefectsF4       INTEGER (0..65535),
+   adslNtEthStatusATMTPDefectsF5       INTEGER (0..65535)
+}
+
+adslNtEthStatusConfigDataResponse OBJECT-TYPE
+   SYNTAX      INTEGER (0..65535)
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the response of the NT to the command PutATMFConfigData
+          0x01 ... NT announces autonomous reboot (fatal error occured in message)
+          0x02 ... No NT reboot"
+   ::= { adslNtEthStatusEntry 1 }
+
+
+adslNtEthStatusATMTPDefectsF4 OBJECT-TYPE
+   SYNTAX      INTEGER (0..65535)
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the Faults on the F4 Layer (Vp) of the ATM/Ethernet Termination Point
+         bit0  AIS downstream
+               0  cleared
+               1  present
+
+         bit1  RDI downstream
+               0  cleared
+               1  present
+
+         bit2  AIS upstream
+               0  cleared
+               1  present
+
+         bit3  RDI upstream
+               0  cleared
+               1  present"
+   ::= { adslNtEthStatusEntry 2 }
+
+adslNtEthStatusATMTPDefectsF5 OBJECT-TYPE
+   SYNTAX      INTEGER (0..65535)
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+      "This Object contains the Faults on the F5 Layer (Vp/Vc) of the ATM/Ethernet Termination Point
+         bit0  AIS downstream
+               0  cleared
+               1  present
+
+         bit1  RDI downstream
+               0  cleared
+               1  present
+
+         bit2  AIS upstream
+               0  cleared
+               1  present
+
+         bit3  RDI upstream
+               0  cleared
+               1  present"
+   ::= { adslNtEthStatusEntry 3 }
+
+
+--------------------------------------------------------------------------
+
+
+END

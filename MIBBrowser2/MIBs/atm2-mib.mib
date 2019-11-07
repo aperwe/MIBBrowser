@@ -1,0 +1,311 @@
+
+               ATM2-MIB DEFINITIONS ::= BEGIN
+
+               IMPORTS
+                  MODULE-IDENTITY, OBJECT-TYPE,
+                  Counter32
+                      FROM SNMPv2-SMI
+                  RowStatus, TimeStamp
+                      FROM SNMPv2-TC
+                  MODULE-COMPLIANCE, OBJECT-GROUP
+                      FROM SNMPv2-CONF
+--                  InterfaceIndex, 
+						  ifIndex
+                      FROM RFC1213-MIB
+                  atmMIBObjects, atmVclEntry,
+                  atmVclVpi, atmVclVci, atmVplEntry, atmVplVpi
+                      FROM ATM-MIB
+--                  PerfCurrentCount,
+--                  PerfIntervalCount,
+--                  PerfTotalCount
+--                      FROM PerfHist-TC-MIB
+--                  AtmAddr,
+--                  AtmSigDescrParamIndex,
+--                 AtmTrafficDescrParamIndex,
+--                  AtmConnCastType,
+--                  AtmConnKind,
+--                  AtmSignallingType,
+--                  AtmVcIdentifier,
+--                  AtmVpIdentifier
+--                      FROM ATM-TC-MIB
+						  radnetDrafts 
+								FROM RADNET-PRIVATE-MIB;
+
+
+               atm2MIB MODULE-IDENTITY
+                    LAST-UPDATED "9601301200Z"
+                    ORGANIZATION "IETF AToMMIB Working Group"
+                    CONTACT-INFO
+                      "          Faye Ly
+                        Postal:  Bay Networks Inc.
+                                 4401 Great America Parkway
+                                 Santa Clara, CA 95052
+                                 US
+                        Tel:     +1 408 764 1702
+                        Fax:     +1 408 988 5525
+                        E-Mail:  faye@Baynetworks.COM
+                                 Michael Noto
+                        Postal:  Bell Communications Research
+                                 331 Newman Springs Road
+                                 Red Bank, NJ 07701
+                                 US
+                        Tel:     +1 908 758 5104
+                        Fax:     +1 908 758 4177
+                        E-mail:  noto@cc.bellcore.com
+
+                                 Andrew Smith
+                        Postal:  Bay Networks Inc.
+                                 4401 Great America Parkway
+                                 Santa Clara, CA 95052
+                                 US
+                        Tel:     +1 408 764 1574
+                        Fax:     +1 408 988 5525
+                        E-Mail:  asmith@Baynetworks.COM
+
+                                 Kaj Tesink
+                        Postal:  Bell Communications Research
+                                 331 Newman Springs Road
+                                 Red Bank, NJ 07701
+                                 US
+                        Tel:     +1 908 758 5254
+                        Fax:     +1 908 758 4177
+                        E-mail:  kaj@cc.bellcore.com"
+                    DESCRIPTION
+                     "This MIB Module is a supplement to the
+                     ATM-MIB [1].  This MIB provides
+                     supplemental information from both a
+                     switch/network perspective and an ATM
+                     host/application prospective."
+                    ::= { radnetDrafts 3 }
+
+               atm2MIBObjects  OBJECT IDENTIFIER ::= {atm2MIB 1}
+
+               -- ********  NOTE TO THE RFC EDITOR  **************
+               -- In case this module is put on the standards track
+               --  replace the following:
+               -- "atm2MIB MODULE-IDENTITY ::= {experimental XX}" with
+               -- "atm2MIB MODULE-IDENTITY ::= {atmMIBObjects 13}"
+               -- and include atmMIBObjects in the IMPORT clause.
+
+
+               -- This ATM2-MIB Module consists of the following tables:
+               --      9. atmVplStatTable
+               --      11. atmVclStatTable
+               --
+
+
+
+
+
+          -- 9. ATM VPL Statistics Table
+
+
+              atmVplStatTable   OBJECT-TYPE
+                  SYNTAX        SEQUENCE OF AtmVplStatEntry
+                  MAX-ACCESS    not-accessible
+                  STATUS        current
+                  DESCRIPTION
+                      "This table contains all statistic counters per
+                      VPL.  It is used to monitor the usage of the VPL
+                      in terms of incoming cells and outgoing cells."
+                  ::= { atm2MIBObjects 9 }
+
+              atmVplStatEntry    OBJECT-TYPE
+                  SYNTAX         AtmVplStatEntry
+                  MAX-ACCESS     not-accessible
+                  STATUS         current
+                  DESCRIPTION
+                      "Each entry in this table represents a VPL."
+                  INDEX { ifIndex, atmVplVpi }
+                  ::= { atmVplStatTable 1 }
+
+              AtmVplStatEntry ::=
+                  SEQUENCE {
+                      atmVplStatTotalCellIns Counter32,
+                      atmVplStatClp0CellIns Counter32,
+                      atmVplStatTotalDiscards Counter32,
+                      atmVplStatClp0Discards Counter32,
+                      atmVplStatTotalCellOuts Counter32,
+                      atmVplStatClp0CellOuts Counter32,
+                      atmVplStatTaggedOuts Counter32
+              }
+
+              atmVplStatTotalCellIns OBJECT-TYPE
+                  SYNTAX        Counter32
+                  MAX-ACCESS    read-only
+                  STATUS        current
+                  DESCRIPTION
+                      "The total number of valid ATM cells received by
+                      this VPL including both CLP=0 and CLP=1 cells.
+                      The cells are counted prior to the application of
+                      the traffic policing."
+                  ::= { atmVplStatEntry 1 }
+
+              atmVplStatClp0CellIns OBJECT-TYPE
+                  SYNTAX        Counter32
+                  MAX-ACCESS    read-only
+                  STATUS        current
+                  DESCRIPTION
+                      "The number of valid ATM cells received by this
+                      VPL with CLP=0.  The cells are counted prior to
+                      the application of the traffic policing."
+                  ::= { atmVplStatEntry 2 }
+
+              atmVplStatTotalDiscards OBJECT-TYPE
+                  SYNTAX        Counter32
+                  MAX-ACCESS    read-only
+                  STATUS        current
+                  DESCRIPTION
+                      "The total number of valid ATM cells discarded by
+                      the traffic policing entity. This includes cells
+                      orginally received with CLP=0 and CLP=1."
+                  ::= { atmVplStatEntry 3 }
+
+              atmVplStatClp0Discards OBJECT-TYPE
+                  SYNTAX        Counter32
+                  MAX-ACCESS    read-only
+                  STATUS        current
+                  DESCRIPTION
+                      "The total number of valid ATM cells received with
+                      CLP=0 an  discarded by the traffic policing
+                      entity."
+                  ::= { atmVplStatEntry 4 }
+
+              atmVplStatTotalCellOuts OBJECT-TYPE
+                  SYNTAX        Counter32
+                  MAX-ACCESS    read-only
+                  STATUS        current
+                  DESCRIPTION
+                      "The total number of valid ATM cells transmitted
+                      by this VPL.  This includes both CLP=0 and CLP=1
+                      cells."
+                  ::= { atmVplStatEntry 5 }
+
+              atmVplStatClp0CellOuts OBJECT-TYPE
+                  SYNTAX        Counter32
+                  MAX-ACCESS    read-only
+                  STATUS        current
+                  DESCRIPTION
+                      "The total number of valid ATM cells transmitted
+                      with CLP=0 by this VPL."
+                  ::= { atmVplStatEntry 6 }
+
+              atmVplStatTaggedOuts OBJECT-TYPE
+                  SYNTAX        Counter32
+                  MAX-ACCESS    read-only
+                  STATUS        current
+                  DESCRIPTION
+                      "The total number of valid ATM cells tagged by the
+                      traffic policing entity from CLP=0 to CLP=1 and
+                      transmitted by this VPL."
+                  ::= { atmVplStatEntry 7 }
+
+
+
+
+          -- 11. ATM VCL Statistics Table
+
+              atmVclStatTable   OBJECT-TYPE
+                  SYNTAX        SEQUENCE OF AtmVclStatEntry
+                  MAX-ACCESS    not-accessible
+                  STATUS        current
+                  DESCRIPTION
+                      "This table contains all statistic counters per
+                      VCL.  It is used to monitor the usage of the VCL
+                      in terms of incoming cells and outgoing cells."
+                  ::= { atm2MIBObjects 11 }
+
+              atmVclStatEntry    OBJECT-TYPE
+                  SYNTAX         AtmVclStatEntry
+                  MAX-ACCESS     not-accessible
+                  STATUS         current
+                  DESCRIPTION
+                      "Each entry in this table represents a VCL."
+                  INDEX { ifIndex, atmVclVpi, atmVclVci }
+                  ::= { atmVclStatTable 1 }
+
+              AtmVclStatEntry ::=
+                  SEQUENCE {
+                      atmVclStatTotalCellIns Counter32,
+                      atmVclStatClp0CellIns Counter32,
+                      atmVclStatTotalDiscards Counter32,
+                      atmVclStatClp0Discards Counter32,
+                      atmVclStatTotalCellOuts Counter32,
+                      atmVclStatClp0CellOuts Counter32,
+                      atmVclStatTaggedOuts Counter32
+                  }
+
+              atmVclStatTotalCellIns OBJECT-TYPE
+                  SYNTAX        Counter32
+                  MAX-ACCESS    read-only
+                  STATUS        current
+                  DESCRIPTION
+                      "The total number of valid ATM cells received by
+                      this VCL including both CLP=0 and CLP=1 cells.
+                      The cells are counted prior to the application of
+                      the traffic policing."
+                  ::= { atmVclStatEntry 1 }
+
+              atmVclStatClp0CellIns OBJECT-TYPE
+                  SYNTAX        Counter32
+                  MAX-ACCESS    read-only
+                  STATUS        current
+                  DESCRIPTION
+                      "The number of valid ATM cells received by this
+                      VCL with CLP=0.  The cells are counted prior to
+                      the application of the traffic policing."
+                  ::= { atmVclStatEntry 2 }
+
+              atmVclStatTotalDiscards OBJECT-TYPE
+                  SYNTAX        Counter32
+                  MAX-ACCESS    read-only
+                  STATUS        current
+                  DESCRIPTION
+                      "The total number of valid ATM cells discarded by
+                      the traffic policing entity. This includes cells
+                      orginally received with CLP=0 and CLP=1."
+                  ::= { atmVclStatEntry 3 }
+
+              atmVclStatClp0Discards OBJECT-TYPE
+                  SYNTAX        Counter32
+                  MAX-ACCESS    read-only
+                  STATUS        current
+                  DESCRIPTION
+                      "The total number of valid ATM cells received with
+                      CLP=0 an  discarded by the traffic policing
+                      entity."
+                  ::= { atmVclStatEntry 4 }
+
+              atmVclStatTotalCellOuts OBJECT-TYPE
+                  SYNTAX        Counter32
+                  MAX-ACCESS    read-only
+                  STATUS        current
+                  DESCRIPTION
+                      "The total number of valid ATM cells transmitted
+                      by this VCL.  This includes both CLP=0 and CLP=1
+                      cells."
+                  ::= { atmVclStatEntry 5 }
+
+              atmVclStatClp0CellOuts OBJECT-TYPE
+                  SYNTAX        Counter32
+                  MAX-ACCESS    read-only
+                  STATUS        current
+                  DESCRIPTION
+                      "The total number of valid ATM cells transmitted
+                      with CLP=0 by this VCL."
+                  ::= { atmVclStatEntry 6 }
+
+              atmVclStatTaggedOuts OBJECT-TYPE
+                  SYNTAX        Counter32
+                  MAX-ACCESS    read-only
+                  STATUS        current
+                  DESCRIPTION
+                      "The total number of valid ATM cells tagged by the
+                      traffic policing entity from CLP=0 to CLP=1 and
+                      transmitted by this VCL."
+                  ::= { atmVclStatEntry 7 }
+
+
+
+                END
+

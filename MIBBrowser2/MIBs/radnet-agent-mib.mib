@@ -1,0 +1,413 @@
+-- @(#)rnet_agent.mib
+-- ----------------------------------------------------------------------
+-- RADNET agent MIB
+-- Copyright (c) 1996 RADNET Ltd.
+-- ----------------------------------------------------------------------
+--
+-- MIB Module :   RADNET-AGENT-MIB
+--
+-- Revision   :   V2.06
+--
+-- Description:   Definition of the parameters that configure the agent.
+--
+-- ----------------------------------------------------------------------
+RADNET-AGENT-MIB DEFINITIONS ::= BEGIN
+
+	IMPORTS
+       	OBJECT-TYPE, Integer32,
+       	TimeTicks, IpAddress,
+			MODULE-IDENTITY			FROM SNMPv2-SMI
+       	RowStatus, DateAndTime			FROM SNMPv2-TC
+	      DisplayString				FROM SNMPv2-TC
+			rnetGen						FROM RADNET-PRIVATE-MIB;
+
+
+              rnetAgent  MODULE-IDENTITY
+                    LAST-UPDATED "9709021300Z"
+                    ORGANIZATION "RADNET"
+                    CONTACT-INFO
+                      "          Eitan Mardiks
+                        Postal:  RADNET Ltd.
+				24 Raul Wallenberg St.
+				Tel-Aviv 69719, Israel.
+                        Tel:     +972 3 6455700
+                        Fax:     +972 3 6480582
+                        E-Mail:  eitan@gate.radnet.co.il"
+
+                    DESCRIPTION
+                     "Definition of the parameters that 
+							 configure the agent."
+                    ::= { rnetGen 1 }
+
+
+-- ------------------------------------------------------------
+--              Textual Conventions
+-- -------------------------------------------------------------
+TrapType ::=  OCTET STRING (SIZE (4))
+    -- Categorization of traps into group of traps.
+    --
+    -- A bit-encoded string, 4 bytes in length, which contains information
+    -- about which trap(s) should be directed to the management entity
+    -- described by this table entry."
+    --
+    -- The following list identifies the trap types
+    --   and corresponding bit values:
+    --              TRAP_AUTHENTICATION     0x00000001
+    --              TRAP_STD_MIB_II         0x00000002
+    --              TRAP_ERROR		    0x00000004
+    --              TRAP_DIAG               0x00000008
+    --              TRAP_DEBUG              0x00000010
+    --              TRAP_CONFIGURATION      0x00000020
+    --              TRAP_SONET		    0x00000040
+    --              TRAP_ATM		    0x00000080
+    --              TRAP_FR		    0x00000100
+
+
+-- --------------------------------------------------------------
+-- RADNET Agent Objects
+-- --------------------------------------------------------------
+rnetAgentConfig		OBJECT IDENTIFIER ::= { rnetAgent 1 }
+rnetAgentSecurity	OBJECT IDENTIFIER ::= { rnetAgent 2 }
+rnetAgentTest		OBJECT IDENTIFIER ::= { rnetAgent 3 }
+rnetAgentMaintenance	OBJECT IDENTIFIER ::= { rnetAgent 4 }
+rnetAgentDebug		OBJECT IDENTIFIER ::= { rnetAgent 5 }
+
+
+-- --------------------------------------------------------------
+-- RADNET Agent Configuration Objects
+-- --------------------------------------------------------------
+rnetAgentIp		OBJECT IDENTIFIER ::= { rnetAgentConfig 1 }
+rnetAgentSnmp		OBJECT IDENTIFIER ::= { rnetAgentConfig 2 }
+rnetAgentSnmpTrap	OBJECT IDENTIFIER ::= { rnetAgentConfig 3 }
+
+
+-- **************************************************************
+--         RADNET Agent Config Group
+-- **************************************************************
+
+
+-- --------------------------------------------------------------
+-- RADNET Agent Config IP Group
+-- --------------------------------------------------------------
+
+rnetAgentIpAddress	OBJECT-TYPE
+	SYNTAX  IpAddress
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"The IP address of the agent"
+	::= { rnetAgentIp 1 }
+
+rnetAgentIpSubnetMask	OBJECT-TYPE
+	SYNTAX		IpAddress
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"The IP sub net mask of the agent"
+	::= { rnetAgentIp 2 }
+
+
+-- --------------------------------------------------------------
+-- RADNET Agent Config SNMP Group
+-- --------------------------------------------------------------
+rnetAgentSnmpCommunityTable	OBJECT-TYPE
+	SYNTAX  SEQUENCE OF RnetAgentSnmpCommunityEntry
+	MAX-ACCESS  not-accessible
+	STATUS  current
+	DESCRIPTION
+		"This table contains information about the Read and
+		 Write communities for all kinds of users (user, 
+		 supervisor and field engineer)."
+
+	::= { rnetAgentSnmp 1 }
+
+rnetAgentSnmpCommunityEntry	OBJECT-TYPE
+	SYNTAX  RnetAgentSnmpCommunityEntry
+	MAX-ACCESS  not-accessible
+	STATUS  current
+        DESCRIPTION
+                "This object contains runtime information about
+                 user types community names."
+ 	INDEX   { rnetAgentSnmpCommunityUserType }
+	::= { rnetAgentSnmpCommunityTable 1 }
+
+RnetAgentSnmpCommunityEntry ::= SEQUENCE {
+rnetAgentSnmpCommunityUserType
+	   	INTEGER,
+rnetAgentSnmpReadCommunity
+	   	DisplayString,
+rnetAgentSnmpWriteCommunity
+	   	DisplayString
+	}
+
+rnetAgentSnmpCommunityUserType 	OBJECT-TYPE
+	SYNTAX	INTEGER {
+			read-only-user(1),
+			user(2),
+			super-user(3),
+			field-engineer(4)
+			}
+        MAX-ACCESS  read-only
+        STATUS  current
+	DESCRIPTION
+		"The index of this table. The value defines the user type 
+		 for the communities in this row."
+	::= { rnetAgentSnmpCommunityEntry 1 }
+
+rnetAgentSnmpReadCommunity	OBJECT-TYPE
+	SYNTAX	DisplayString
+	MAX-ACCESS	read-write
+	STATUS  current
+	DESCRIPTION 
+	        "Community string for reading.
+                 When reading the instance of this
+                 object the value has no meaning."
+
+	::= { rnetAgentSnmpCommunityEntry 2 }
+
+rnetAgentSnmpWriteCommunity	OBJECT-TYPE
+	SYNTAX	DisplayString
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION 
+	        "Community string for writing.
+                 When reading the instance of this
+                 object the value has no meaning."
+	::= {rnetAgentSnmpCommunityEntry  3 }
+
+
+-- --------------------------------------------------------------
+-- RADNET Agent SNMP Traps Group
+--
+-- This group contains the Trap table and other trap related
+-- parameters
+-- --------------------------------------------------------------
+
+rnetAgentSnmpTrapLearning	OBJECT-TYPE
+	SYNTAX	INTEGER {
+			other(1),
+			enabled(2),
+			disabled(3)
+		}
+	MAX-ACCESS	read-write
+	STATUS  current
+	DESCRIPTION
+		"The mode of the Learning Process of the Trap Table.
+
+ 		 In enabled(2) mode, the addresses of the managers are 
+		 automatically learned,	as long as there are free entries 
+		 in the Trap Table.
+
+	 	 other(1) is returned when the Learning Process is not
+		 available."
+	::= { rnetAgentSnmpTrap 1 }
+
+rnetAgentSnmpTrapAging	OBJECT-TYPE
+	SYNTAX	INTEGER {
+                        other(1),
+                        enabled(2),
+                        disabled(3)
+                }
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"The mode of the Aging Process on the Trap Table.
+
+	 	 other(1) is returned when the Aging Process is not
+		 available."
+	DEFVAL { enabled }
+	::= { rnetAgentSnmpTrap 2 }
+
+rnetAgentSnmpTrapMaxAge	OBJECT-TYPE
+	SYNTAX	INTEGER (60..1800)
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Time in seconds until a dynamic trap entry is removed."
+	DEFVAL { 300 }
+	::= { rnetAgentSnmpTrap 3 }
+
+rnetAgentSnmpTrapTimeLastGenerated OBJECT-TYPE
+        SYNTAX DateAndTime
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                "The value date when the last trap was 
+		 generated.
+                
+		 This object can be used by the management station to
+		 determine whether traps were generated since the last poll."
+        ::= { rnetAgentSnmpTrap 4 }
+
+rnetAgentSnmpTrapMaxManagers	OBJECT-TYPE
+	SYNTAX	Integer32
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"The maximum number of managers that can be registered 
+		 for receiving traps."
+	::= { rnetAgentSnmpTrap 5 }
+
+rnetAgentSnmpTrapSupportedTypes 	OBJECT-TYPE
+	SYNTAX  TrapType
+        MAX-ACCESS  read-write
+        STATUS  current
+	DESCRIPTION
+		"Determines which sub-set of Trap Types are to be handled 
+		 by the agent.
+
+		 The value of the object is used as default assignment of the 
+		 rnetAgentSnmpTrapTypeMask object of new learned managers
+		 rnetAgentSnmpTrapEntry.
+
+		 Default:
+		   TRAP_STD_MIB_II, TRAP_CONFIGURATION."
+	REFERENCE
+		"TrapType Textual Conventions.
+		 rnetAgentSnmpTrapEntry, rnetAgentSnmpTrapTypeMask"
+	::= { rnetAgentSnmpTrap 6 }
+
+rnetAgentSnmpTrapTable	OBJECT-TYPE
+	SYNTAX  SEQUENCE OF RnetAgentSnmpTrapEntry
+	MAX-ACCESS  not-accessible
+	STATUS  current
+	DESCRIPTION
+		"This table contains information about the managers
+		 to which traps should be directed."
+	::= { rnetAgentSnmpTrap 7 }
+
+rnetAgentSnmpTrapEntry	OBJECT-TYPE
+	SYNTAX  RnetAgentSnmpTrapEntry
+	MAX-ACCESS  not-accessible
+	STATUS  current
+        DESCRIPTION
+                   "This object contains runtime information about
+                    an individual trap destination."
+ 	INDEX   { rnetAgentSnmpTrapAddress,
+		  rnetAgentSnmpTrapCommunity }
+	::= { rnetAgentSnmpTrapTable 1 }
+
+RnetAgentSnmpTrapEntry ::= SEQUENCE {
+	rnetAgentSnmpTrapAddress
+		IpAddress,
+	rnetAgentSnmpTrapCommunity
+	        DisplayString,
+	rnetAgentSnmpTrapTypeMask
+		TrapType,
+	rnetAgentSnmpTrapRowStatus
+		RowStatus
+	}
+
+rnetAgentSnmpTrapAddress 	OBJECT-TYPE
+	SYNTAX	IpAddress
+        MAX-ACCESS  read-only
+        STATUS  current
+	DESCRIPTION
+		"The IP address of the network management entity
+		 to which traps (of the type specified in this
+		 table entry) should be sent."
+	::= { rnetAgentSnmpTrapEntry 1 }
+
+rnetAgentSnmpTrapCommunity 	OBJECT-TYPE
+	SYNTAX	DisplayString
+        MAX-ACCESS  read-only
+        STATUS  current
+	DESCRIPTION
+		"The Community name the network management entity 
+		 will expect. When reading the instance of this 
+		 object the value has no meaning."
+	::= { rnetAgentSnmpTrapEntry 2 }
+
+rnetAgentSnmpTrapTypeMask 	OBJECT-TYPE
+	SYNTAX  TrapType
+        MAX-ACCESS  read-write
+        STATUS  current
+	DESCRIPTION
+		"A TrapType encoded string, that contains information 
+		 about which trap(s) should be directed to the management 
+		 entity described by this table entry.
+		 This object is not mandatory for rnetAgentSnmpTrapEntry 
+		 creation. The value of rnetAgentSnmpTrapSupportedTypes
+		 object is used as default value."
+	REFERENCE
+		"TrapType Textual Conventions.
+		 rnetAgentSnmpTrapSupportedTypes"
+	::= { rnetAgentSnmpTrapEntry 3 }
+
+rnetAgentSnmpTrapRowStatus	OBJECT-TYPE
+	SYNTAX  RowStatus
+	MAX-ACCESS  read-write
+        STATUS  current
+	DESCRIPTION
+		"This object is used to create
+		 a new row or modify or delete an
+		 existing row in this table."
+ 	::= { rnetAgentSnmpTrapEntry 4 }
+
+
+-- --------------------------------------------------------------
+-- RADNET Agent SNMP Trap Aging Table
+--
+-- This table augments the rnetAgentSnmpTrap Table
+-- --------------------------------------------------------------
+
+rnetAgentSnmpTrapAgingTable	OBJECT-TYPE
+	SYNTAX  SEQUENCE OF RnetAgentSnmpTrapAgingEntry
+	MAX-ACCESS  not-accessible
+	STATUS  current
+	DESCRIPTION
+		"This table contains more information about the managers
+		 to which traps should be directed."
+	::= { rnetAgentSnmpTrap 8 }
+
+rnetAgentSnmpTrapAgingEntry	OBJECT-TYPE
+	SYNTAX  RnetAgentSnmpTrapAgingEntry
+	MAX-ACCESS  not-accessible
+	STATUS  current
+        DESCRIPTION
+                   "This object contains setup for automatic deletion of
+                    a trap per trap destination."
+	AUGMENTS { rnetAgentSnmpTrapEntry }
+	::= { rnetAgentSnmpTrapAgingTable 1 }
+
+RnetAgentSnmpTrapAgingEntry ::= SEQUENCE {
+	rnetAgentSnmpTrapAgingStability
+		INTEGER,
+	rnetAgentSnmpTrapAgingAge
+		TimeTicks
+	}
+
+rnetAgentSnmpTrapAgingStability	OBJECT-TYPE
+	SYNTAX	INTEGER {
+			static(1),
+			dynamic(2)
+		}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Trap table entry that is marked as removable(3) is removed
+	    	 by the Aging Process after rnetAgentSnmpTrapMaxAge seconds elapsed
+		 from the arrival time of the last frame from the manager
+		 identified by rnetAgentSnmpTrapAddress.
+		 Trap table entry that is marked as fixed(2) is not subjected
+		 to the Aging Process."
+	REFERENCE
+		"rnetAgentSnmpTrapMaxAge, rnetAgentSnmpTrapAddress"
+	DEFVAL { dynamic }
+	::= { rnetAgentSnmpTrapAgingEntry 1 }
+
+rnetAgentSnmpTrapAgingAge	OBJECT-TYPE
+	SYNTAX	TimeTicks 
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"The time until the entry will be aged out by
+		 the Aging Process.
+		 This value is ignored when the Aging Process is disabled"
+	REFERENCE
+		"rnetAgentSnmpTrapAging"
+	::= { rnetAgentSnmpTrapAgingEntry 2 }
+
+
+END
+

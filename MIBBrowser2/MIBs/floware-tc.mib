@@ -1,0 +1,120 @@
+--
+--     Floware Textual Conventions Management Information Base
+--                         
+--                        walk_tc.mib
+--
+--                          31/07/00
+--
+--
+--               Floware System Solutions Ltd.
+
+   FLOWARE-TC DEFINITIONS ::= BEGIN
+
+   IMPORTS
+       MODULE-IDENTITY                     FROM SNMPv2-SMI
+	   floware							   FROM FLOWARE-ROOT
+       TEXTUAL-CONVENTION,DisplayString	   FROM SNMPv2-TC;
+
+-- enterprises  OBJECT IDENTIFIER ::=
+--   { iso org(3) dod(6) internet(1) private(4) 1 }
+--   floware            OBJECT IDENTIFIER ::= { enterprises 2933 }
+
+   floware-tc MODULE-IDENTITY
+       LAST-UPDATED "9911031900Z"
+       ORGANIZATION "FLOWARE"
+       CONTACT-INFO "   Klara Milman
+                        Postal: Floware System Solutions
+			P.O.Box 812
+			Or Yehuda 60250
+			ISRAEL
+		Tel:    972-3-5332324
+		Fax:    972-3-5332678
+		E-mail: klara@floware.com
+		co-authors: Galia Dreman, Ofer Porat"
+        DESCRIPTION "WALKair MIB Textual Convention Definitions."
+       ::= { floware 2 }
+
+
+   FileName ::= TEXTUAL-CONVENTION
+       STATUS       current
+       DESCRIPTION
+               "This type is used as the syntax of fileName
+               object in the walkair MIB."
+       SYNTAX  DisplayString (SIZE(0..255)) 
+
+ 
+   DownloadAction  ::= TEXTUAL-CONVENTION
+       STATUS       current
+       DESCRIPTION
+               "This type is used as the syntax of swDownLoadAction
+               object in the walkair MIB."
+	   SYNTAX     INTEGER {
+                        downloadToCurrent(1),
+                        downloadToStandBy(2),
+                        none(3),
+                        downloadAbort(4)
+	                      }
+  
+
+   DeviceId  ::= TEXTUAL-CONVENTION
+       STATUS       current
+       DESCRIPTION
+               "This type is used as the syntax of Device Identification
+               in the walkair MIB. It is 1 - 16 for TSs and 65636 for BS-BU"
+	   SYNTAX     INTEGER (1..65536)
+
+
+
+   V5L3Address  ::= TEXTUAL-CONVENTION
+       STATUS         current
+       DESCRIPTION
+               "This type is used as the syntax of V5 Level 3 (pstn users) or
+                Envelopment Functiond (isdn users) Address. L3 Address maximum
+                value is 32767, EF maximum value is 8175 "
+	   SYNTAX     INTEGER (0..32767)
+
+
+  	   
+   V5InterfaceId  ::= TEXTUAL-CONVENTION
+       STATUS         current
+       DESCRIPTION
+               "This type is used as the syntax of V5 Interface Id - 24 bit number"
+       SYNTAX      INTEGER(0..16777215)
+
+
+
+  	   
+   TSNumber  ::= TEXTUAL-CONVENTION
+       STATUS         current
+       DESCRIPTION
+               "This type is used as the syntax of TS number"
+	   SYNTAX     INTEGER (1..16)
+
+
+   Decibel  ::= TEXTUAL-CONVENTION
+       STATUS         current
+       DESCRIPTION
+               "This type is used as the syntax for the dB - decibell.
+                Format is as follows : [S]xxxxxx..x[.]xxxx...
+                 S      - sign (optional) : blank or '+' for positive values, '-' for negative
+				 xxxx.. - digits (0..9)
+				 .      - separator (optional) between integer and fractional parts"
+       SYNTAX      DisplayString (SIZE(1..24))
+
+
+   ServiceId  ::= TEXTUAL-CONVENTION
+       STATUS         current
+       DESCRIPTION
+               "This type is used as the syntax for the service id"
+	   SYNTAX     INTEGER {
+	                        leasedLine(1),
+							v5(2),
+							frameRelay(3),
+							none(255)
+						  }
+	                         
+
+
+
+   
+   END

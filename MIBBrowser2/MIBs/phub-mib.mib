@@ -1,0 +1,1072 @@
+PHUB-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY, OBJECT-TYPE, enterprises, IpAddress
+        FROM SNMPv2-SMI
+    TEXTUAL-CONVENTION, RowStatus, TimeInterval,
+    TruthValue, DisplayString
+        FROM SNMPv2-TC
+    ifIndex
+        FROM RFC1213-MIB
+    IANAifType
+        FROM IANAifType-MIB
+    dsx1LineIndex
+        FROM DS1-MIB
+    dsx3LineIndex
+        FROM DS3-MIB
+    ifStackLowerLayer, ifStackHigherLayer
+        FROM IF-MIB
+    DLCI
+        FROM FRAME-RELAY-DTE-MIB;
+
+sni OBJECT IDENTIFIER ::= { enterprises 231 }
+
+siemensUnits OBJECT IDENTIFIER ::= { sni 7 }
+
+oenProductMibs OBJECT IDENTIFIER ::= { siemensUnits 1 }
+
+sn OBJECT IDENTIFIER ::= { oenProductMibs 4 }
+
+phub MODULE-IDENTITY
+    LAST-UPDATED "200009010000Z"
+    ORGANIZATION "SIEMENS AG, ICN WN CS EP C13"
+    CONTACT-INFO
+        "   ICN WN CS EP C13
+            Hofmannstr. 51
+            81359 Munich, Germany
+
+            Thomas Rosenstock
+            Tel:   +49 (0)89 722 43209
+            Fax:   +49 (0)89 722 62211
+            Email: Thomas.Rosenstock@icn.siemens.de "
+    DESCRIPTION
+        "The MIB for the Packet Hub module."
+    ::= { sn 2 }
+
+phubMIBObjects  OBJECT IDENTIFIER ::= { phub 1 }
+phubMIBTraps    OBJECT IDENTIFIER ::= { phub 2 }
+phubMIBTrapVars OBJECT IDENTIFIER ::= { phub 3 }
+
+-- MIB contains following groups
+
+phubIfExt OBJECT IDENTIFIER ::= { phubMIBObjects 1 }
+phubIpExt OBJECT IDENTIFIER ::= { phubMIBObjects 2 }
+phubAtmExt OBJECT IDENTIFIER ::= { phubMIBObjects 3 }
+phubDs1Ext OBJECT IDENTIFIER ::= { phubMIBObjects 4 }
+phubDs3Ext OBJECT IDENTIFIER ::= { phubMIBObjects 5 }
+
+-- This group is taken from an IETF draft. It will be
+-- obsoleted if the RFC is issued.
+ifInvMIBObjects OBJECT IDENTIFIER ::= { phubMIBObjects 6 }
+
+phubFrExt OBJECT IDENTIFIER ::= { phubMIBObjects 7 }
+phubSnmpExt OBJECT IDENTIFIER ::= { phubMIBObjects 8 }
+phubOam OBJECT IDENTIFIER ::= { phubMIBObjects 9 }
+phubGeneral OBJECT IDENTIFIER ::= { phubMIBObjects 10 }
+
+-- Textual Conventions
+
+PhubE164Number ::= TEXTUAL-CONVENTION
+        STATUS current
+        DESCRIPTION
+            "E.164 Address"
+        SYNTAX OCTET STRING (SIZE (0..20))
+
+-- phubIfConfig group
+
+phubIfConfigIndexNext OBJECT-TYPE
+    SYNTAX          Integer32
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "This object contains an appropriate value to be used
+        for phubIfConfigIndex when creating an entry in the
+        phubIfConfigTable. The value 0 indicates that no unassigned
+        entries are available. To obtain the phubIfConfigIndex
+        value for a new entry, the manager issues a management
+        protocol retrieval operation to obtain the current value
+        of this object. After each retrieval, the agent should modify
+        the value to the next unassigned index."
+    ::= { phubIfExt 1 }
+
+phubIfConfigTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF PhubIfConfigEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "The phubIfConfigTable provides means to dynamically create
+        or delete interfaces of the PHUB."
+    ::= { phubIfExt 2 }
+
+phubIfConfigEntry OBJECT-TYPE
+    SYNTAX          PhubIfConfigEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "One entry per dynamically created interface sublayer."
+    INDEX   { phubIfConfigIndex }
+    ::= { phubIfConfigTable 1 }
+
+PhubIfConfigEntry ::= SEQUENCE {
+    phubIfConfigIndex           INTEGER,
+    phubIfIndex                 INTEGER,
+    phubIfType                  IANAifType,
+    phubIfLowerLayer            INTEGER,
+    phubIfConfigStatus          RowStatus
+}
+
+phubIfConfigIndex OBJECT-TYPE
+    SYNTAX          INTEGER (1..2147483647)
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "A value which uniquely identifies this conceptual row
+        in the phubIfConfigTable."
+    ::= { phubIfConfigEntry 1 }
+
+phubIfIndex OBJECT-TYPE
+    SYNTAX          INTEGER (1..2147483647)
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "Provides the ifIndex value of the interface sublayer
+        to identify corresponding rows in the Interfaces MIB.
+
+        If this sublayer shall be created by the agent, phubIfIndex
+        must be set to zero.
+
+        An existing ifIndex value can be given to connect the lower
+        layer defined in phubIfLowerLayer and this layer."
+    ::= { phubIfConfigEntry 2 }
+
+phubIfType OBJECT-TYPE
+    SYNTAX          IANAifType
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "Specifies the interface type to be created."
+    ::= { phubIfConfigEntry 3 }
+
+phubIfLowerLayer OBJECT-TYPE
+    SYNTAX          INTEGER (1..2147483647)
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "Defines if a created sublayer shall be put on top of
+        an existing interface sublayer or if it shall be created
+        without any relationship to existing sublayers. In the latter
+        case, phubIfLowerLayer must be set to 0.
+        If a lower layer is specified, the existence of the lower
+        layer and the compatibility with the upper layer is checked."
+    ::= { phubIfConfigEntry 4 }
+
+phubIfConfigStatus OBJECT-TYPE
+    SYNTAX          RowStatus
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "This object is used to create a new row or modify
+        or delete an existing row in this table."
+    ::= { phubIfConfigEntry 5 }
+
+phubIfMappingTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF PhubIfMappingEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "This table is intended to assist management applications
+        to determine the phubIfConfigIndex value for a certain
+        phubIfIndex. This information is typically used for dynamic
+        interface deletion/reconfiguration."
+    ::= { phubIfExt 3 }
+
+phubIfMappingEntry OBJECT-TYPE
+    SYNTAX          PhubIfMappingEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "Maps one phubIfIndex to the associated phubIfConfigIndex."
+    INDEX { phubIfIndex, phubIfConfMapIndex }
+    ::= { phubIfMappingTable 1 }
+
+PhubIfMappingEntry ::= SEQUENCE {
+    phubIfConfMapIndex          INTEGER
+}
+
+phubIfConfMapIndex OBJECT-TYPE
+    SYNTAX          INTEGER (1..2147483647)
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "The value for this object is equal to the value of
+        phubIfConfigIndex for a given phubIfIndex."
+    ::= { phubIfMappingEntry 1 }
+
+phubVcIfTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF PhubVcIfEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "This table shows the relationship between Virtual Circuits
+        (Frame Relay or ATM) and the interface sublayer which
+        terminates the VC connection."
+    ::= { phubIfExt 4 }
+
+phubVcIfEntry OBJECT-TYPE
+    SYNTAX          PhubVcIfEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "One entry per VC."
+    INDEX { ifIndex, phubVcIndex }
+    ::= { phubVcIfTable 1 }
+
+PhubVcIfEntry ::= SEQUENCE {
+    phubVcIndex     Integer32,
+    phubVcIfIndex   INTEGER
+}
+
+phubVcIndex OBJECT-TYPE
+    SYNTAX          Integer32
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Numerical identification of the VC according to the following
+        rules:
+
+        Frame Relay: phubVcIndex is equal to the DLCI of the VC
+
+        ATM:         phubVcIndex is calculated using the formula
+                     Vpi * 65536 + Vci."
+    ::= { phubVcIfEntry 1 }
+
+phubVcIfIndex OBJECT-TYPE
+    SYNTAX          INTEGER (1..2147483647)
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "The ifIndex value of the interface sublayer that terminates the
+        VCC."
+    ::= { phubVcIfEntry 2 }
+
+
+-- phubIpExt group
+
+phubIpConfigTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF PhubIpConfigEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "A table to assign IP addresses and network mask to interfaces.
+        The interfaces must exist and must have an entry in the interface
+        table."
+    ::= { phubIpExt 1 }
+
+phubIpConfigEntry OBJECT-TYPE
+    SYNTAX          PhubIpConfigEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "An entry in the IP Config Table. The entry is indexed by the ifIndex
+        value of the interface sublayer that shall be connected to the
+        internetwork layer."
+    INDEX   { ifIndex }
+    ::= { phubIpConfigTable 1 }
+
+PhubIpConfigEntry ::= SEQUENCE {
+    phubIpAddress               IpAddress,
+    phubIpNetmask               IpAddress,
+    phubIpConfigRowStatus       RowStatus
+}
+
+phubIpAddress OBJECT-TYPE
+    SYNTAX          IpAddress
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "The IP address of the interface."
+    ::= { phubIpConfigEntry 1 }
+
+phubIpNetmask OBJECT-TYPE
+    SYNTAX          IpAddress
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "The network mask of the interface."
+    ::= { phubIpConfigEntry 2 }
+
+phubIpConfigRowStatus OBJECT-TYPE
+    SYNTAX          RowStatus
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "This object is used to create a new row or modify
+        or delete an existing row in this table."
+    ::= { phubIpConfigEntry 3 }
+
+-- phubAal5VccTable
+--
+-- This group contains the the association of AAL5 entities to VCC
+-- terminations.
+--
+
+phubAal5VccTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF PhubAal5VccEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "This table contains the AAL5 entity to VCC termination relationship."
+    ::= { phubAtmExt 1 }
+
+phubAal5VccEntry OBJECT-TYPE
+    SYNTAX          PhubAal5VccEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "An entry in the phubAal5VccTable. The entries in this table are
+        indexed by ifIndex assigned to the AAL5 entitiy."
+    INDEX { ifIndex }
+    ::= { phubAal5VccTable 1 }
+
+PhubAal5VccEntry ::= SEQUENCE {
+    phubAal5AtmIfIndex          INTEGER,
+    phubAal5VccVpi              Integer32,
+    phubAal5VccVci              Integer32
+}
+
+phubAal5AtmIfIndex OBJECT-TYPE
+    SYNTAX          INTEGER (1..2147483647)
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Index of the ATM layer of this interface in the MIB-2 interface
+        table."
+    ::= { phubAal5VccEntry 1 }
+
+phubAal5VccVpi OBJECT-TYPE
+    SYNTAX          Integer32
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Vpi value for this VCC."
+    ::= { phubAal5VccEntry 2 }
+
+phubAal5VccVci OBJECT-TYPE
+    SYNTAX          Integer32
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Vci value for this VCC."
+    ::= { phubAal5VccEntry 3 }
+
+-- phubDs1Ext group
+
+phubDs1MonitorTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF PhubDs1MonitorEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "The DS1 Monitor Table. It logically extends the dsx1ConfigTable
+        of the DS1-MIB for monitoring functions."
+    ::= { phubDs1Ext 1 }
+
+phubDs1MonitorEntry OBJECT-TYPE
+    SYNTAX          PhubDs1MonitorEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "An entry in the DS1 Monitor Table. The index shall be the same as
+        for the dsx1ConfigTable."
+    INDEX   { dsx1LineIndex }
+    ::= { phubDs1MonitorTable 1 }
+
+PhubDs1MonitorEntry ::= SEQUENCE {
+    phubDs1AlarmDetectTime      TimeInterval,
+    phubDs1AlarmClearTime       TimeInterval
+}
+
+phubDs1AlarmDetectTime OBJECT-TYPE
+    SYNTAX          TimeInterval
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "The time in 100th of a second until an alarm is generated."
+    ::= { phubDs1MonitorEntry 1 }
+
+phubDs1AlarmClearTime OBJECT-TYPE
+    SYNTAX          TimeInterval
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "The time in 100th of a second until a pending alarm is
+        cleared."
+    ::= { phubDs1MonitorEntry 2 }
+
+-- phubDs3Ext group
+
+phubDs3MonitorTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF PhubDs3MonitorEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "The DS3 Monitor Table. It logically extends the dsx3ConfigTable of
+        the DS3-MIB for monitoring functions."
+    ::= { phubDs3Ext 1 }
+
+phubDs3MonitorEntry OBJECT-TYPE
+    SYNTAX          PhubDs3MonitorEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "An entry in the DS3 Monitor Table. The index shall be the same as
+        for the dsx3ConfigTable."
+    INDEX   { dsx3LineIndex }
+    ::= { phubDs3MonitorTable 1 }
+
+PhubDs3MonitorEntry ::= SEQUENCE {
+    phubDs3AlarmDetectTime      TimeInterval,
+    phubDs3AlarmClearTime       TimeInterval,
+    phubDs3TrailTraceSend       OCTET STRING,
+    phubDs3TrailTraceExpect     OCTET STRING,
+    phubDs3TrailTraceReceive    OCTET STRING,
+    phubDs3TrailTraceTrapEnable TruthValue
+}
+
+phubDs3AlarmDetectTime OBJECT-TYPE
+    SYNTAX          TimeInterval
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "The time in 100th of a second until an alarm is generated."
+    ::= { phubDs3MonitorEntry 1 }
+
+phubDs3AlarmClearTime OBJECT-TYPE
+    SYNTAX          TimeInterval
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "The time in 100th of a second until a pending alarm is cleared."
+    ::= { phubDs3MonitorEntry 2 }
+
+phubDs3TrailTraceSend OBJECT-TYPE
+    SYNTAX          OCTET STRING (SIZE(0..15))
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "This attribute is used to specify the value of the outgoing
+        TR byte trail trace message (supported for E3 only)."
+    ::= { phubDs3MonitorEntry 3 }
+
+phubDs3TrailTraceExpect OBJECT-TYPE
+    SYNTAX          OCTET STRING (SIZE(0..15))
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "This attribute is used to specify the value of the expected TR
+        byte trail trace message (supported for E3 only)."
+    ::= { phubDs3MonitorEntry 4 }
+
+phubDs3TrailTraceReceive OBJECT-TYPE
+    SYNTAX          OCTET STRING (SIZE(15))
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "This attribute is used to know the value of the incoming TR
+        byte trail trace message (supported for E3 only)."
+    ::= { phubDs3MonitorEntry 5 }
+
+phubDs3TrailTraceTrapEnable OBJECT-TYPE
+    SYNTAX          TruthValue
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "Indicates whether trail trace traps should be generated (supported
+        for E3 only)."
+    ::= { phubDs3MonitorEntry 6 }
+
+-- ifInvertedStackMIB MODULE-IDENTITY
+--     LAST-UPDATED "9807161200Z"
+--     ORGANIZATION "IETF Interfaces MIB Working Group"
+--     CONTACT-INFO
+--             "   Keith McCloghrie
+--                 Cisco Systems, Inc.
+--                 170 West Tasman Drive
+--                 San Jose, CA  95134-1706
+--                 US
+--
+--                 408-526-5260
+--                 kzm@cisco.com"
+--     DESCRIPTION
+--             "The MIB module which provides the Inverted Stack Table for
+--             interface sub-layers."
+--     REVISION      "9807161200Z"
+--     DESCRIPTION
+--             "Initial revision."
+--     ::= { mib-2 xx }
+--
+-- ifInvMIBObjects OBJECT IDENTIFIER ::= { ifInvertedStackMIB 1 }
+
+--
+--           The Inverted Interface Stack Group
+--
+
+ifInvStackTable  OBJECT-TYPE
+    SYNTAX        SEQUENCE OF IfInvStackEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "A table containing information on the relationships between
+        the multiple sub-layers of network interfaces.  In
+        particular, it contains information on which sub-layers run
+        'underneath' which other sub-layers, where each sub-layer
+        corresponds to a conceptual row in the ifTable.  For
+        example, when the sub-layer with ifIndex value x runs
+        underneath the sub-layer with ifIndex value y, then this
+        table contains:
+
+        ifInvStackStatus.x.y=active
+
+        For each ifIndex value, I, which identifies an active
+        interface, there are always at least two instantiated rows
+        in this table associated with I.  For one of these rows, I
+        is the value of ifStackHigherLayer; for the other, I is the
+        value of ifStackLowerLayer.  (If I is not involved in
+        multiplexing, then these are the only two rows associated
+        with I.)
+
+        For example, two rows exist even for an interface which has
+        no others stacked on top or below it:
+
+        ifStackStatus.x.0=active
+        ifStackStatus.0.x=active
+
+        This table contains exactly the same number of rows as the
+        ifStackTable, but the rows appear in a different order."
+    REFERENCE
+        "ifStackTable of RFC xxxx"
+    ::= { ifInvMIBObjects 1 }
+
+
+ifInvStackEntry  OBJECT-TYPE
+    SYNTAX        IfInvStackEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "Information on a particular relationship between two sub-
+        layers, specifying that one sub-layer runs underneath the
+        other sub-layer.  Each sub-layer corresponds to a conceptual
+        row in the ifTable."
+    INDEX { ifStackLowerLayer, ifStackHigherLayer }
+    ::= { ifInvStackTable 1 }
+
+
+IfInvStackEntry ::=
+    SEQUENCE {
+        ifInvStackStatus        RowStatus
+    }
+
+ifInvStackStatus  OBJECT-TYPE
+    SYNTAX         RowStatus
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The status of the relationship between two sub-layers.
+
+        An instance of this object exists for each instance of the
+        ifStackStatus object, and vice versa.  For example, if the
+        variable ifStackStatus.H.L exists, then the variable
+        ifInvStackStatus.L.H must also exist, and vice versa.  In
+        addition, the two variables always have the same value.
+
+        However, unlike ifStackStatus, the ifInvStackStatus object
+        is NOT write-able.  A network management application wishing
+        to change a relationship between sub-layers H and L cannot
+        do so by modifying the value of ifInvStackStatus.L.H, but
+        must instead modify the value of ifStackStatus.H.L.  After
+        the ifStackTable is modified, the change will be reflected
+        in this table."
+    ::= { ifInvStackEntry 1 }
+
+-- phubFrExt group
+
+phubFrDlciTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF PhubFrDlciEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "Mapping of ifIndex values associated to FR virtual circuits
+        to the DLCI of the virtual circuit."
+    ::= { phubFrExt 1 }
+
+phubFrDlciEntry OBJECT-TYPE
+    SYNTAX          PhubFrDlciEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "One entry per virtual circuit. The table is indexed with the
+        ifIndex value of the layer on top of the Frame Relay layer
+        associated to one virtual connection."
+    INDEX { ifIndex }
+    ::= { phubFrDlciTable 1 }
+
+PhubFrDlciEntry ::= SEQUENCE {
+    phubFrDlcIfIndex            INTEGER,
+    phubFrDlci                  DLCI
+}
+
+phubFrDlcIfIndex OBJECT-TYPE
+    SYNTAX          INTEGER (1..2147483647)
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Index of the virtual circuit in the MIB-2 interface table."
+    ::= { phubFrDlciEntry 1 }
+
+phubFrDlci OBJECT-TYPE
+    SYNTAX          DLCI
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "The Data Link Connection Identifier for this virtual
+         circuit as specified in the frCircuitTable."
+    ::= { phubFrDlciEntry 2 }
+
+
+-- phubSnmpExt group
+
+phubTrapCommTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF PhubTrapCommEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "Table of communities used for sending traps from this agent."
+    ::= { phubSnmpExt 1 }
+
+phubTrapCommEntry OBJECT-TYPE
+    SYNTAX          PhubTrapCommEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "One row per trap destination."
+    INDEX { phubTrapCommunity, phubTrapIpAddr }
+    ::= { phubTrapCommTable 1 }
+
+PhubTrapCommEntry ::= SEQUENCE {
+    phubTrapCommunity           DisplayString,
+    phubTrapIpAddr              IpAddress,
+    phubTrapCommStatus          RowStatus
+}
+
+phubTrapCommunity OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "Community used for this trap destination."
+    ::= { phubTrapCommEntry 1 }
+
+phubTrapIpAddr OBJECT-TYPE
+    SYNTAX          IpAddress
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "IP address of trap destination."
+    ::= { phubTrapCommEntry 2 }
+
+phubTrapCommStatus OBJECT-TYPE
+    SYNTAX          RowStatus
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "This object is used to control row creation, modification
+        and deletion."
+    ::= { phubTrapCommEntry 3 }
+
+
+phubAccessTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF PhubAccessEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "This table defines which NM stations shall have access
+        to this SNMP agent."
+    ::= { phubSnmpExt 2 }
+
+phubAccessEntry OBJECT-TYPE
+    SYNTAX          PhubAccessEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "One row per host or network."
+    INDEX { phubAccIpAddr }
+    ::= { phubAccessTable 1 }
+
+PhubAccessEntry ::= SEQUENCE {
+    phubAccIpAddr               IpAddress,
+    phubAccIpMask               IpAddress,
+    phubAccessLevel             INTEGER,
+    phubAccessStatus            RowStatus
+}
+
+phubAccIpAddr OBJECT-TYPE
+    SYNTAX          IpAddress
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "The host or network address of the NM stations
+        which shall be granted access to the agent."
+    ::= { phubAccessEntry 1 }
+
+phubAccIpMask OBJECT-TYPE
+    SYNTAX          IpAddress
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "The network mask defines whether a single host or
+        a subnet is granted access to the agent."
+    ::= { phubAccessEntry 2 }
+
+phubAccessLevel OBJECT-TYPE
+    SYNTAX          INTEGER {
+                none (1),
+                read-only (2),
+                read-write (3)
+    }
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "Defines the maximum access rights of the station."
+    ::= { phubAccessEntry 3 }
+
+phubAccessStatus OBJECT-TYPE
+    SYNTAX          RowStatus
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "This object is used to control row creation, modification
+        and deletion."
+    ::= { phubAccessEntry 4 }
+
+
+-- phubOam group
+
+phubOamMode OBJECT-TYPE
+    SYNTAX          INTEGER {
+                        primary (1),
+                        secondary (2),
+                        primaryRedundant (3),
+                        secondaryRedundant (4)
+    }
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "OA&M mode of this PHUB."
+    DEFVAL     { primary }
+    ::= { phubOam 1 }
+
+phubOamConnTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF PhubOamConnEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "Table of OAM connections to primary/secondary PHUBs.
+        - A primary PHUB has a connectionless interface to the NMS.
+        - A secondary PHUB has a connection based interface to a
+        primary PHUB, which acts a gateway to the NMS."
+    ::= { phubOam 2 }
+
+phubOamConnEntry OBJECT-TYPE
+    SYNTAX          PhubOamConnEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "One entry per OAM connection. The entry is indexed with
+        the IP address of the peers ethernet interface."
+    INDEX { phubOamIpAddr }
+    ::= { phubOamConnTable 1 }
+
+PhubOamConnEntry ::= SEQUENCE {
+    phubOamIpAddr               IpAddress,
+    phubOamE164                 DisplayString,
+    phubOamDialoutIf            INTEGER,
+    phubOamIsdnState            INTEGER,
+    phubOamEmbIf                INTEGER,
+    phubOamEmbGw                IpAddress,
+    phubOamEmbTestIpAddr        IpAddress,
+    phubOamEmbState             INTEGER,
+    phubOamRowStatus            RowStatus
+}
+
+phubOamIpAddr OBJECT-TYPE
+    SYNTAX          IpAddress
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "IP address of peer."
+    ::= { phubOamConnEntry 1 }
+
+phubOamE164 OBJECT-TYPE
+    SYNTAX          PhubE164Number
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "E.164 address of peer."
+    ::= { phubOamConnEntry 2 }
+
+phubOamDialoutIf OBJECT-TYPE
+    SYNTAX          INTEGER (1..2147483647)
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "Interface used for ISDN OA&M connection."
+    ::= { phubOamConnEntry 3 }
+
+phubOamIsdnState OBJECT-TYPE
+    SYNTAX          INTEGER {
+                        up (1),
+                        down (2)
+    }
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Current state of ISDN OA&M connection."
+    ::= { phubOamConnEntry 4 }
+
+phubOamEmbIf OBJECT-TYPE
+    SYNTAX          INTEGER (1..2147483647)
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "The interface used for embedded OA&M."
+    ::= { phubOamConnEntry 5 }
+
+phubOamEmbGw OBJECT-TYPE
+    SYNTAX          IpAddress
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "The gateway IP address for embedded OA&M."
+    ::= { phubOamConnEntry 6 }
+
+phubOamEmbTestIpAddr OBJECT-TYPE
+    SYNTAX          IpAddress
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "An IP address used for testing the embedded OA&M channel.
+         This would typically be the IP address of the peers embedded
+         OA&M interface."
+    ::= { phubOamConnEntry 7 }
+
+phubOamEmbState OBJECT-TYPE
+    SYNTAX          INTEGER {
+                        up (1),
+                        down (2)
+    }
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Current state of embedded OA&M."
+    ::= { phubOamConnEntry 8 }
+
+phubOamRowStatus OBJECT-TYPE
+    SYNTAX          RowStatus
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "This object controls creation, deleletion or modification
+        of a row in this table."
+    ::= { phubOamConnEntry 9 }
+
+
+-- phubGeneral group
+
+phubTimeProtocol OBJECT-TYPE
+    SYNTAX          INTEGER {
+                        none (1),
+                        sntp (2)
+    }
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "Time protocol used by PHUB.
+        "
+    ::= { phubGeneral 1 }
+
+
+phubPrimaryTimeServer OBJECT-TYPE
+    SYNTAX          IpAddress
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "IP address of the primary time server.
+        "
+    ::= { phubGeneral 2 }
+
+phubSecondaryTimeServer OBJECT-TYPE
+    SYNTAX          IpAddress
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "IP address of the secondary time server.
+        "
+    ::= { phubGeneral 3 }
+
+phubTimezone OBJECT-TYPE
+    SYNTAX          INTEGER ( -12..12 )
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "PHUB timezone relative to GMT.
+        "
+    ::= { phubGeneral 4 }
+
+phubDnsServerTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF PhubDnsServerEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "Table of Domain Name Servers.
+        "
+    ::= { phubGeneral 5 }
+
+phubDnsServerEntry OBJECT-TYPE
+    SYNTAX          PhubDnsServerEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "An entry per DNS server. DNS request are sent first to
+        the DNS server with the lowest phubDnsServerIndex. On negative
+        reponse the request is resent to the other servers following the
+        sorting order of the table.
+        "
+    INDEX   { phubDnsServerIndex }
+    ::= { phubDnsServerTable 1 }
+
+PhubDnsServerEntry ::= SEQUENCE {
+    phubDnsServerIndex          INTEGER,
+    phubDnsServerIpAddress      IpAddress,
+    phubDnsServerRowStatus      RowStatus
+}
+
+phubDnsServerIndex OBJECT-TYPE
+    SYNTAX          INTEGER (1..32)
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "Index of the DNS server entry. Entries with lower index values
+        have precedence over entries with higher index value.
+        "
+    ::= { phubDnsServerEntry 1 }
+
+
+phubDnsServerIpAddress OBJECT-TYPE
+    SYNTAX          IpAddress
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "IP address of Domain Name Service.
+        "
+    ::= { phubDnsServerEntry 2 }
+
+phubDnsServerRowStatus OBJECT-TYPE
+    SYNTAX          RowStatus
+    MAX-ACCESS      read-create
+    STATUS          current
+    DESCRIPTION
+        "This object controls creation, deleletion or modification
+        of a row in this table."
+    ::= { phubDnsServerEntry 3 }
+
+phubModeCheckEnable OBJECT-TYPE
+    SYNTAX          INTEGER {
+                       enabled(1),
+                       disabled(2)
+                    }
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "Defines if the module should determine its operation mode.
+           enabled(1)  - check for CN clock,
+                         activate DLU interface or use stand alone mode
+           disabled(2) - do not check for CN clock,
+                         always use stand alone mode
+        "
+    ::= { phubGeneral 6 }
+
+phubLocalTime OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "SLMI current local date and time. The format is:
+            YYYY-MM-DD HH:MM:SS
+        "
+    ::= { phubGeneral 7 }
+
+
+-- PHUB MIB Notifications
+
+phubErrorDetailsId OBJECT-TYPE
+    SYNTAX          Integer32
+    MAX-ACCESS      accessible-for-notify
+    STATUS          current
+    DESCRIPTION
+        "A numeric identification for a specific error. This ID is
+        mappable to textual explanation in national languages by means
+        of an external file."
+    ::= { phubMIBTrapVars 1 }
+
+phubErrorDetails OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      accessible-for-notify
+    STATUS          current
+    DESCRIPTION
+        "A textual description of the error in english language."
+    ::= { phubMIBTrapVars 2 }
+
+phubIfConfigTrap NOTIFICATION-TYPE
+    OBJECTS     {
+        phubIfConfigIndex,
+        phubErrorDetailsId,
+        phubErrorDetails
+    }
+    STATUS          current
+    DESCRIPTION
+        "This trap is sent if an interface instance could not be
+        created."
+    ::= { phubMIBTraps 1 }
+
+phubIpConfigTrap NOTIFICATION-TYPE
+    OBJECTS     {
+        ifIndex,
+        phubErrorDetailsId,
+        phubErrorDetails
+    }
+    STATUS          current
+    DESCRIPTION
+        " This trap is sent if an IP address could not be assigned
+        to an interface."
+    ::= { phubMIBTraps 2 }
+
+phubDs3TrailTraceMismatchTrap NOTIFICATION-TYPE
+    OBJECTS     {
+        ifIndex
+    }
+    STATUS          current
+    DESCRIPTION
+        "This trap is sent in the case of the occurrence of a
+        Trace Identifier Mismatch defect."
+    ::= { phubMIBTraps 3 }
+
+phubOamStateChangeTrap NOTIFICATION-TYPE
+    OBJECTS     {
+        phubOamIsdnState,
+        phubOamEmbState
+    }
+    STATUS          current
+    DESCRIPTION
+        "This trap is sent on state changes of the embedded or the
+        ISDN dialout OA&M channel."
+    ::= { phubMIBTraps 4 }
+END

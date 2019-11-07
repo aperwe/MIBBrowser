@@ -1,0 +1,7 @@
+2001-10-21: Attempting to load etherlike-mib.mib file causes application error:
+            "Memory cannot be "read"." Resolved.
+2001-10-23: Doesn't load pmvgw-mib.mib. Resolved.
+2001-10-23: host-resources.mib - loads correctly (167 elements), but shows only 
+			a couple of elements in the list. Investigate.
+2001-11-07: Krzysztof Paizert, see the e-mail. Multiple index fields display problem.
+

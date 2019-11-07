@@ -1,0 +1,5368 @@
+     -- ***************************************************************
+     --  *************************************************************
+     --   ***********************************************************
+     --    *********************************************************
+     --    **                                                     **
+     --    **  The ICN AS BA E12 SNMP-Team proudly presents:      **
+     --    **                                                     **
+     --    **                  The XL MIB                         **
+     --    **           for Performance Management                **
+     --    **              on physical layer                      **
+     --    **                    at                               **
+     --    **                                                     **
+     --    **                    AAL2                             **
+     --    **                    V5                               **
+     --    **                                                     **
+     --    **                 interfaces                          **
+     --    **                                                     **
+     --    *********************************************************
+     --   ***********************************************************
+     --  *************************************************************
+     -- ***************************************************************
+
+
+
+-- HPOV_JOIN_BEGIN
+     PMVGW-MIB DEFINITIONS ::= BEGIN
+-- HPOV_JOIN_END   
+
+
+
+     IMPORTS
+         OBJECT-TYPE
+               FROM RFC-1212
+         TRAP-TYPE
+               FROM RFC-1215
+         Counter,TimeTicks
+               FROM RFC1155-SMI
+         onu
+               FROM AN-MIB
+	 xldv20Traps
+	       FROM XLDV20-MIB
+  	 vgwV5IfInterfaceIndex
+  	       FROM VGW-MIB;
+
+
+     --  LAST-UPDATED "01-03-12, XL Version 2.1"
+     --  ORGANIZATION "Siemens AG, ICN AS BA E"
+     --  CONTACT-INFO
+     --  "      Angelika Svoboda
+     --         ICN AS BA E 12
+     --         phone: +49 89 722 48063
+     --         email: angelika.svoboda@icn.siemens.de
+     --
+     --         Thomas Vetter
+     --         ICN AS BA E 12
+     --         phone: +49 89 722 44323
+     --         email: thomas.vetter@icn.siemens.de
+     --
+     --  DESCRIPTION
+     --     " This module defines the management information base (MIB)
+     --       of Performance Management on Physical Layer for
+     --       AAL2 and V5.2 interfaces of Voice Gate Way
+     --       in the Xpresslink project. 
+     --       The AAL2 and V5 interfaces are specified in the VGW-MIB.
+     --      
+     --       No thresholding of counters is performed.
+     --
+     --       Conventions concerning traps :
+     --       The VGW-traps are sent with the same ENTERPRISE ID as defined
+     --       in the XLDV20-MIB.
+     --       Traps with trapIds below 1000 are traps from XL.
+     --       VGW-MIB traps start with trapId with 1000.
+     --       PMVGW-MIB traps start with trapId 1200. "
+     --
+     -- **************************************************************
+     --                      Versions and Revisions
+     -- **************************************************************
+     -- --------------------------------------------------------------
+     -- 00-29-02    First Issue of PMVGW-MIB                V2.1  asvo
+     -- --------------------------------------------------------------
+     -- 01-03-12    I U S version                           V2.1  asvo
+     --
+     --             Add review results :
+     --             --------------------
+     --             ADD: new value in type PmVgwControlReq :
+     --                   - indexLimitExceeded
+     --
+     --             Move AdminState attributes from object tables 
+     --                   to current tables :
+     --             DEL: delete pmVgwAal2PMoObjectAdminState 
+     --             ADD: add pmVgwAal2CurrentAdminState
+     --             DEL: delete pmVgwAal2PrMObjectAdminState 
+     --             ADD: add  pmVgwAal2PrMAdminState 
+     --
+     --             ADD: IfIndex of AAL2 interface
+     --                  to pmVgwAal2PMoObjectTable:
+     --                  - pmVgwAal2PMoObjectIfIndex
+     --                  to pmVgwAal2PrMObjectTable:
+     --                  - pmVgwAal2PrMObjectIfIndex
+     --
+     -- --------------------------------------------------------------
+     -- --------------------------------------------------------------
+     -- **************************************************************
+     --         PLEASE CHANGE THE DATE OF LAST-UPDATE ABOVE !!!
+     -- **************************************************************
+
+     -- **************************************************************
+     --             Information Block for Version Control
+     --             of MIB nodes and attributes (template)
+     -- **************************************************************
+     --
+     -- info-TRAPTYPE:  alarm/event            ==>> for traps only
+     -- info-VALUE:     minValue..maxValue; attrValue[(V1.0->)]
+     -- info-TRAPID:    trap-ID
+     -- info-ROU:       GET  SET [db,gf,up,tm,hm,ut,so,sn,cp]
+     -- info-IMPL:      [V2.1,V2.x]:[rw,ro,*]
+     -- info-IMPL:      e.g.: V2.1-> (= all vers. begin. with V2.1U)
+     -- info-IMPL:      e.g.: V2.1:*->V2.1  V2.1:rw->2.1   V2.1:* 
+     -- info-VERCTRL:   [GET,SET [db,asw,agent,blocked] or "-" 
+     --                             (blocked == blocked by SNMP agent)
+     --                             ("-"     == no special handling)
+     -- **************************************************************
+
+
+     pmVgw        OBJECT IDENTIFIER ::= { onu 10 }
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+
+
+     -- ==============================================================
+     --       T y p e s  for  P M V G W - M I B
+     -- ==============================================================
+
+     Unsigned16::= INTEGER (0..65535)
+
+     -- A type identifier to specify the maximum number of history entries
+     --
+     PmVgwHistoryEntriesSizeType ::= INTEGER (0..2000)
+
+     -- The control status of an entity.
+     --
+     PmVgwControlStatus ::=
+         INTEGER {
+                  requestIdle(1),
+                  requestBusy(2),
+                  requestPassed(3),
+                  requestFailed(4)
+                  }
+     -- The administrative state of an entity.
+     --
+     PmVgwAdminState ::=
+         INTEGER {
+                  unlocked(1),
+                  locked(2)
+                 }
+
+     -- An Interval type identifier to select between the 15 minute
+     -- counters and the day counter.
+     --
+     PmVgwIntervalType ::=
+         INTEGER { min15(1),
+                   day(2) }
+
+     -- The type for user commands and return values
+     -- in case of failures
+     --
+     PmVgwControlReq ::=
+         INTEGER { 
+
+              -- GENERAL VALUES FOR USER COMMAND HANDLING
+              --
+              noRequest                         (1)
+              ,commExecStarted                  (5)
+              ,paramFaulty                      (11)
+              ,requestBusy                      (12)
+              ,setDataFailed                    (13)
+              ,aswTimeout                       (14)
+              ,commandFailed                    (15)
+              ,commandSucceeded                 (16)
+                   
+              -- PM commands
+	      ,resetIndividCurrentPrM            (20)
+              ,resetIndividCurrentPMo            (21)
+	      ,setNrHistEntriesSizePrM           (22)
+              ,setNrHistEntriesSizePMo           (23)
+
+              -- AAL2
+              ,createAal2PMoObject              (24) 
+              ,deleteAal2PMoObject              (25)
+              ,createAal2PrMObject              (26)
+              ,deleteAal2PrMObject              (27)
+              
+              -- PM failure values
+              ,nrHistEntriesSizeNotAcceptable   (40)
+              ,dataBaseMemoryNotAvailable       (41)
+              ,indexLimitExceeded               (42)
+
+              ,objectActive                     (43) 
+              ,objectNotExists                  (44) 
+                  }
+
+     -- A type identifier to estimate the validity of a PM event
+     -- counter
+     --
+     PmVgwSuspectType ::=
+         INTEGER { undefined(0),
+	           reliable(1),
+		   suspect(2)
+                  }
+
+
+     -- ==============================================================
+     --      M a i n  g r o u p s  of the  P M V G W  - M I B
+     -- ==============================================================
+
+     pmVgwPerformanceManagementControl OBJECT IDENTIFIER ::= { pmVgw 1 }
+	     -- info-IMPL:      V2.1-> 
+	     -- info-VERCTRL:   -
+
+     pmVgwPerformanceMonitoring        OBJECT IDENTIFIER ::= { pmVgw 2 }
+	     -- info-IMPL:      V2.1-> 
+	     -- info-VERCTRL:   -
+
+     pmVgwProtocolMonitoring           OBJECT IDENTIFIER ::= { pmVgw 3 }
+	     -- info-IMPL:      V2.1-> 
+	     -- info-VERCTRL:   -
+
+     pmVgwTraps                        OBJECT IDENTIFIER ::= { pmVgw 4 }
+             -- info-IMPL:      V2.1-> 
+             -- info-VERCTRL:   -
+
+
+     -- ==============================================================
+     --        P e r f o r m a n c e   M a n a g e m e n t  (PM)
+     --                  C o n t r o l  g r o u p
+     --                        F o r
+     --                A A L 2  I n t e r f a c e s
+     -- ==============================================================
+
+     pmVgwAal2Control OBJECT IDENTIFIER
+	     -- info-IMPL:      V2.1-> 
+	     -- info-VERCTRL:   -
+     ::= { pmVgwPerformanceManagementControl 1 }
+
+     -- This managed entity manages the user commands for
+     -- of Performance Mangement.
+     --
+     -- An instance of this managed entity shall be automatically
+     -- created immediately following ATM NE initialization.
+
+     pmVgwAal2CoIfIndex OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db  SET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+     SYNTAX        Unsigned16
+     ACCESS        read-write
+     STATUS        mandatory
+     DESCRIPTION
+        " The IfIndex of an AAL2 interface. "
+        --DEFAULT test-function-async     fsnPmVgwAal2CoTest
+        --DEFAULT next-function-async     fsnPmVgwAal2CoNext
+        --DEFAULT set-function-async      fsnPmVgwAal2CoSet
+        --DEFAULT get-function-async      fsnPmVgwAal2CoGet
+     ::= { pmVgwAal2Control 1 }
+
+     pmVgwAal2CoIndex OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db  SET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+     SYNTAX        Unsigned16
+     ACCESS        read-write
+     STATUS        mandatory
+     DESCRIPTION
+        " The index of the PM object for an AAL2 interface. "
+        --DEFAULT test-function-async     fsnPmVgwAal2CoTest
+        --DEFAULT next-function-async     fsnPmVgwAal2CoNext
+        --DEFAULT set-function-async      fsnPmVgwAal2CoSet
+        --DEFAULT get-function-async      fsnPmVgwAal2CoGet
+     ::= { pmVgwAal2Control 2 }
+
+     pmVgwAal2CoNrHistEntriesSize OBJECT-TYPE
+     -- info-VALUE:     1..96, default 1
+     -- info-ROU:       GET db  SET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+     SYNTAX        INTEGER (1..96)
+     ACCESS        read-write
+     STATUS        mandatory
+     DESCRIPTION
+        " This attribute is used to set the number of 15 minutes
+	history entries which should be stored for history
+	collection. Default value is 1. "
+       --DEFAULT test-function-async     fsnPmVgwAal2CoTest
+       --DEFAULT next-function-async     fsnPmVgwAal2CoNext
+       --DEFAULT set-function-async      fsnPmVgwAal2CoSet
+       --DEFAULT get-function-async      fsnPmVgwAal2CoGet
+     ::= { pmVgwAal2Control 3 }
+
+     pmVgwAal2CoIntervalType OBJECT-TYPE
+     -- info-VALUE:     min15(1), day(2)
+     -- info-ROU:       GET db  SET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+     SYNTAX        PmVgwIntervalType
+     ACCESS        read-write
+     STATUS        mandatory
+     DESCRIPTION
+        " This attribute identifies whether a 15 minutes interval
+	or a day interval is selected in case of a
+	reset commands for current counters
+	(resetIndivCurrentPMo, resetIndicCurrentPrM). "
+        --DEFAULT test-function-async     fsnPmVgwAal2CoTest
+        --DEFAULT next-function-async     fsnPmVgwAal2CoNext
+        --DEFAULT set-function-async      fsnPmVgwAal2CoSet
+        --DEFAULT get-function-async      fsnPmVgwAal2CoGet
+     ::= { pmVgwAal2Control 4 }
+
+     pmVgwAal2CoControlReq OBJECT-TYPE
+     -- info-VALUE:     setNrHistEntriesSizePMo
+     -- info-VALUE:     setNrHistEntriesSizePrM
+     -- info-VALUE:     resetIndividCurrentPMo
+     -- info-VALUE:     resetIndividCurrentPrM
+     -- info-VALUE:     createAal2PMoObject
+     -- info-VALUE:     deleteAal2PMoObject
+     -- info-VALUE:     createAal2PrMObject
+     -- info-VALUE:     deleteAal2PrMObject
+     -- info-VALUE:     
+     -- info-ROU:       GET db  SET pm
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+     SYNTAX        PmVgwControlReq
+     ACCESS        read-write
+     STATUS        mandatory
+     DESCRIPTION
+        " Identifies the user commands for PM on AAL2 interfaces.
+
+	setNrHistEntriesSizePMo
+	setNrHistEntriesSizePrM :
+	   sets the number of 15 minutes history
+	   entries for history collection at a particular interface. 
+
+	resetIndividCurrentPMo,
+	resetIndividCurrentPrM : 
+	   Resets the current counters to 0 at a particular interface.
+
+	createAal2PMoObject,
+	createAal2PrMObject : 
+	   creates a PMo or PrM object for AAL2 interface. 
+	   PM objects must be created before PMo or PrM can be activated.
+	   The number of PM objects is limited to 16 per SUVGW.
+	   PM has to be activated in a separate command for 15 minute accumulation
+	   and/or day accumulation via unlocking the administrative state
+	   in the current tables (see pmVgwAal2CurrentAdminState,
+	   pmVgwAal2PrMCurrentAdminState).
+
+	deleteAal2PMoObject,
+	deleteAal2PrMObject : 
+	   deletes a PMo or a PrM object of an AAL2 interface.
+	   When PM objects are deleted the entries in the 
+	   current and history tables are deleted also. "
+        --DEFAULT test-function-async     fsnPmVgwAal2CoTest
+        --DEFAULT next-function-async     fsnPmVgwAal2CoNext
+        --DEFAULT set-function-async      fsnPmVgwAal2CoSet
+        --DEFAULT get-function-async      fsnPmVgwAal2CoGet
+     ::= { pmVgwAal2Control 5 }
+
+    pmVgwAal2CoControlStatus OBJECT-TYPE
+     -- info-VALUE:     requestIdle(1),requestBusy(2),
+     -- info-VALUE:     requestPassed(3),requestFailed(4)
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwControlStatus
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " The status of a user command. A user command will
+	     be rejected when the status is requestBusy
+	     as a user command is still in process. "
+        --DEFAULT next-function-async     fsnPmVgwAal2CoNext
+        --DEFAULT get-function-async      fsnPmVgwAal2CoGet
+        ::= { pmVgwAal2Control 6 }
+
+    pmVgwAal2CoRemainingHistoryEntriesSize OBJECT-TYPE
+     -- info-VALUE:     0..2000
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwHistoryEntriesSizeType
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This attribute informs the number of remaining history
+               entries which are available for the 15 minutes history
+               collection within the DSLAM. 
+               The history memory is limited in total to 2000 entries.
+               The manager can read this attribute before/after the execution
+               of the setNrHistEntriesSizePrMi/setNrHistEntriesSizePMo
+	       command to inform himself about the remaining history size. "
+        --DEFAULT next-function-async     fsnPmVgwAal2CoNext
+        --DEFAULT get-function-async      fsnPmVgwAal2CoGet
+        ::= { pmVgwAal2Control 7 }
+    
+    pmVgwAal2CoControlReqResult OBJECT-TYPE
+     -- info-VALUE:     User command failures :
+     -- info-VALUE:     noRequest
+     -- info-VALUE:     commExecStarted
+     -- info-VALUE:     paramFaulty
+     -- info-VALUE:     requestBusy
+     -- info-VALUE:     setDataFailed
+     -- info-VALUE:     aswTimeout
+     -- info-VALUE:     commandFailed
+     -- info-VALUE:     commandSucceeded
+     -- info-VALUE:
+     -- info-VALUE:     PMo commands:
+     -- info-VALUE:     resetIndividCurrentPMo
+     -- info-VALUE:     setNrHistEntriesSizePMo
+     -- info-VALUE:     createAal2PMoObject
+     -- info-VALUE:     deleteAal2PMoObject
+     -- info-VALUE:
+     -- info-VALUE:     PrM commands:
+     -- info-VALUE:     resetIndividCurrentPrM
+     -- info-VALUE:     setNrHistEntriesSizePrM
+     -- info-VALUE:     createAal2PrMObject
+     -- info-VALUE:     deleteAal2PrMObject
+     -- info-VALUE:
+     -- info-VALUE:     PM failure values:
+     -- info-VALUE:     nrHistEntriesSizeNotAcceptable
+     -- info-VALUE:     dataBaseMemoryNotAvailable
+     -- info-VALUE:     indexLimitExceeded
+     -- info-VALUE:     objectActive
+     -- info-VALUE:     objectNotExists
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwControlReq
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " The result of the last user command.
+               indexLimitExceeded :  means that the creation of 
+	       an AAL2 PM object is refused because the number of AAL2 PM object
+	       at that SU is exceeded.
+	     "
+        --DEFAULT next-function-async     fsnPmVgwAal2CoNext
+        --DEFAULT get-function-async      fsnPmVgwAal2CoGet
+        ::= { pmVgwAal2Control 8 }
+
+     pmVgwAal2CoControlTimeStamp OBJECT-TYPE
+     -- info-VALUE:   0..2Giga
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.1-> 
+     -- info-VERCTRL: -
+        SYNTAX        TimeTicks
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " The time stamp of the last command (end of command). "
+        --DEFAULT next-function-async     fsnPmVgwAal2CoNext
+        --DEFAULT get-function-async      fsnPmVgwAal2CoGet
+        ::= { pmVgwAal2Control 9 }
+
+     -- ==============================================================
+     --        P e r f o r m a n c e   M a n a g e m e n t  (PM)
+     --                  C o n t r o l  g r o u p
+     --                        F o r
+     --                  V 5   I n t e r f a c e s
+     -- ==============================================================
+
+     pmVgwV5Control OBJECT IDENTIFIER
+	     -- info-IMPL:      V2.1-> 
+	     -- info-VERCTRL:   -
+     ::= { pmVgwPerformanceManagementControl 2 }
+
+     -- This managed entity manages the user commands for
+     -- of Performance Mangement.
+     --
+     -- An instance of this managed entity shall be automatically
+     -- created immediately following ATM NE initialization.
+
+     pmVgwV5CoIfIndex OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db  SET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+     SYNTAX        Unsigned16
+     ACCESS        read-write
+     STATUS        mandatory
+     DESCRIPTION
+        " The IfIndex of an V5 interface. "
+        --DEFAULT test-function-async     fsnPmVgwV5CoTest
+        --DEFAULT next-function-async     fsnPmVgwV5CoNext
+        --DEFAULT set-function-async      fsnPmVgwV5CoSet
+        --DEFAULT get-function-async      fsnPmVgwV5CoGet
+     ::= { pmVgwV5Control 1 }
+
+     pmVgwV5CoNrHistEntriesSize OBJECT-TYPE
+     -- info-VALUE:     1..96
+     -- info-ROU:       GET db  SET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+     SYNTAX        INTEGER (1..96)
+     ACCESS        read-write
+     STATUS        mandatory
+     DESCRIPTION
+        " This attribute is used to set the number of 15 minutes
+        history entries which should be stored for history
+        collection. Default value is 1. "
+       --DEFAULT test-function-async     fsnPmVgwV5CoTest
+       --DEFAULT next-function-async     fsnPmVgwV5CoNext
+       --DEFAULT set-function-async      fsnPmVgwV5CoSet
+       --DEFAULT get-function-async      fsnPmVgwV5CoGet
+     ::= { pmVgwV5Control 3 }
+
+     pmVgwV5CoIntervalType OBJECT-TYPE
+     -- info-VALUE:     min15(1), day(2)
+     -- info-ROU:       GET db  SET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+     SYNTAX        PmVgwIntervalType
+     ACCESS        read-write
+     STATUS        mandatory
+     DESCRIPTION
+        " This attribute identifies whether a 15 minutes interval
+        or a day interval is selected in case of a
+        reset commands for current counters. "
+        --DEFAULT test-function-async     fsnPmVgwV5CoTest
+        --DEFAULT next-function-async     fsnPmVgwV5CoNext
+        --DEFAULT set-function-async      fsnPmVgwV5CoSet
+        --DEFAULT get-function-async      fsnPmVgwV5CoGet
+     ::= { pmVgwV5Control 4 }
+
+     pmVgwV5CoControlReq OBJECT-TYPE
+     -- info-VALUE:     setNrHistEntriesSizePrM
+     -- info-VALUE:     resetIndividCurrentPrM
+     -- info-ROU:       GET db  SET pm
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+     SYNTAX        PmVgwControlReq
+     ACCESS        read-write
+     STATUS        mandatory
+     DESCRIPTION
+        " Identifies the user commands for PM on V5 interfaces.
+
+	setNrHistEntriesSizePrM : 
+	   sets the number of 15 minutes history
+	   entries for history collection at a particular interface. 
+
+	resetIndividCurrentPrM : 
+           resets for the current counters for Protocol Monitoring
+	   at a particular interface."
+        --DEFAULT test-function-async     fsnPmVgwV5CoTest
+        --DEFAULT next-function-async     fsnPmVgwV5CoNext
+        --DEFAULT set-function-async      fsnPmVgwV5CoSet
+        --DEFAULT get-function-async      fsnPmVgwV5CoGet
+     ::= { pmVgwV5Control 5 }
+
+    pmVgwV5CoControlStatus OBJECT-TYPE
+     -- info-VALUE:     requestIdle(1),requestBusy(2),
+     -- info-VALUE:     requestPassed(3),requestFailed(4)
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwControlStatus
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " The status of a user command. A user command will
+	     be rejected when the status is requestBusy
+	     as a user command is still in process. "
+        --DEFAULT next-function-async     fsnPmVgwV5CoNext
+        --DEFAULT get-function-async      fsnPmVgwV5CoGet
+        ::= { pmVgwV5Control 6 }
+
+    pmVgwV5CoRemainingHistoryEntriesSize OBJECT-TYPE
+     -- info-VALUE:     0..2000
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwHistoryEntriesSizeType
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This attribute indicates the number of remaining history
+               entries which are available for the 15 minutes history
+               collection within the DSLAM. 
+               PM on physical and ATM layer use the same history memory
+               which is limited in total to 2000 entries.
+               The manager can read this attribute before/after the execution
+               of the setNrHistEntriesSizePrM command to inform himself about
+	       the remaining history size. "
+        --DEFAULT next-function-async     fsnPmVgwV5CoNext
+        --DEFAULT get-function-async      fsnPmVgwV5CoGet
+        ::= { pmVgwV5Control 7 }
+    
+    pmVgwV5CoControlReqResult OBJECT-TYPE
+     -- info-VALUE:     noRequest(1), 
+     -- info-VALUE:     resetIndividCurrentPMo(2),
+     -- info-VALUE:     setNrHistEntriesSize(3), paramFaulty(4),
+     -- info-VALUE:     nrHistEntriesSizeNotAcceptable(5),
+     -- info-VALUE:     dataDaseMemoryNotAvailable(6)
+     -- info-VALUE:     resetIndividCurrentPrM(7),
+     -- info-VALUE:     requestBusy(15), setDataFailed(16), aswTimeout(17)
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwControlReq
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " The result of the last user command. "
+        --DEFAULT next-function-async     fsnPmVgwV5CoNext
+        --DEFAULT get-function-async      fsnPmVgwV5CoGet
+        ::= { pmVgwV5Control 8 }
+
+     pmVgwV5CoControlTimeStamp OBJECT-TYPE
+     -- info-VALUE:   0..2Giga
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.1-> 
+     -- info-VERCTRL: -
+        SYNTAX        TimeTicks
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " The time stamp of the last command (end of command). "
+        --DEFAULT next-function-async     fsnPmVgwV5CoNext
+        --DEFAULT get-function-async      fsnPmVgwV5CoGet
+        ::= { pmVgwV5Control 9 }
+
+     -- ==============================================================
+     --       P e r f o r m a n c e   M o n i t o r i n g  (PMo)
+     --                         g r o u p
+     --              o n  p h y s i c a l  l a y e r
+     -- ==============================================================
+
+     -- --------------------------------------------------------------
+     --               PMo AAL2 Object Table
+     -- --------------------------------------------------------------
+
+     pmVgwAal2PMoObjectTable OBJECT-TYPE
+     -- info-IMPL:      V2.1->
+     -- info-VERCTRL:   -
+        SYNTAX        SEQUENCE OF PmVgwAal2PMoObjectEntry
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+             " This table contains the entries for the PMo objects 
+               at AAL2 interfaces. Maximum number of monitored 
+	       interfaces is 16 per SUVGW. "
+        --DEFAULT test-function-async     fsnPmVgwAal2PmoEntryTest
+        --DEFAULT next-function-async     fsnPmVgwAal2PmoEntryNext
+        --DEFAULT set-function-async      fsnPmVgwAal2PmoEntrySet
+        --DEFAULT get-function-async      fsnPmVgwAal2PmoEntryGet
+        ::= { pmVgwPerformanceMonitoring 1 }
+ 
+     pmVgwAal2PMoObjectEntry OBJECT-TYPE
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwAal2PMoObjectEntry
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+             " An entry of the pmVgwAal2PMoObjectTable. "
+        INDEX { pmVgwAal2PMoObjectIndex }
+        ::= { pmVgwAal2PMoObjectTable 1 }
+ 
+     PmVgwAal2PMoObjectEntry ::=
+        SEQUENCE {
+          pmVgwAal2PMoObjectIndex                  Unsigned16,
+	  pmVgwAal2PMoObjectIfIndex                Unsigned16
+                  }
+ 
+     pmVgwAal2PMoObjectIndex OBJECT-TYPE
+     -- info-VALUE:     0..65535
+     -- info-ROU:       GET  db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Unsigned16
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Identifies an entry of the pmVgwAal2PmoObjectTable.
+           Entries are created/deleted via user command 
+           createAal2PMoObject/deleteAal2PMoObject. "
+        ::= { pmVgwAal2PMoObjectEntry 1 }
+
+     pmVgwAal2PMoObjectIfIndex OBJECT-TYPE
+     -- info-VALUE:     0..65535
+     -- info-ROU:       GET  db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Unsigned16
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " The IfIndex of an AAL2 interface. "
+        ::= { pmVgwAal2PMoObjectEntry 2 }
+
+     -- --------------------------------------------------------------
+     --               PMo AAL2 Current Data Table
+     -- --------------------------------------------------------------
+
+     pmVgwAal2CurrentTable OBJECT-TYPE
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        SEQUENCE OF PmVgwAal2CurrentEntry
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+           " This table contains the entries for Performance Monitoring
+	   at AAL2 interfaces of the current 15 minute interval
+           or the current day. "
+        --DEFAULT test-function-async     fsnPmVgwAacEntryTest
+        --DEFAULT next-function-async     fsnPmVgwAacEntryNext
+        --DEFAULT set-function-async      fsnPmVgwAacEntrySet
+        --DEFAULT get-function-async      fsnPmVgwAacEntryGet
+        ::= { pmVgwPerformanceMonitoring 2 }
+
+     pmVgwAal2CurrentEntry OBJECT-TYPE
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwAal2CurrentEntry
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+           " An entry describing the current PMo data 
+	   of an AAL2 interface. Index of the table are the
+	   IfIndex of an AAL2 interface and the interval type
+	   indicating either the current 15 minute interval 
+	   or the current day counter."
+        INDEX { 
+	        pmVgwAal2PMoObjectIndex,
+                pmVgwAal2CurrentIntervalType
+                }
+        ::= { pmVgwAal2CurrentTable 1 }
+
+     PmVgwAal2CurrentEntry ::=
+        SEQUENCE {
+           pmVgwAal2CurrentIfIndex                     Unsigned16,
+	   pmVgwAal2CurrentIntervalType           PmVgwIntervalType,
+           pmVgwAal2CurrentAdminState             PmVgwAdminState,
+           pmVgwAal2CurrentSuspectFlag            PmVgwSuspectType,
+           pmVgwAal2CurrentHistEntrySize               INTEGER,
+           pmVgwAal2CurrentNrHistEntriesAvailable      INTEGER,
+           pmVgwAal2CurrentElapsedTime                 INTEGER,
+           pmVgwAal2CurrentCpcsInPkts                  Counter,
+           pmVgwAal2CurrentCpcsOutPkts                 Counter,
+           pmVgwAal2CurrentCpcsSeqNumErrors            Counter,
+           pmVgwAal2CurrentCpcsUuiErrors               Counter,
+           pmVgwAal2CurrentCpcsCidErrors               Counter,
+           pmVgwAal2CurrentCpcsUnspecifiedErrors       Counter,
+           pmVgwAal2CurrentSssarReasmTimeouts          Counter,
+           pmVgwAal2CurrentSstedLengthErrors           Counter,
+           pmVgwAal2CurrentSstedUnspecifiedErrors      Counter,
+           pmVgwAal2CurrentSstedHDLCInOverload         Counter,
+           pmVgwAal2CurrentSstedHDLCOutOverload        Counter
+           }
+
+     pmVgwAal2CurrentIfIndex OBJECT-TYPE
+     -- info-VALUE:
+     -- info-ROU:       GET  db
+     -- info-IMPL:      V2.1->
+     -- info-VERCTRL:   -
+        SYNTAX        Unsigned16
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Identifies the IfIndex of the AAL2 interface
+           for which an PMo object is created. "
+        ::= { pmVgwAal2CurrentEntry 1 }
+
+     pmVgwAal2CurrentIntervalType OBJECT-TYPE
+     -- info-VALUE:     min15(1), day(2)
+     -- info-ROU:       GET  db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwIntervalType
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " This attribute is used to select between the
+           15 min  or the day accumulation types. "
+        ::= { pmVgwAal2CurrentEntry 2 }
+
+     pmVgwAal2CurrentAdminState OBJECT-TYPE
+     -- info-VALUE:     unlocked(1), locked(2)
+     -- info-ROU:       GET db  SET pm
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwAdminState
+        ACCESS        read-write
+        STATUS        mandatory
+        DESCRIPTION
+           " This read-write attribute is used to activate (unlock)
+           and deactivate (lock) performance monitoring
+           at an AAL2 interface.
+	   The number of active performance monitoring points is
+	   restricted to 16 AAL2 interfaces per SUVGW. "
+        ::= { pmVgwAal2CurrentEntry 3 }
+
+     pmVgwAal2CurrentSuspectFlag OBJECT-TYPE
+     -- info-VALUE:     reliable(1), suspect(2)
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwSuspectType
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " This read-only attribute will be set to indicate that
+           troubles arose during an interval and that the counter
+           values are suspect and incomplete. "
+        ::= { pmVgwAal2CurrentEntry 4 }
+
+     pmVgwAal2CurrentHistEntrySize OBJECT-TYPE
+     -- info-VALUE:     1..96
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        INTEGER (1..96)
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " The number of 15min history entries configured at 
+	   the particular interface. 
+	   This attribute is used for history data collection.
+           The default value is 1 and means at least one history entry
+           is desired . "
+        ::= { pmVgwAal2CurrentEntry 5 }
+
+     pmVgwAal2CurrentNrHistEntriesAvailable OBJECT-TYPE
+     -- info-VALUE:     0..96
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        INTEGER (0..96)
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " This read-only attribute indicates how many HistEntries
+           are already available.
+           The range of values is between 0 and pmVgwAal2CurrentHistEntrySize,
+           thereby 0 means that this entry is not valid . "
+        ::= { pmVgwAal2CurrentEntry 6 }
+
+     pmVgwAal2CurrentElapsedTime OBJECT-TYPE
+     -- info-VALUE:     0..900 (sec) for min15,
+     -- info-VALUE:     0..1440 (min) for day
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        INTEGER (0..1440)
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " This read-only attribute represents the difference
+           between the current time and the start of the present
+           summary interval. 
+	   Units are seconds when 15 minute interval is selected 
+	   or minutes for day interval.
+           (Note: accurate to the sample time interval). "
+        ::= { pmVgwAal2CurrentEntry 7 }
+
+     pmVgwAal2CurrentCpcsInPkts OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of CPCS packets received. "
+        ::= { pmVgwAal2CurrentEntry 8 }
+
+     pmVgwAal2CurrentCpcsOutPkts OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of CPCS packets transmitted. "
+        ::= { pmVgwAal2CurrentEntry 9 }
+
+     pmVgwAal2CurrentCpcsSeqNumErrors OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of CPCS PDUs received with 
+	   incorrect sequence number in the STF field. "
+        ::= { pmVgwAal2CurrentEntry 10 }
+
+     pmVgwAal2CurrentCpcsUuiErrors OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of CPCS PDUs received with 
+	   incorrect UUI value. "
+        ::= { pmVgwAal2CurrentEntry 11 }
+
+     pmVgwAal2CurrentCpcsCidErrors OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of CPCS PDUs received with 
+	   incorrect CID value. "
+        ::= { pmVgwAal2CurrentEntry 12 }
+
+     pmVgwAal2CurrentCpcsUnspecifiedErrors OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of CPCS PDUs discarded because of
+	   different error causes (incorrect parity value or
+	   incorrect OSF value in the STF field, incorrect
+	   Header Error Control(HEC) code, CPCS packet 
+	   payload length too long. "
+        ::= { pmVgwAal2CurrentEntry 13 }
+
+     pmVgwAal2CurrentSssarReasmTimeouts OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of timeout for SSSAR reassembly timeout. "
+        ::= { pmVgwAal2CurrentEntry 14 }
+
+     pmVgwAal2CurrentSstedLengthErrors OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of discarded SSTED PDU because of 
+	   length mismatch. "
+        ::= { pmVgwAal2CurrentEntry 15 }
+
+     pmVgwAal2CurrentSstedUnspecifiedErrors OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of discarded SSTED PDU because of 
+	   different errors (PDU too short, bad CRC). "
+        ::= { pmVgwAal2CurrentEntry 16 }
+
+     pmVgwAal2CurrentSstedHDLCInOverload OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of discarded HDLC frames because of 
+	   overload (too many received frames). "
+        ::= { pmVgwAal2CurrentEntry 17 }
+
+     pmVgwAal2CurrentSstedHDLCOutOverload OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of discarded HDLC frames because of 
+	   overload (too many transmitted frames). "
+        ::= { pmVgwAal2CurrentEntry 18 }
+	
+     -- --------------------------------------------------------------
+     --        PMo  A A L 2  H i s t o r y  D a t a  Table
+     -- --------------------------------------------------------------
+
+     pmVgwAal2HistoryTable OBJECT-TYPE
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        SEQUENCE OF PmVgwAal2HistoryEntry
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+             " This table contains the entries for the PMo objects of
+               the 15 min /one day-history data collection results at
+               AAL2 interfaces . "
+        --DEFAULT get-function-async      fsnPmVgwAahEntryGet
+        --DEFAULT next-function-async     fsnPmVgwAahEntryNext
+        ::= { pmVgwPerformanceMonitoring 3 }
+
+     pmVgwAal2HistoryEntry OBJECT-TYPE
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwAal2HistoryEntry
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+             " An entry describing the AAL2 History Data Table . "
+        INDEX { pmVgwAal2PMoObjectIndex,
+                pmVgwAal2HistoryIntervalType,
+                pmVgwAal2HistoryHistEntryNr }
+        ::= { pmVgwAal2HistoryTable 1 }
+
+     PmVgwAal2HistoryEntry ::=
+        SEQUENCE {
+	   pmVgwAal2HistoryIntervalType          PmVgwIntervalType,
+           pmVgwAal2HistoryHistEntryNr                 INTEGER,
+           pmVgwAal2HistorySuspectFlag           PmVgwSuspectType,
+           pmVgwAal2HistoryPeriodEndTime               INTEGER,
+           pmVgwAal2HistoryCpcsInPkts                  Counter,
+           pmVgwAal2HistoryCpcsOutPkts                 Counter,
+           pmVgwAal2HistoryCpcsSeqNumErrors            Counter,
+           pmVgwAal2HistoryCpcsUuiErrors               Counter,
+           pmVgwAal2HistoryCpcsCidErrors               Counter,
+           pmVgwAal2HistoryCpcsUnspecifiedErrors       Counter,
+           pmVgwAal2HistorySssarReasmTimeouts          Counter,
+           pmVgwAal2HistorySstedLengthErrors           Counter,
+           pmVgwAal2HistorySstedUnspecifiedErrors      Counter,
+           pmVgwAal2HistorySstedHDLCInOverload         Counter,
+           pmVgwAal2HistorySstedHDLCOutOverload        Counter
+	   }
+
+     pmVgwAal2HistoryIntervalType OBJECT-TYPE
+     -- info-VALUE:     min 5(1), day(2)
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwIntervalType
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This type attribute is used to select between the
+               15 min  or the day accumulation types. "
+        ::= { pmVgwAal2HistoryEntry 1 }
+
+     pmVgwAal2HistoryHistEntryNr OBJECT-TYPE
+     -- info-VALUE:     1..96
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        INTEGER (1..96)
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This attribute is an index used to address the PM history entry.
+             Entry 1 is the most recent, entry 96 is 24 hours ago.
+             The range of values is between 1 and pmVgwAal2HistoryHistEntrySize . " 
+        ::= { pmVgwAal2HistoryEntry 2 }
+
+     pmVgwAal2HistorySuspectFlag OBJECT-TYPE
+     -- info-VALUE:     reliable(1), suspect(2)
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwSuspectType
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " Will be set to indicate that
+               troubles arose during an interval and that the counter
+               values are suspect and incomplete. "
+        ::= { pmVgwAal2HistoryEntry 3 }
+
+     pmVgwAal2HistoryPeriodEndTime OBJECT-TYPE
+     -- info-VALUE:     0..2147483647
+     -- info-ROU:       GET  db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        INTEGER (0..2147483647)
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " Date/time at the end of the selected interval. "
+        ::= { pmVgwAal2HistoryEntry 4 }
+
+     pmVgwAal2HistoryCpcsInPkts OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of CPCS packets received. "
+        ::= { pmVgwAal2HistoryEntry 5 }
+
+     pmVgwAal2HistoryCpcsOutPkts OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of CPCS packets transmitted. "
+        ::= { pmVgwAal2HistoryEntry 6 }
+
+     pmVgwAal2HistoryCpcsSeqNumErrors OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of CPCS PDUs received with 
+	   incorrect sequence number in the STF field. "
+        ::= { pmVgwAal2HistoryEntry 7 }
+
+     pmVgwAal2HistoryCpcsUuiErrors OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of CPCS PDUs received with 
+	   incorrect UUI value. "
+        ::= { pmVgwAal2HistoryEntry 8 }
+
+     pmVgwAal2HistoryCpcsCidErrors OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of CPCS PDUs received with 
+	   incorrect CID value. "
+        ::= { pmVgwAal2HistoryEntry 9  }
+
+     pmVgwAal2HistoryCpcsUnspecifiedErrors OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of CPCS PDUs discarded because of
+	   different error causes (incorrect parity value or
+	   incorrect OSF value in the STF field, incorrect
+	   Header Error Control(HEC) code, CPCS packet 
+	   payload length too long. "
+        ::= { pmVgwAal2HistoryEntry 10 }
+
+     pmVgwAal2HistorySssarReasmTimeouts OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of timeout for SSSAR reassembly timeout. "
+        ::= { pmVgwAal2HistoryEntry 11 }
+
+     pmVgwAal2HistorySstedLengthErrors OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of discarded SSTED PDU because of 
+	   length mismatch. "
+        ::= { pmVgwAal2HistoryEntry 12 }
+
+     pmVgwAal2HistorySstedUnspecifiedErrors OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of discarded SSTED PDU because of 
+	   different errors (PDU too short, bad CRC). "
+        ::= { pmVgwAal2HistoryEntry 13 }
+
+     pmVgwAal2HistorySstedHDLCInOverload OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of discarded HDLC frames because of 
+	   overload (too many received frames). "
+        ::= { pmVgwAal2HistoryEntry 14 }
+
+     pmVgwAal2HistorySstedHDLCOutOverload OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of discarded HDLC frames because of 
+	   overload (too many transmitted frames). "
+        ::= { pmVgwAal2HistoryEntry 15 }
+
+
+     -- ==============================================================
+     --         P r o t o c o l   M o n i t o r i n g  (PrM)
+     --                         g r o u p
+     -- ==============================================================
+
+     -- --------------------------------------------------------------
+     --               PrM AAL2 Object Table
+     -- --------------------------------------------------------------
+
+     pmVgwAal2PrMObjectTable OBJECT-TYPE
+     -- info-IMPL:      V2.1->
+     -- info-VERCTRL:   -
+        SYNTAX        SEQUENCE OF PmVgwAal2PrMObjectEntry
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+           " This table contains the entries for the PrM objects 
+           at AAL2 interfaces. Maximum of monitored interfaces is
+           16 per SUVGW. "
+        --DEFAULT test-function-async     fsnPmVgwAal2PrmEntryTest
+        --DEFAULT next-function-async     fsnPmVgwAal2PrmEntryNext
+        --DEFAULT set-function-async      fsnPmVgwAal2PrmEntrySet
+        --DEFAULT get-function-async      fsnPmVgwAal2PrmEntryGet
+        ::= { pmVgwProtocolMonitoring 1 }
+ 
+     pmVgwAal2PrMObjectEntry OBJECT-TYPE
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwAal2PrMObjectEntry
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+           " An entry of the pmVgwAal2PrMObjectTable. "
+        INDEX { pmVgwAal2PrMObjectIndex }
+        ::= { pmVgwAal2PrMObjectTable 1 }
+ 
+     PmVgwAal2PrMObjectEntry ::=
+        SEQUENCE {
+          pmVgwAal2PrMObjectIndex                Unsigned16,
+          pmVgwAal2PrMObjectIfIndex              Unsigned16
+                  }
+ 
+     pmVgwAal2PrMObjectIndex OBJECT-TYPE
+     -- info-VALUE:     0..65535
+     -- info-ROU:       GET  db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Unsigned16
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Identifies an entry of the pmVgwAal2PmoObjectTable.
+           Entries are created/deleted via user command 
+           createAal2PrMObject/deleteAal2PrMObject. "
+        ::= { pmVgwAal2PrMObjectEntry 1 }
+        
+
+     pmVgwAal2PrMObjectIfIndex OBJECT-TYPE
+     -- info-VALUE:     0..65535
+     -- info-ROU:       GET  db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Unsigned16
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " The IfIndex of an AAL2 interface. "
+        ::= { pmVgwAal2PrMObjectEntry 2 }
+
+
+     -- --------------------------------------------------------------
+     --         PrM  C u r r e n t  D a t a  Table
+     --         f o r  A A L 2   i n t e r f a c e s
+     -- --------------------------------------------------------------
+
+     pmVgwAal2PrMCurrentTable OBJECT-TYPE
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        SEQUENCE OF PmVgwAal2PrMCurrentEntry
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+           " This table contains entries of Protocol Monitoring data
+	   for AAL2 interfaces in the current 15 minute interval and
+	   the current day. "
+        --DEFAULT test-function-async     fsnPmVgwPrMAacEntryTest
+        --DEFAULT next-function-async     fsnPmVgwPrMAacEntryNext
+        --DEFAULT set-function-async      fsnPmVgwPrMAacEntrySet
+        --DEFAULT get-function-async      fsnPmVgwPrMAacEntryGet
+        ::= { pmVgwProtocolMonitoring 2 }
+
+     pmVgwAal2PrMCurrentEntry OBJECT-TYPE
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwAal2PrMCurrentEntry
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+             " An entry describing the Protocol Monititoring
+               Current Data Table for AAL2 interfaces . "
+        INDEX { pmVgwAal2PrMObjectIndex,
+                pmVgwAal2PrMCurrentIntervalType }
+        ::= { pmVgwAal2PrMCurrentTable 1 }
+
+     PmVgwAal2PrMCurrentEntry ::=
+        SEQUENCE { pmVgwAal2PrMCurrentIntervalType        PmVgwIntervalType,
+                   pmVgwAal2PrMCurrentAdminState          PmVgwAdminState,
+                   pmVgwAal2PrMCurrentSuspectFlag         PmVgwSuspectType,
+                   pmVgwAal2PrMCurrentHistEntrySize            INTEGER,
+                   pmVgwAal2PrMCurrentNrHistEntriesAvailable   INTEGER,
+                   pmVgwAal2PrMCurrentElapsedTime              INTEGER,
+                   pmVgwAal2PrMCurrentElcpPmDLReleaseCount     Counter,
+                   pmVgwAal2PrMCurrentElcpUnavailDLTime        Counter,
+                   pmVgwAal2PrMCurrentDataLinkError            Counter
+		   }
+
+     pmVgwAal2PrMCurrentIntervalType OBJECT-TYPE
+     -- info-VALUE:     min15(1), day(2)
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwIntervalType
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This nac type attribute is used to select between the
+               15 min  or the day accumulation types. "
+        ::= { pmVgwAal2PrMCurrentEntry 1 }
+
+     pmVgwAal2PrMCurrentAdminState OBJECT-TYPE
+     -- info-VALUE:     unlocked(1), locked(2)
+     -- info-ROU:       GET db  SET pm
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwAdminState
+        ACCESS        read-write
+        STATUS        mandatory
+        DESCRIPTION
+           " This read-write attribute is used to activate (unlock)
+           and deactivate (lock) performance monitoring
+           at an AAL2 interface.
+	   The number of active performance monitoring points is
+	   restricted to 16 AAL2 interfaces per SUVGW. "
+        ::= { pmVgwAal2PrMCurrentEntry 2 }
+
+     pmVgwAal2PrMCurrentSuspectFlag OBJECT-TYPE
+     -- info-VALUE:     reliable(1), suspect(2)
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwSuspectType
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This read-only attribute will be set to indicate that
+               troubles arose during an interval and that the counter
+               values are suspect and incomplete. "
+        ::= { pmVgwAal2PrMCurrentEntry 3 }
+
+     pmVgwAal2PrMCurrentHistEntrySize OBJECT-TYPE
+     -- info-VALUE:     1..96
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        INTEGER (1..96)
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This read-only attribute indicates the number of 15min 
+               history entries configured for the particular interface.
+               The default value is 1 and means that at least one 
+               history entry is provided. "
+        ::= { pmVgwAal2PrMCurrentEntry 4 }
+
+     pmVgwAal2PrMCurrentNrHistEntriesAvailable OBJECT-TYPE
+     -- info-VALUE:     0..96
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        INTEGER (0..96)
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This read-only attribute indicates how many HistEntries
+               are already available.
+               The range of values is between 0 and pmVgwAal2PrMHistEntrySize,
+               thereby 0 means that this entry is not valid . "
+        ::= { pmVgwAal2PrMCurrentEntry 5 }
+
+     pmVgwAal2PrMCurrentElapsedTime OBJECT-TYPE
+     -- info-VALUE:     0..900 (sec) for min15,
+     -- info-VALUE:     0..1440 (min) for day
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        INTEGER (0..1440)
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This read-only attribute represents the difference
+               between the current time and the start of the present
+               summary interval.
+	       Units are seconds when 15 minute interval is selected 
+	       or minutes for day interval.
+               (Note: accurate to the sample time interval). "
+        ::= { pmVgwAal2PrMCurrentEntry 6 }
+
+     pmVgwAal2PrMCurrentElcpPmDLReleaseCount OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " Number of release indication from ELCP data link. "
+        ::= { pmVgwAal2PrMCurrentEntry 7 }
+
+     pmVgwAal2PrMCurrentElcpUnavailDLTime OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " Unavailable time of ELCP data link. "
+        ::= { pmVgwAal2PrMCurrentEntry 8 }
+
+     pmVgwAal2PrMCurrentDataLinkError OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " Number of detected data link failures (layer 2). "
+        ::= { pmVgwAal2PrMCurrentEntry 9 }
+
+
+     -- --------------------------------------------------------------
+     --    PrM  A A L 2  H i s t o r y  D a t a  Table
+     -- --------------------------------------------------------------
+
+     pmVgwAal2PrMHistoryTable OBJECT-TYPE
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        SEQUENCE OF PmVgwAal2PrMHistoryEntry
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+             " This table contains the entries for Protocol Monitoring
+               history at the different AAL2 interfaces. It contains
+               results that are overtaken from the pmVgwAal2PrMCurrentTable
+               at the end of a 15 minute /day interval . "
+        --DEFAULT next-function-async     fsnPmVgwPrMAahEntryNext
+        --DEFAULT get-function-async      fsnPmVgwPrMAahEntryGet
+        ::= { pmVgwProtocolMonitoring 3 }
+
+     pmVgwAal2PrMHistoryEntry OBJECT-TYPE
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwAal2PrMHistoryEntry
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+             " An entry describing the History Data Table
+               for Protocol Monitoring at AAL2 interfaces. "
+        INDEX { pmVgwAal2PrMObjectIndex,
+                pmVgwAal2PrMHistoryIntervalType,
+                pmVgwAal2PrMHistoryHistEntryNr }
+        ::= { pmVgwAal2PrMHistoryTable 1 }
+
+     PmVgwAal2PrMHistoryEntry ::=
+        SEQUENCE { pmVgwAal2PrMHistoryIntervalType        PmVgwIntervalType,
+                   pmVgwAal2PrMHistoryHistEntryNr              INTEGER,
+                   pmVgwAal2PrMHistorySuspectFlag         PmVgwSuspectType,
+                   pmVgwAal2PrMHistoryPeriodEndTime            INTEGER,
+                   pmVgwAal2PrMHistoryElcpPmDLReleaseCount     Counter,
+                   pmVgwAal2PrMHistoryElcpUnavailDLTime        Counter,
+                   pmVgwAal2PrMHistoryDataLinkError            Counter
+		   }
+
+     pmVgwAal2PrMHistoryIntervalType OBJECT-TYPE
+     -- info-VALUE:     min15(1), day(2)
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwIntervalType
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This attribute is used to select between the
+               15 minutes  or the day accumulation types. "
+        ::= { pmVgwAal2PrMHistoryEntry 1 }
+
+     pmVgwAal2PrMHistoryHistEntryNr OBJECT-TYPE
+     -- info-VALUE:     1..96
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        INTEGER (1..96)
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " Index to address a history entry.
+             Entry 1 is the most recent, entry 96 is 24 hours ago.
+             The range of values is between 1 and 
+	     pmVgwAal2PrMCurrentHistEntrySize. " 
+        ::= { pmVgwAal2PrMHistoryEntry 2 }
+
+     pmVgwAal2PrMHistorySuspectFlag OBJECT-TYPE
+     -- info-VALUE:     reliable(1), suspect(2)
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwSuspectType
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This read-only attribute will be set to indicate that
+               troubles arose during an interval and that the counter
+               values are suspect and incomplete. "
+        ::= { pmVgwAal2PrMHistoryEntry 3 }
+
+     pmVgwAal2PrMHistoryPeriodEndTime OBJECT-TYPE
+     -- info-VALUE:     0..2147483647
+     -- info-ROU:       GET  db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        INTEGER(0..2147483647)
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This read-only attribute is a record of date/time at the
+               end of an interval . "
+        ::= { pmVgwAal2PrMHistoryEntry 4 }
+
+     pmVgwAal2PrMHistoryElcpPmDLReleaseCount OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " Number of release indication from ELCP data link. "
+        ::= { pmVgwAal2PrMHistoryEntry 5 }
+
+     pmVgwAal2PrMHistoryElcpUnavailDLTime OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " Unavailable time of ELCP data link. "
+        ::= { pmVgwAal2PrMHistoryEntry 6 }
+
+     pmVgwAal2PrMHistoryDataLinkError OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " Number of detected data link failures (layer 2). "
+        ::= { pmVgwAal2PrMHistoryEntry 7 }
+
+
+     -- --------------------------------------------------------------
+     --         PrM  C u r r e n t  D a t a  Table
+     --         f o r  V5   i n t e r f a c e s
+     -- --------------------------------------------------------------
+
+     pmVgwV5PrMCurrentTable OBJECT-TYPE
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        SEQUENCE OF PmVgwV5PrMCurrentEntry
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+           " This table contains the entries for Protocol Monitoring
+	   at V5 interfaces of the current 15 minute interval
+           or the current day. "
+        --DEFAULT test-function-async     fsnPmVgwV5PrMCurrentEntryTest
+        --DEFAULT next-function-async     fsnPmVgwV5PrMCurrentEntryNext
+        --DEFAULT set-function-async      fsnPmVgwV5PrMCurrentEntrySet
+        --DEFAULT get-function-async      fsnPmVgwV5PrMCurrentEntryGet
+        ::= { pmVgwProtocolMonitoring 4 }
+
+     pmVgwV5PrMCurrentEntry OBJECT-TYPE
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwV5PrMCurrentEntry
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+             " An entry describing the current PrM data 
+	     of an V5 interface. Index of the table is the
+	     interface index of an V5 interface and the interval type
+	     indicating either the current 15 minute interval 
+	     or the current day counter."
+        INDEX { vgwV5IfInterfaceIndex,
+                pmVgwV5PrMCurrentIntervalType
+                }
+        ::= { pmVgwV5PrMCurrentTable 1 }
+
+     PmVgwV5PrMCurrentEntry ::=
+        SEQUENCE {
+	   pmVgwV5PrMCurrentIntervalType           PmVgwIntervalType,
+           pmVgwV5PrMCurrentAdminState             PmVgwAdminState,
+           pmVgwV5PrMCurrentSuspectFlag            PmVgwSuspectType,
+           pmVgwV5PrMCurrentHistEntrySize               INTEGER,
+           pmVgwV5PrMCurrentNrHistEntriesAvailable      INTEGER,
+           pmVgwV5PrMCurrentElapsedTime                 INTEGER,
+           pmVgwV5PrMCurrentSuccessAlloc                Counter,
+           pmVgwV5PrMCurrentSuccessDealloc              Counter,
+           pmVgwV5PrMCurrentRejectAlloc                 Counter,
+           pmVgwV5PrMCurrentRejectDealloc               Counter,
+           pmVgwV5PrMCurrentMaxAllocTsTotal             Counter,
+           pmVgwV5PrMCurrentMaxAllocTsPerc              Counter,
+           pmVgwV5PrMCurrentMinAvailTs                  Counter,
+           pmVgwV5PrMCurrentMaxAvailTs                  Counter,
+           pmVgwV5PrMCurrentOverloadTimeAllocTs         Counter,
+           pmVgwV5PrMCurrentUnavailTimeIf               Counter,
+           pmVgwV5PrMCurrentUnavailTimeLink1            Counter,
+           pmVgwV5PrMCurrentUnavailTimeLink2            Counter,
+           pmVgwV5PrMCurrentUnavailTimeLink3            Counter,
+           pmVgwV5PrMCurrentUnavailTimeLink4            Counter,
+           pmVgwV5PrMCurrentUnavailTimeLink5            Counter,
+           pmVgwV5PrMCurrentUnavailTimeLink6            Counter,
+           pmVgwV5PrMCurrentUnavailTimeLink7            Counter,
+           pmVgwV5PrMCurrentUnavailTimeLink8            Counter,
+           pmVgwV5PrMCurrentUnavailTimeLink9            Counter,
+           pmVgwV5PrMCurrentUnavailTimeLink10           Counter,
+           pmVgwV5PrMCurrentUnavailTimeLink11           Counter,
+           pmVgwV5PrMCurrentUnavailTimeLink12           Counter,
+           pmVgwV5PrMCurrentUnavailTimeLink13           Counter,
+           pmVgwV5PrMCurrentUnavailTimeLink14           Counter,
+           pmVgwV5PrMCurrentUnavailTimeLink15           Counter,
+           pmVgwV5PrMCurrentUnavailTimeLink16           Counter,
+           pmVgwV5PrMCurrentFramesInCCH1                Counter,
+           pmVgwV5PrMCurrentFramesInCCH2                Counter,
+           pmVgwV5PrMCurrentFramesInCCH3                Counter,
+           pmVgwV5PrMCurrentFramesInCCH4                Counter,
+           pmVgwV5PrMCurrentFramesInCCH5                Counter,
+           pmVgwV5PrMCurrentFramesInCCH6                Counter,
+           pmVgwV5PrMCurrentFramesInCCH7                Counter,
+           pmVgwV5PrMCurrentFramesInCCH8                Counter,
+           pmVgwV5PrMCurrentFramesInCCH9                Counter,
+           pmVgwV5PrMCurrentFramesInCCH10               Counter,
+           pmVgwV5PrMCurrentFramesInCCH11               Counter,
+           pmVgwV5PrMCurrentFramesInCCH12               Counter,
+           pmVgwV5PrMCurrentFramesInCCH13               Counter,
+           pmVgwV5PrMCurrentFramesInCCH14               Counter,
+           pmVgwV5PrMCurrentFramesInCCH15               Counter,
+           pmVgwV5PrMCurrentFramesInCCH16               Counter,
+           pmVgwV5PrMCurrentFramesInCCH17               Counter,
+           pmVgwV5PrMCurrentFramesInCCH18               Counter,
+           pmVgwV5PrMCurrentFramesInCCH19               Counter,
+           pmVgwV5PrMCurrentFramesInCCH20               Counter,
+           pmVgwV5PrMCurrentFramesInCCH21               Counter,
+           pmVgwV5PrMCurrentFramesInCCH22               Counter,
+           pmVgwV5PrMCurrentFramesInCCH23               Counter,
+           pmVgwV5PrMCurrentFramesInCCH24               Counter,
+           pmVgwV5PrMCurrentFramesInCCH25               Counter,
+           pmVgwV5PrMCurrentFramesInCCH26               Counter,
+           pmVgwV5PrMCurrentFramesInCCH27               Counter,
+           pmVgwV5PrMCurrentFramesInCCH28               Counter,
+           pmVgwV5PrMCurrentFramesInCCH29               Counter,
+           pmVgwV5PrMCurrentFramesInCCH30               Counter,
+           pmVgwV5PrMCurrentFramesInCCH31               Counter,
+           pmVgwV5PrMCurrentFramesInCCH32               Counter,
+           pmVgwV5PrMCurrentFramesInCCH33               Counter,
+           pmVgwV5PrMCurrentFramesInCCH34               Counter,
+           pmVgwV5PrMCurrentFramesInCCH35               Counter,
+           pmVgwV5PrMCurrentFramesInCCH36               Counter,
+           pmVgwV5PrMCurrentFramesInCCH37               Counter,
+           pmVgwV5PrMCurrentFramesInCCH38               Counter,
+           pmVgwV5PrMCurrentFramesInCCH39               Counter,
+           pmVgwV5PrMCurrentFramesInCCH40               Counter,
+           pmVgwV5PrMCurrentFramesInCCH41               Counter,
+           pmVgwV5PrMCurrentFramesInCCH42               Counter,
+           pmVgwV5PrMCurrentFramesInCCH43               Counter,
+           pmVgwV5PrMCurrentFramesInCCH44               Counter,
+           pmVgwV5PrMCurrentFramesInCCH45               Counter,
+           pmVgwV5PrMCurrentFramesInCCH46               Counter,
+           pmVgwV5PrMCurrentFramesInCCH47               Counter,
+           pmVgwV5PrMCurrentFramesInCCH48               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH1                Counter,
+           pmVgwV5PrMCurrentFramesOutCCH2                Counter,
+           pmVgwV5PrMCurrentFramesOutCCH3                Counter,
+           pmVgwV5PrMCurrentFramesOutCCH4                Counter,
+           pmVgwV5PrMCurrentFramesOutCCH5                Counter,
+           pmVgwV5PrMCurrentFramesOutCCH6                Counter,
+           pmVgwV5PrMCurrentFramesOutCCH7                Counter,
+           pmVgwV5PrMCurrentFramesOutCCH8                Counter,
+           pmVgwV5PrMCurrentFramesOutCCH9                Counter,
+           pmVgwV5PrMCurrentFramesOutCCH10               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH11               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH12               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH13               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH14               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH15               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH16               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH17               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH18               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH19               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH20               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH21               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH22               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH23               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH24               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH25               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH26               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH27               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH28               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH29               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH30               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH31               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH32               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH33               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH34               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH35               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH36               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH37               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH38               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH39               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH40               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH41               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH42               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH43               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH44               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH45               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH46               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH47               Counter,
+           pmVgwV5PrMCurrentFramesOutCCH48               Counter,
+           pmVgwV5PrMCurrentDataLinkErrorCtrl            Counter,
+           pmVgwV5PrMCurrentDataLinkErrorBCC             Counter,
+           pmVgwV5PrMCurrentDataLinkErrorPSTN            Counter,
+           pmVgwV5PrMCurrentDataLinkErrorLink            Counter,
+           pmVgwV5PrMCurrentDataLinkErrorProt1           Counter,
+           pmVgwV5PrMCurrentDataLinkErrorProt2           Counter,
+           pmVgwV5PrMCurrentWrongL3AdrIn                 Counter,
+           pmVgwV5PrMCurrentUnblockedSubsc               Counter
+           }
+
+     pmVgwV5PrMCurrentIntervalType OBJECT-TYPE
+     -- info-VALUE:     min15(1), day(2)
+     -- info-ROU:       GET  db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwIntervalType
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This attribute is used to select between the
+               15 min  or the day accumulation types. "
+        ::= { pmVgwV5PrMCurrentEntry 1 }
+
+     pmVgwV5PrMCurrentAdminState OBJECT-TYPE
+     -- info-VALUE:     unlocked(1), locked(2)
+     -- info-ROU:       GET db  SET pm
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwAdminState
+        ACCESS        read-write
+        STATUS        mandatory
+        DESCRIPTION
+           " This read-write attribute is used to activate (unlock)
+           and deactivate (lock) protocol monitoring
+           at an V5 interface.
+	   The number of active protocol monitoring points for V5 is
+	   not restricted. 
+           Note: the 15 minute collection object must be activated,
+           before day collection can operate. "
+        ::= { pmVgwV5PrMCurrentEntry 2 }
+
+     pmVgwV5PrMCurrentSuspectFlag OBJECT-TYPE
+     -- info-VALUE:     reliable(1), suspect(2)
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwSuspectType
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This read-only attribute will be set to indicate that
+               troubles arose during an interval and that the counter
+               values are suspect and incomplete. "
+        ::= { pmVgwV5PrMCurrentEntry 3 }
+
+     pmVgwV5PrMCurrentHistEntrySize OBJECT-TYPE
+     -- info-VALUE:     1..96
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        INTEGER (1..96)
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+        " The number of 15 minute history entries configured at 
+	the particular interface. 
+	This attribute is used for history data collection.
+        The default value is 1 and means at least one history entry
+        is desired . "
+        ::= { pmVgwV5PrMCurrentEntry 4 }
+
+     pmVgwV5PrMCurrentNrHistEntriesAvailable OBJECT-TYPE
+     -- info-VALUE:     0..96
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        INTEGER (0..96)
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " This read-only attribute indicates how many 
+           history entries are already available.
+           The range of values is between 0 and 
+	   pmVgwV5PrMCurrentHistEntrySize,
+           thereby 0 means that this entry is not valid . "
+        ::= { pmVgwV5PrMCurrentEntry 5 }
+
+     pmVgwV5PrMCurrentElapsedTime OBJECT-TYPE
+     -- info-VALUE:     0..900 (sec) for min15,
+     -- info-VALUE:     0..1440 (min) for day
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        INTEGER(0..1440)
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " This read-only attribute represents the difference
+           between the current time and the start of the present
+           summary interval. 
+	   Units are seconds when 15 minute interval is selected 
+	   or minutes for day interval.
+           (Note: accurate to the sample time interval). "
+        ::= { pmVgwV5PrMCurrentEntry 6 }
+
+     pmVgwV5PrMCurrentSuccessAlloc OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of succesful allocations. "
+        ::= { pmVgwV5PrMCurrentEntry 7 }
+	
+     pmVgwV5PrMCurrentSuccessDealloc OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of succesful de-allocations. "
+        ::= { pmVgwV5PrMCurrentEntry 8 }
+	
+     pmVgwV5PrMCurrentRejectAlloc OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of rejected allocations. "
+        ::= { pmVgwV5PrMCurrentEntry 9 }
+	
+     pmVgwV5PrMCurrentRejectDealloc OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of rejected de-allocations. "
+        ::= { pmVgwV5PrMCurrentEntry 10 }
+	
+     pmVgwV5PrMCurrentMaxAllocTsTotal OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Maximum number of allocated timeslots (total). "
+        ::= { pmVgwV5PrMCurrentEntry 11 }
+
+     pmVgwV5PrMCurrentMaxAllocTsPerc OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Maximum number of allocated timeslots (percentage). "
+        ::= { pmVgwV5PrMCurrentEntry 12 }
+
+     pmVgwV5PrMCurrentMinAvailTs  OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Minimum number of available timeslots. "
+        ::= { pmVgwV5PrMCurrentEntry 13 }
+
+     pmVgwV5PrMCurrentMaxAvailTs OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Maximum number of available timeslots. "
+        ::= { pmVgwV5PrMCurrentEntry 14 }
+
+     pmVgwV5PrMCurrentOverloadTimeAllocTs OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " The overload time of allocated timeslots.
+           The overlaod time is defined as the time when more
+           than 90 percent of timeslots are allocated. "
+        ::= { pmVgwV5PrMCurrentEntry 15 }
+
+     pmVgwV5PrMCurrentUnavailTimeIf OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of a V5 interface. "
+        ::= { pmVgwV5PrMCurrentEntry 16 }
+	
+    pmVgwV5PrMCurrentUnavailTimeLink1 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 1. "
+        ::= { pmVgwV5PrMCurrentEntry 17 }
+
+    pmVgwV5PrMCurrentUnavailTimeLink2 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 2. "
+        ::= { pmVgwV5PrMCurrentEntry 18 }
+
+    pmVgwV5PrMCurrentUnavailTimeLink3 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 3. "
+        ::= { pmVgwV5PrMCurrentEntry 19 }
+
+   pmVgwV5PrMCurrentUnavailTimeLink4 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 4. "
+        ::= { pmVgwV5PrMCurrentEntry 20}
+	
+   pmVgwV5PrMCurrentUnavailTimeLink5 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 5. "
+        ::= { pmVgwV5PrMCurrentEntry 21}
+	
+   pmVgwV5PrMCurrentUnavailTimeLink6 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 6. "
+        ::= { pmVgwV5PrMCurrentEntry 22}
+
+   pmVgwV5PrMCurrentUnavailTimeLink7 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 7. "
+        ::= { pmVgwV5PrMCurrentEntry 23}
+
+   pmVgwV5PrMCurrentUnavailTimeLink8 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 8. "
+        ::= { pmVgwV5PrMCurrentEntry 24}
+
+   pmVgwV5PrMCurrentUnavailTimeLink9 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 9. "
+        ::= { pmVgwV5PrMCurrentEntry 25 }
+
+   pmVgwV5PrMCurrentUnavailTimeLink10 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 10. "
+        ::= { pmVgwV5PrMCurrentEntry 26}
+
+   pmVgwV5PrMCurrentUnavailTimeLink11 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 11. "
+        ::= { pmVgwV5PrMCurrentEntry 27 }
+
+   pmVgwV5PrMCurrentUnavailTimeLink12 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 12. "
+        ::= { pmVgwV5PrMCurrentEntry 28 }
+
+   pmVgwV5PrMCurrentUnavailTimeLink13 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 13. "
+        ::= { pmVgwV5PrMCurrentEntry 29 }
+
+   pmVgwV5PrMCurrentUnavailTimeLink14 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 14. "
+        ::= { pmVgwV5PrMCurrentEntry 30 }
+
+   pmVgwV5PrMCurrentUnavailTimeLink15 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 15. "
+        ::= { pmVgwV5PrMCurrentEntry 31 }
+
+   pmVgwV5PrMCurrentUnavailTimeLink16 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 16. "
+        ::= { pmVgwV5PrMCurrentEntry 32 }
+
+     pmVgwV5PrMCurrentFramesInCCH1 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 1. "
+        ::= { pmVgwV5PrMCurrentEntry 33 }
+	
+     pmVgwV5PrMCurrentFramesInCCH2 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 2. "
+        ::= { pmVgwV5PrMCurrentEntry 34 }
+
+     pmVgwV5PrMCurrentFramesInCCH3 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 3. "
+        ::= { pmVgwV5PrMCurrentEntry 35 }
+
+     pmVgwV5PrMCurrentFramesInCCH4 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 4. "
+        ::= { pmVgwV5PrMCurrentEntry 36 }
+
+     pmVgwV5PrMCurrentFramesInCCH5 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 5. "
+        ::= { pmVgwV5PrMCurrentEntry 37 }
+
+     pmVgwV5PrMCurrentFramesInCCH6 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 6. "
+        ::= { pmVgwV5PrMCurrentEntry 38 }
+
+     pmVgwV5PrMCurrentFramesInCCH7 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 7. "
+        ::= { pmVgwV5PrMCurrentEntry 39 }
+
+     pmVgwV5PrMCurrentFramesInCCH8 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 8. "
+        ::= { pmVgwV5PrMCurrentEntry 40 }
+
+     pmVgwV5PrMCurrentFramesInCCH9 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 9. "
+        ::= { pmVgwV5PrMCurrentEntry 41 }
+
+     pmVgwV5PrMCurrentFramesInCCH10 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 10. "
+        ::= { pmVgwV5PrMCurrentEntry 42 }
+
+     pmVgwV5PrMCurrentFramesInCCH11 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 11. "
+        ::= { pmVgwV5PrMCurrentEntry 43 }
+
+     pmVgwV5PrMCurrentFramesInCCH12 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 12. "
+        ::= { pmVgwV5PrMCurrentEntry 44 }
+
+     pmVgwV5PrMCurrentFramesInCCH13 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 13. "
+        ::= { pmVgwV5PrMCurrentEntry 45 }
+
+     pmVgwV5PrMCurrentFramesInCCH14 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 14. "
+        ::= { pmVgwV5PrMCurrentEntry 46 }
+
+     pmVgwV5PrMCurrentFramesInCCH15 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 15. "
+        ::= { pmVgwV5PrMCurrentEntry 47 }
+
+     pmVgwV5PrMCurrentFramesInCCH16 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 16. "
+        ::= { pmVgwV5PrMCurrentEntry 48 }
+
+     pmVgwV5PrMCurrentFramesInCCH17 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 17. "
+        ::= { pmVgwV5PrMCurrentEntry 49 }
+
+     pmVgwV5PrMCurrentFramesInCCH18 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 18. "
+        ::= { pmVgwV5PrMCurrentEntry 50 }
+
+     pmVgwV5PrMCurrentFramesInCCH19 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 19. "
+        ::= { pmVgwV5PrMCurrentEntry 51 }
+
+     pmVgwV5PrMCurrentFramesInCCH20 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 20. "
+        ::= { pmVgwV5PrMCurrentEntry 52 }
+
+     pmVgwV5PrMCurrentFramesInCCH21 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 21. "
+        ::= { pmVgwV5PrMCurrentEntry 53 }
+
+     pmVgwV5PrMCurrentFramesInCCH22 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 22. "
+        ::= { pmVgwV5PrMCurrentEntry 54 }
+
+     pmVgwV5PrMCurrentFramesInCCH23 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 23. "
+        ::= { pmVgwV5PrMCurrentEntry 55 }
+
+     pmVgwV5PrMCurrentFramesInCCH24 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 24. "
+        ::= { pmVgwV5PrMCurrentEntry 56 }
+
+     pmVgwV5PrMCurrentFramesInCCH25 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 25. "
+        ::= { pmVgwV5PrMCurrentEntry 57 }
+
+     pmVgwV5PrMCurrentFramesInCCH26 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 26. "
+        ::= { pmVgwV5PrMCurrentEntry 58 }
+
+     pmVgwV5PrMCurrentFramesInCCH27 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 27. "
+        ::= { pmVgwV5PrMCurrentEntry 59 }
+
+     pmVgwV5PrMCurrentFramesInCCH28 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 28. "
+        ::= { pmVgwV5PrMCurrentEntry 60 }
+
+     pmVgwV5PrMCurrentFramesInCCH29 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 29. "
+        ::= { pmVgwV5PrMCurrentEntry 61 }
+
+     pmVgwV5PrMCurrentFramesInCCH30 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 30. "
+        ::= { pmVgwV5PrMCurrentEntry 62 }
+
+     pmVgwV5PrMCurrentFramesInCCH31 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 31. "
+        ::= { pmVgwV5PrMCurrentEntry 63 }
+
+     pmVgwV5PrMCurrentFramesInCCH32 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 32. "
+        ::= { pmVgwV5PrMCurrentEntry 64 }
+
+     pmVgwV5PrMCurrentFramesInCCH33 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 33. "
+        ::= { pmVgwV5PrMCurrentEntry 65 }
+
+     pmVgwV5PrMCurrentFramesInCCH34 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 34. "
+        ::= { pmVgwV5PrMCurrentEntry 66 }
+
+     pmVgwV5PrMCurrentFramesInCCH35 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 35. "
+        ::= { pmVgwV5PrMCurrentEntry 67 }
+
+     pmVgwV5PrMCurrentFramesInCCH36 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 36. "
+        ::= { pmVgwV5PrMCurrentEntry 68 }
+
+     pmVgwV5PrMCurrentFramesInCCH37 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 37. "
+        ::= { pmVgwV5PrMCurrentEntry 69 }
+
+     pmVgwV5PrMCurrentFramesInCCH38 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 38. "
+        ::= { pmVgwV5PrMCurrentEntry 70 }
+
+     pmVgwV5PrMCurrentFramesInCCH39 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 39. "
+        ::= { pmVgwV5PrMCurrentEntry 71 }
+
+     pmVgwV5PrMCurrentFramesInCCH40 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 40. "
+        ::= { pmVgwV5PrMCurrentEntry 72 }
+
+     pmVgwV5PrMCurrentFramesInCCH41 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 41. "
+        ::= { pmVgwV5PrMCurrentEntry 73 }
+
+     pmVgwV5PrMCurrentFramesInCCH42 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 42. "
+        ::= { pmVgwV5PrMCurrentEntry 74 }
+
+     pmVgwV5PrMCurrentFramesInCCH43 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 43. "
+        ::= { pmVgwV5PrMCurrentEntry 75 }
+
+     pmVgwV5PrMCurrentFramesInCCH44 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 44. "
+        ::= { pmVgwV5PrMCurrentEntry 76 }
+
+     pmVgwV5PrMCurrentFramesInCCH45 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 45. "
+        ::= { pmVgwV5PrMCurrentEntry 77 }
+
+     pmVgwV5PrMCurrentFramesInCCH46 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 46. "
+        ::= { pmVgwV5PrMCurrentEntry 78 }
+
+     pmVgwV5PrMCurrentFramesInCCH47 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 47. "
+        ::= { pmVgwV5PrMCurrentEntry 79 }
+
+     pmVgwV5PrMCurrentFramesInCCH48 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 48. "
+        ::= { pmVgwV5PrMCurrentEntry 80 }
+
+     pmVgwV5PrMCurrentFramesOutCCH1 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 1. "
+        ::= { pmVgwV5PrMCurrentEntry 81 }
+	
+     pmVgwV5PrMCurrentFramesOutCCH2 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 2. "
+        ::= { pmVgwV5PrMCurrentEntry 82 }
+
+     pmVgwV5PrMCurrentFramesOutCCH3 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 3. "
+        ::= { pmVgwV5PrMCurrentEntry 83 }
+
+     pmVgwV5PrMCurrentFramesOutCCH4 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 4. "
+        ::= { pmVgwV5PrMCurrentEntry 84 }
+
+     pmVgwV5PrMCurrentFramesOutCCH5 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 5. "
+        ::= { pmVgwV5PrMCurrentEntry 85 }
+
+     pmVgwV5PrMCurrentFramesOutCCH6 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 6. "
+        ::= { pmVgwV5PrMCurrentEntry 86 }
+
+     pmVgwV5PrMCurrentFramesOutCCH7 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 7. "
+        ::= { pmVgwV5PrMCurrentEntry 87 }
+
+     pmVgwV5PrMCurrentFramesOutCCH8 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 8. "
+        ::= { pmVgwV5PrMCurrentEntry 88 }
+
+     pmVgwV5PrMCurrentFramesOutCCH9 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 9. "
+        ::= { pmVgwV5PrMCurrentEntry 89 }
+
+     pmVgwV5PrMCurrentFramesOutCCH10 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 10. "
+        ::= { pmVgwV5PrMCurrentEntry 90 }
+
+     pmVgwV5PrMCurrentFramesOutCCH11 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 11. "
+        ::= { pmVgwV5PrMCurrentEntry 91 }
+
+     pmVgwV5PrMCurrentFramesOutCCH12 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 12. "
+        ::= { pmVgwV5PrMCurrentEntry 92 }
+
+     pmVgwV5PrMCurrentFramesOutCCH13 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 13. "
+        ::= { pmVgwV5PrMCurrentEntry 93 }
+
+     pmVgwV5PrMCurrentFramesOutCCH14 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 14. "
+        ::= { pmVgwV5PrMCurrentEntry 94 }
+
+     pmVgwV5PrMCurrentFramesOutCCH15 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 15. "
+        ::= { pmVgwV5PrMCurrentEntry 95 }
+
+     pmVgwV5PrMCurrentFramesOutCCH16 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 16. "
+        ::= { pmVgwV5PrMCurrentEntry 96 }
+
+     pmVgwV5PrMCurrentFramesOutCCH17 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 17. "
+        ::= { pmVgwV5PrMCurrentEntry 97 }
+
+     pmVgwV5PrMCurrentFramesOutCCH18 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 18. "
+        ::= { pmVgwV5PrMCurrentEntry 98 }
+
+     pmVgwV5PrMCurrentFramesOutCCH19 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 19. "
+        ::= { pmVgwV5PrMCurrentEntry 99 }
+
+     pmVgwV5PrMCurrentFramesOutCCH20 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 20. "
+        ::= { pmVgwV5PrMCurrentEntry 100 }
+
+     pmVgwV5PrMCurrentFramesOutCCH21 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 21. "
+        ::= { pmVgwV5PrMCurrentEntry 101 }
+
+     pmVgwV5PrMCurrentFramesOutCCH22 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 22. "
+        ::= { pmVgwV5PrMCurrentEntry 102 }
+
+     pmVgwV5PrMCurrentFramesOutCCH23 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 23. "
+        ::= { pmVgwV5PrMCurrentEntry 103 }
+
+     pmVgwV5PrMCurrentFramesOutCCH24 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 24. "
+        ::= { pmVgwV5PrMCurrentEntry 104 }
+
+     pmVgwV5PrMCurrentFramesOutCCH25 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 25. "
+        ::= { pmVgwV5PrMCurrentEntry 105 }
+
+     pmVgwV5PrMCurrentFramesOutCCH26 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 26. "
+        ::= { pmVgwV5PrMCurrentEntry 106 }
+
+     pmVgwV5PrMCurrentFramesOutCCH27 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 27. "
+        ::= { pmVgwV5PrMCurrentEntry 107 }
+
+     pmVgwV5PrMCurrentFramesOutCCH28 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 28. "
+        ::= { pmVgwV5PrMCurrentEntry 108 }
+
+     pmVgwV5PrMCurrentFramesOutCCH29 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 29. "
+         ::= { pmVgwV5PrMCurrentEntry 109 }
+
+     pmVgwV5PrMCurrentFramesOutCCH30 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 30. "
+         ::= { pmVgwV5PrMCurrentEntry 110 }
+
+     pmVgwV5PrMCurrentFramesOutCCH31 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 31. "
+         ::= { pmVgwV5PrMCurrentEntry 111 }
+
+     pmVgwV5PrMCurrentFramesOutCCH32 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 32. "
+         ::= { pmVgwV5PrMCurrentEntry 112 }
+
+     pmVgwV5PrMCurrentFramesOutCCH33 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 33. "
+         ::= { pmVgwV5PrMCurrentEntry 113 }
+
+     pmVgwV5PrMCurrentFramesOutCCH34 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 34. "
+         ::= { pmVgwV5PrMCurrentEntry 114 }
+
+     pmVgwV5PrMCurrentFramesOutCCH35 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 35. "
+         ::= { pmVgwV5PrMCurrentEntry 115 }
+
+     pmVgwV5PrMCurrentFramesOutCCH36 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 36. "
+         ::= { pmVgwV5PrMCurrentEntry 116 }
+
+     pmVgwV5PrMCurrentFramesOutCCH37 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 37. "
+         ::= { pmVgwV5PrMCurrentEntry 117 }
+
+     pmVgwV5PrMCurrentFramesOutCCH38 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 38. "
+         ::= { pmVgwV5PrMCurrentEntry 118 }
+
+     pmVgwV5PrMCurrentFramesOutCCH39 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 39. "
+        ::= { pmVgwV5PrMCurrentEntry 119 }
+
+     pmVgwV5PrMCurrentFramesOutCCH40 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 40. "
+        ::= { pmVgwV5PrMCurrentEntry 120 }
+
+     pmVgwV5PrMCurrentFramesOutCCH41 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 41. "
+        ::= { pmVgwV5PrMCurrentEntry 121 }
+
+     pmVgwV5PrMCurrentFramesOutCCH42 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 42. "
+        ::= { pmVgwV5PrMCurrentEntry 122 }
+
+     pmVgwV5PrMCurrentFramesOutCCH43 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 43. "
+        ::= { pmVgwV5PrMCurrentEntry 123 }
+
+     pmVgwV5PrMCurrentFramesOutCCH44 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 44. "
+        ::= { pmVgwV5PrMCurrentEntry 124 }
+
+     pmVgwV5PrMCurrentFramesOutCCH45 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 45. "
+        ::= { pmVgwV5PrMCurrentEntry 125 }
+
+     pmVgwV5PrMCurrentFramesOutCCH46 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 46. "
+        ::= { pmVgwV5PrMCurrentEntry 126 }
+
+     pmVgwV5PrMCurrentFramesOutCCH47 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 47. "
+        ::= { pmVgwV5PrMCurrentEntry 127 }
+
+     pmVgwV5PrMCurrentFramesOutCCH48 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 48. "
+        ::= { pmVgwV5PrMCurrentEntry 128 }
+
+     pmVgwV5PrMCurrentDataLinkErrorCtrl OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of detected data link failures (layer 2). "
+        ::= { pmVgwV5PrMCurrentEntry 129 }
+	
+     pmVgwV5PrMCurrentDataLinkErrorBCC OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of detected data link failures (layer 2). "
+        ::= { pmVgwV5PrMCurrentEntry 130 }
+
+     pmVgwV5PrMCurrentDataLinkErrorPSTN OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of detected data link failures (layer 2). "
+        ::= { pmVgwV5PrMCurrentEntry 131 }
+
+     pmVgwV5PrMCurrentDataLinkErrorLink OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of detected data link failures (layer 2). "
+        ::= { pmVgwV5PrMCurrentEntry 132 }
+
+     pmVgwV5PrMCurrentDataLinkErrorProt1 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of detected data link failures (layer 2). "
+        ::= { pmVgwV5PrMCurrentEntry 133 }
+
+     pmVgwV5PrMCurrentDataLinkErrorProt2 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of detected data link failures (layer 2). "
+        ::= { pmVgwV5PrMCurrentEntry 134 }
+
+    pmVgwV5PrMCurrentWrongL3AdrIn OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received frames with wrong layer 3 address. "
+        ::= { pmVgwV5PrMCurrentEntry 135 }
+	
+     pmVgwV5PrMCurrentUnblockedSubsc OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Minimum number of unblocked subscribers. "
+        ::= { pmVgwV5PrMCurrentEntry 136 }
+
+
+     -- --------------------------------------------------------------
+     --    PrM  V 5  H i s t o r y  D a t a  Table
+     -- --------------------------------------------------------------
+
+     pmVgwV5PrMHistoryTable OBJECT-TYPE
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        SEQUENCE OF PmVgwV5PrMHistoryEntry
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+             " This table contains the entries for Protocol Monitoring
+               history at the different V5 interfaces. It contains
+               results that are overtaken from the pmVgwV5PrMCurrentTable
+               at the end of a 15 minute /day interval . "
+        --DEFAULT next-function-async     fsnPmVgwPrMV5hEntryNext
+        --DEFAULT get-function-async      fsnPmVgwPrMV5hEntryGet
+        ::= { pmVgwProtocolMonitoring 5 }
+
+     pmVgwV5PrMHistoryEntry OBJECT-TYPE
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwV5PrMHistoryEntry
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+             " An entry describing the History Data Table
+               for Protocol Monitoring at V5 interfaces. "
+        INDEX { vgwV5IfInterfaceIndex,
+                pmVgwV5PrMHistoryIntervalType,
+                pmVgwV5PrMHistoryHistEntryNr }
+        ::= { pmVgwV5PrMHistoryTable 1 }
+
+     PmVgwV5PrMHistoryEntry ::=
+        SEQUENCE {
+	   pmVgwV5PrMHistoryIntervalType           PmVgwIntervalType,
+           pmVgwV5PrMHistoryHistEntryNr                 INTEGER,
+           pmVgwV5PrMHistorySuspectFlag            PmVgwSuspectType,
+           pmVgwV5PrMHistoryPeriodEndTime               INTEGER,
+           pmVgwV5PrMHistorySuccessAlloc                Counter,
+           pmVgwV5PrMHistorySuccessDealloc              Counter,
+           pmVgwV5PrMHistoryRejectAlloc                 Counter,
+           pmVgwV5PrMHistoryRejectDealloc               Counter,
+           pmVgwV5PrMHistoryMaxAllocTsTotal             Counter,
+           pmVgwV5PrMHistoryMaxAllocTsPerc              Counter,
+           pmVgwV5PrMHistoryMinAvailTs                  Counter,
+           pmVgwV5PrMHistoryMaxAvailTs                  Counter,
+           pmVgwV5PrMHistoryOverloadTimeAllocTs         Counter,
+           pmVgwV5PrMHistoryUnavailTimeIf               Counter,
+           pmVgwV5PrMHistoryUnavailTimeLink1            Counter,
+           pmVgwV5PrMHistoryUnavailTimeLink2            Counter,
+           pmVgwV5PrMHistoryUnavailTimeLink3            Counter,
+           pmVgwV5PrMHistoryUnavailTimeLink4            Counter,
+           pmVgwV5PrMHistoryUnavailTimeLink5            Counter,
+           pmVgwV5PrMHistoryUnavailTimeLink6            Counter,
+           pmVgwV5PrMHistoryUnavailTimeLink7            Counter,
+           pmVgwV5PrMHistoryUnavailTimeLink8            Counter,
+           pmVgwV5PrMHistoryUnavailTimeLink9            Counter,
+           pmVgwV5PrMHistoryUnavailTimeLink10           Counter,
+           pmVgwV5PrMHistoryUnavailTimeLink11           Counter,
+           pmVgwV5PrMHistoryUnavailTimeLink12           Counter,
+           pmVgwV5PrMHistoryUnavailTimeLink13           Counter,
+           pmVgwV5PrMHistoryUnavailTimeLink14           Counter,
+           pmVgwV5PrMHistoryUnavailTimeLink15           Counter,
+           pmVgwV5PrMHistoryUnavailTimeLink16           Counter,
+           pmVgwV5PrMHistoryFramesInCCH1                Counter,
+           pmVgwV5PrMHistoryFramesInCCH2                Counter,
+           pmVgwV5PrMHistoryFramesInCCH3                Counter,
+           pmVgwV5PrMHistoryFramesInCCH4                Counter,
+           pmVgwV5PrMHistoryFramesInCCH5                Counter,
+           pmVgwV5PrMHistoryFramesInCCH6                Counter,
+           pmVgwV5PrMHistoryFramesInCCH7                Counter,
+           pmVgwV5PrMHistoryFramesInCCH8                Counter,
+           pmVgwV5PrMHistoryFramesInCCH9                Counter,
+           pmVgwV5PrMHistoryFramesInCCH10               Counter,
+           pmVgwV5PrMHistoryFramesInCCH11               Counter,
+           pmVgwV5PrMHistoryFramesInCCH12               Counter,
+           pmVgwV5PrMHistoryFramesInCCH13               Counter,
+           pmVgwV5PrMHistoryFramesInCCH14               Counter,
+           pmVgwV5PrMHistoryFramesInCCH15               Counter,
+           pmVgwV5PrMHistoryFramesInCCH16               Counter,
+           pmVgwV5PrMHistoryFramesInCCH17               Counter,
+           pmVgwV5PrMHistoryFramesInCCH18               Counter,
+           pmVgwV5PrMHistoryFramesInCCH19               Counter,
+           pmVgwV5PrMHistoryFramesInCCH20               Counter,
+           pmVgwV5PrMHistoryFramesInCCH21               Counter,
+           pmVgwV5PrMHistoryFramesInCCH22               Counter,
+           pmVgwV5PrMHistoryFramesInCCH23               Counter,
+           pmVgwV5PrMHistoryFramesInCCH24               Counter,
+           pmVgwV5PrMHistoryFramesInCCH25               Counter,
+           pmVgwV5PrMHistoryFramesInCCH26               Counter,
+           pmVgwV5PrMHistoryFramesInCCH27               Counter,
+           pmVgwV5PrMHistoryFramesInCCH28               Counter,
+           pmVgwV5PrMHistoryFramesInCCH29               Counter,
+           pmVgwV5PrMHistoryFramesInCCH30               Counter,
+           pmVgwV5PrMHistoryFramesInCCH31               Counter,
+           pmVgwV5PrMHistoryFramesInCCH32               Counter,
+           pmVgwV5PrMHistoryFramesInCCH33               Counter,
+           pmVgwV5PrMHistoryFramesInCCH34               Counter,
+           pmVgwV5PrMHistoryFramesInCCH35               Counter,
+           pmVgwV5PrMHistoryFramesInCCH36               Counter,
+           pmVgwV5PrMHistoryFramesInCCH37               Counter,
+           pmVgwV5PrMHistoryFramesInCCH38               Counter,
+           pmVgwV5PrMHistoryFramesInCCH39               Counter,
+           pmVgwV5PrMHistoryFramesInCCH40               Counter,
+           pmVgwV5PrMHistoryFramesInCCH41               Counter,
+           pmVgwV5PrMHistoryFramesInCCH42               Counter,
+           pmVgwV5PrMHistoryFramesInCCH43               Counter,
+           pmVgwV5PrMHistoryFramesInCCH44               Counter,
+           pmVgwV5PrMHistoryFramesInCCH45               Counter,
+           pmVgwV5PrMHistoryFramesInCCH46               Counter,
+           pmVgwV5PrMHistoryFramesInCCH47               Counter,
+           pmVgwV5PrMHistoryFramesInCCH48               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH1                Counter,
+           pmVgwV5PrMHistoryFramesOutCCH2                Counter,
+           pmVgwV5PrMHistoryFramesOutCCH3                Counter,
+           pmVgwV5PrMHistoryFramesOutCCH4                Counter,
+           pmVgwV5PrMHistoryFramesOutCCH5                Counter,
+           pmVgwV5PrMHistoryFramesOutCCH6                Counter,
+           pmVgwV5PrMHistoryFramesOutCCH7                Counter,
+           pmVgwV5PrMHistoryFramesOutCCH8                Counter,
+           pmVgwV5PrMHistoryFramesOutCCH9                Counter,
+           pmVgwV5PrMHistoryFramesOutCCH10               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH11               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH12               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH13               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH14               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH15               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH16               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH17               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH18               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH19               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH20               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH21               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH22               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH23               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH24               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH25               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH26               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH27               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH28               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH29               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH30               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH31               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH32               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH33               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH34               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH35               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH36               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH37               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH38               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH39               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH40               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH41               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH42               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH43               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH44               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH45               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH46               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH47               Counter,
+           pmVgwV5PrMHistoryFramesOutCCH48               Counter,
+           pmVgwV5PrMHistoryDataLinkErrorCtrl            Counter,
+           pmVgwV5PrMHistoryDataLinkErrorBCC             Counter,
+           pmVgwV5PrMHistoryDataLinkErrorPSTN            Counter,
+           pmVgwV5PrMHistoryDataLinkErrorLink            Counter,
+           pmVgwV5PrMHistoryDataLinkErrorProt1           Counter,
+           pmVgwV5PrMHistoryDataLinkErrorProt2           Counter,
+           pmVgwV5PrMHistoryWrongL3AdrIn                 Counter,
+           pmVgwV5PrMHistoryUnblockedSubsc               Counter
+		   }
+
+     pmVgwV5PrMHistoryIntervalType OBJECT-TYPE
+     -- info-VALUE:     min15(1), day(2)
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwIntervalType
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This attribute is used to select between the
+               15 minutes  or the day accumulation types. "
+        ::= { pmVgwV5PrMHistoryEntry 1 }
+
+     pmVgwV5PrMHistoryHistEntryNr OBJECT-TYPE
+     -- info-VALUE:     1..96
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        INTEGER (1..96)
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " Index to address a history entry.
+             Entry 1 is the most recent, entry 96 is 24 hours ago.
+             The range of values is between 1 and 
+	     pmVgwV5PrMCurrentHistEntrySize. " 
+        ::= { pmVgwV5PrMHistoryEntry 2 }
+
+     pmVgwV5PrMHistorySuspectFlag OBJECT-TYPE
+     -- info-VALUE:     reliable(1), suspect(2)
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        PmVgwSuspectType
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This read-only attribute will be set to indicate that
+               troubles arose during an interval and that the counter
+               values are suspect and incomplete. "
+        ::= { pmVgwV5PrMHistoryEntry 3 }
+
+     pmVgwV5PrMHistoryPeriodEndTime OBJECT-TYPE
+     -- info-VALUE:     0..2147483647
+     -- info-ROU:       GET  db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        INTEGER(0..2147483647)
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+             " This read-only attribute is a record of date/time at the
+               end of an interval . "
+        ::= { pmVgwV5PrMHistoryEntry 4 }
+
+     pmVgwV5PrMHistorySuccessAlloc OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of succesful allocations. "
+        ::= { pmVgwV5PrMHistoryEntry 7 }
+	
+     pmVgwV5PrMHistorySuccessDealloc OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of succesful de-allocations. "
+        ::= { pmVgwV5PrMHistoryEntry 8 }
+	
+     pmVgwV5PrMHistoryRejectAlloc OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of rejected allocations. "
+        ::= { pmVgwV5PrMHistoryEntry 9 }
+	
+     pmVgwV5PrMHistoryRejectDealloc OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of rejected de-allocations. "
+        ::= { pmVgwV5PrMHistoryEntry 10 }
+	
+     pmVgwV5PrMHistoryMaxAllocTsTotal OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Maximum number of allocated timeslots (total). "
+        ::= { pmVgwV5PrMHistoryEntry 11 }
+
+     pmVgwV5PrMHistoryMaxAllocTsPerc OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Maximum number of allocated timeslots (percentage). "
+        ::= { pmVgwV5PrMHistoryEntry 12 }
+
+     pmVgwV5PrMHistoryMinAvailTs  OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Minimum number of available timeslots. "
+        ::= { pmVgwV5PrMHistoryEntry 13 }
+
+     pmVgwV5PrMHistoryMaxAvailTs OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Maximum number of available timeslots. "
+        ::= { pmVgwV5PrMHistoryEntry 14 }
+
+     pmVgwV5PrMHistoryOverloadTimeAllocTs OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " The overload time of allocated timeslots.
+           The overlaod time is defined as the time when more
+           than 90 percent of timeslots are allocated. "
+        ::= { pmVgwV5PrMHistoryEntry 15 }
+
+     pmVgwV5PrMHistoryUnavailTimeIf OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of a V5 interface. "
+        ::= { pmVgwV5PrMHistoryEntry 16 }
+	
+    pmVgwV5PrMHistoryUnavailTimeLink1 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 1. "
+        ::= { pmVgwV5PrMHistoryEntry 17 }
+
+    pmVgwV5PrMHistoryUnavailTimeLink2 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 2. "
+        ::= { pmVgwV5PrMHistoryEntry 18 }
+
+    pmVgwV5PrMHistoryUnavailTimeLink3 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 3. "
+        ::= { pmVgwV5PrMHistoryEntry 19 }
+
+   pmVgwV5PrMHistoryUnavailTimeLink4 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 4. "
+        ::= { pmVgwV5PrMHistoryEntry 20}
+	
+   pmVgwV5PrMHistoryUnavailTimeLink5 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 5. "
+        ::= { pmVgwV5PrMHistoryEntry 21}
+	
+   pmVgwV5PrMHistoryUnavailTimeLink6 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 6. "
+        ::= { pmVgwV5PrMHistoryEntry 22}
+
+   pmVgwV5PrMHistoryUnavailTimeLink7 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 7. "
+        ::= { pmVgwV5PrMHistoryEntry 23}
+
+   pmVgwV5PrMHistoryUnavailTimeLink8 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 8. "
+        ::= { pmVgwV5PrMHistoryEntry 24}
+
+   pmVgwV5PrMHistoryUnavailTimeLink9 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 9. "
+        ::= { pmVgwV5PrMHistoryEntry 25 }
+
+   pmVgwV5PrMHistoryUnavailTimeLink10 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 10. "
+        ::= { pmVgwV5PrMHistoryEntry 26}
+
+   pmVgwV5PrMHistoryUnavailTimeLink11 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 11. "
+        ::= { pmVgwV5PrMHistoryEntry 27 }
+
+   pmVgwV5PrMHistoryUnavailTimeLink12 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 12. "
+        ::= { pmVgwV5PrMHistoryEntry 28 }
+
+   pmVgwV5PrMHistoryUnavailTimeLink13 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 13. "
+        ::= { pmVgwV5PrMHistoryEntry 29 }
+
+   pmVgwV5PrMHistoryUnavailTimeLink14 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 14. "
+        ::= { pmVgwV5PrMHistoryEntry 30 }
+
+   pmVgwV5PrMHistoryUnavailTimeLink15 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 15. "
+        ::= { pmVgwV5PrMHistoryEntry 31 }
+
+   pmVgwV5PrMHistoryUnavailTimeLink16 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Unavailable time of V5 link 16. "
+        ::= { pmVgwV5PrMHistoryEntry 32 }
+
+     pmVgwV5PrMHistoryFramesInCCH1 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 1. "
+        ::= { pmVgwV5PrMHistoryEntry 33 }
+	
+     pmVgwV5PrMHistoryFramesInCCH2 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 2. "
+        ::= { pmVgwV5PrMHistoryEntry 34 }
+
+     pmVgwV5PrMHistoryFramesInCCH3 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 3. "
+        ::= { pmVgwV5PrMHistoryEntry 35 }
+
+     pmVgwV5PrMHistoryFramesInCCH4 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 4. "
+        ::= { pmVgwV5PrMHistoryEntry 36 }
+
+     pmVgwV5PrMHistoryFramesInCCH5 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 5. "
+        ::= { pmVgwV5PrMHistoryEntry 37 }
+
+     pmVgwV5PrMHistoryFramesInCCH6 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 6. "
+        ::= { pmVgwV5PrMHistoryEntry 38 }
+
+     pmVgwV5PrMHistoryFramesInCCH7 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 7. "
+        ::= { pmVgwV5PrMHistoryEntry 39 }
+
+     pmVgwV5PrMHistoryFramesInCCH8 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 8. "
+        ::= { pmVgwV5PrMHistoryEntry 40 }
+
+     pmVgwV5PrMHistoryFramesInCCH9 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 9. "
+        ::= { pmVgwV5PrMHistoryEntry 41 }
+
+     pmVgwV5PrMHistoryFramesInCCH10 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 10. "
+        ::= { pmVgwV5PrMHistoryEntry 42 }
+
+     pmVgwV5PrMHistoryFramesInCCH11 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 11. "
+        ::= { pmVgwV5PrMHistoryEntry 43 }
+
+     pmVgwV5PrMHistoryFramesInCCH12 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 12. "
+        ::= { pmVgwV5PrMHistoryEntry 44 }
+
+     pmVgwV5PrMHistoryFramesInCCH13 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 13. "
+        ::= { pmVgwV5PrMHistoryEntry 45 }
+
+     pmVgwV5PrMHistoryFramesInCCH14 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 14. "
+        ::= { pmVgwV5PrMHistoryEntry 46 }
+
+     pmVgwV5PrMHistoryFramesInCCH15 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 15. "
+        ::= { pmVgwV5PrMHistoryEntry 47 }
+
+     pmVgwV5PrMHistoryFramesInCCH16 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 16. "
+        ::= { pmVgwV5PrMHistoryEntry 48 }
+
+     pmVgwV5PrMHistoryFramesInCCH17 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 17. "
+        ::= { pmVgwV5PrMHistoryEntry 49 }
+
+     pmVgwV5PrMHistoryFramesInCCH18 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 18. "
+        ::= { pmVgwV5PrMHistoryEntry 50 }
+
+     pmVgwV5PrMHistoryFramesInCCH19 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 19. "
+        ::= { pmVgwV5PrMHistoryEntry 51 }
+
+     pmVgwV5PrMHistoryFramesInCCH20 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 20. "
+        ::= { pmVgwV5PrMHistoryEntry 52 }
+
+     pmVgwV5PrMHistoryFramesInCCH21 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 21. "
+        ::= { pmVgwV5PrMHistoryEntry 53 }
+
+     pmVgwV5PrMHistoryFramesInCCH22 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 22. "
+        ::= { pmVgwV5PrMHistoryEntry 54 }
+
+     pmVgwV5PrMHistoryFramesInCCH23 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 23. "
+        ::= { pmVgwV5PrMHistoryEntry 55 }
+
+     pmVgwV5PrMHistoryFramesInCCH24 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 24. "
+        ::= { pmVgwV5PrMHistoryEntry 56 }
+
+     pmVgwV5PrMHistoryFramesInCCH25 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 25. "
+        ::= { pmVgwV5PrMHistoryEntry 57 }
+
+     pmVgwV5PrMHistoryFramesInCCH26 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 26. "
+        ::= { pmVgwV5PrMHistoryEntry 58 }
+
+     pmVgwV5PrMHistoryFramesInCCH27 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 27. "
+        ::= { pmVgwV5PrMHistoryEntry 59 }
+
+     pmVgwV5PrMHistoryFramesInCCH28 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 28. "
+        ::= { pmVgwV5PrMHistoryEntry 60 }
+
+     pmVgwV5PrMHistoryFramesInCCH29 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 29. "
+        ::= { pmVgwV5PrMHistoryEntry 61 }
+
+     pmVgwV5PrMHistoryFramesInCCH30 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 30. "
+        ::= { pmVgwV5PrMHistoryEntry 62 }
+
+     pmVgwV5PrMHistoryFramesInCCH31 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 31. "
+        ::= { pmVgwV5PrMHistoryEntry 63 }
+
+     pmVgwV5PrMHistoryFramesInCCH32 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 32. "
+        ::= { pmVgwV5PrMHistoryEntry 64 }
+
+     pmVgwV5PrMHistoryFramesInCCH33 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 33. "
+        ::= { pmVgwV5PrMHistoryEntry 65 }
+
+     pmVgwV5PrMHistoryFramesInCCH34 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 34. "
+        ::= { pmVgwV5PrMHistoryEntry 66 }
+
+     pmVgwV5PrMHistoryFramesInCCH35 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 35. "
+        ::= { pmVgwV5PrMHistoryEntry 67 }
+
+     pmVgwV5PrMHistoryFramesInCCH36 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 36. "
+        ::= { pmVgwV5PrMHistoryEntry 68 }
+
+     pmVgwV5PrMHistoryFramesInCCH37 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 37. "
+        ::= { pmVgwV5PrMHistoryEntry 69 }
+
+     pmVgwV5PrMHistoryFramesInCCH38 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 38. "
+        ::= { pmVgwV5PrMHistoryEntry 70 }
+
+     pmVgwV5PrMHistoryFramesInCCH39 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 39. "
+        ::= { pmVgwV5PrMHistoryEntry 71 }
+
+     pmVgwV5PrMHistoryFramesInCCH40 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 40. "
+        ::= { pmVgwV5PrMHistoryEntry 72 }
+
+     pmVgwV5PrMHistoryFramesInCCH41 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 41. "
+        ::= { pmVgwV5PrMHistoryEntry 73 }
+
+     pmVgwV5PrMHistoryFramesInCCH42 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 42. "
+        ::= { pmVgwV5PrMHistoryEntry 74 }
+
+     pmVgwV5PrMHistoryFramesInCCH43 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 43. "
+        ::= { pmVgwV5PrMHistoryEntry 75 }
+
+     pmVgwV5PrMHistoryFramesInCCH44 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 44. "
+        ::= { pmVgwV5PrMHistoryEntry 76 }
+
+     pmVgwV5PrMHistoryFramesInCCH45 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 45. "
+        ::= { pmVgwV5PrMHistoryEntry 77 }
+
+     pmVgwV5PrMHistoryFramesInCCH46 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 46. "
+        ::= { pmVgwV5PrMHistoryEntry 78 }
+
+     pmVgwV5PrMHistoryFramesInCCH47 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 47. "
+        ::= { pmVgwV5PrMHistoryEntry 79 }
+
+     pmVgwV5PrMHistoryFramesInCCH48 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received HDLC frames (layer 2) on c-channel 48. "
+        ::= { pmVgwV5PrMHistoryEntry 80 }
+
+     pmVgwV5PrMHistoryFramesOutCCH1 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 1. "
+        ::= { pmVgwV5PrMHistoryEntry 81 }
+	
+     pmVgwV5PrMHistoryFramesOutCCH2 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 2. "
+        ::= { pmVgwV5PrMHistoryEntry 82 }
+
+     pmVgwV5PrMHistoryFramesOutCCH3 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 3. "
+        ::= { pmVgwV5PrMHistoryEntry 83 }
+
+     pmVgwV5PrMHistoryFramesOutCCH4 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 4. "
+        ::= { pmVgwV5PrMHistoryEntry 84 }
+
+     pmVgwV5PrMHistoryFramesOutCCH5 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 5. "
+        ::= { pmVgwV5PrMHistoryEntry 85 }
+
+     pmVgwV5PrMHistoryFramesOutCCH6 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 6. "
+        ::= { pmVgwV5PrMHistoryEntry 86 }
+
+     pmVgwV5PrMHistoryFramesOutCCH7 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 7. "
+        ::= { pmVgwV5PrMHistoryEntry 87 }
+
+     pmVgwV5PrMHistoryFramesOutCCH8 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 8. "
+        ::= { pmVgwV5PrMHistoryEntry 88 }
+
+     pmVgwV5PrMHistoryFramesOutCCH9 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 9. "
+        ::= { pmVgwV5PrMHistoryEntry 89 }
+
+     pmVgwV5PrMHistoryFramesOutCCH10 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 10. "
+        ::= { pmVgwV5PrMHistoryEntry 90 }
+
+     pmVgwV5PrMHistoryFramesOutCCH11 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 11. "
+        ::= { pmVgwV5PrMHistoryEntry 91 }
+
+     pmVgwV5PrMHistoryFramesOutCCH12 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 12. "
+        ::= { pmVgwV5PrMHistoryEntry 92 }
+
+     pmVgwV5PrMHistoryFramesOutCCH13 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 13. "
+        ::= { pmVgwV5PrMHistoryEntry 93 }
+
+     pmVgwV5PrMHistoryFramesOutCCH14 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 14. "
+        ::= { pmVgwV5PrMHistoryEntry 94 }
+
+     pmVgwV5PrMHistoryFramesOutCCH15 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 15. "
+        ::= { pmVgwV5PrMHistoryEntry 95 }
+
+     pmVgwV5PrMHistoryFramesOutCCH16 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 16. "
+        ::= { pmVgwV5PrMHistoryEntry 96 }
+
+     pmVgwV5PrMHistoryFramesOutCCH17 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 17. "
+        ::= { pmVgwV5PrMHistoryEntry 97 }
+
+     pmVgwV5PrMHistoryFramesOutCCH18 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 18. "
+        ::= { pmVgwV5PrMHistoryEntry 98 }
+
+     pmVgwV5PrMHistoryFramesOutCCH19 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 19. "
+        ::= { pmVgwV5PrMHistoryEntry 99 }
+
+     pmVgwV5PrMHistoryFramesOutCCH20 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 20. "
+        ::= { pmVgwV5PrMHistoryEntry 100 }
+
+     pmVgwV5PrMHistoryFramesOutCCH21 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 21. "
+        ::= { pmVgwV5PrMHistoryEntry 101 }
+
+     pmVgwV5PrMHistoryFramesOutCCH22 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 22. "
+        ::= { pmVgwV5PrMHistoryEntry 102 }
+
+     pmVgwV5PrMHistoryFramesOutCCH23 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 23. "
+        ::= { pmVgwV5PrMHistoryEntry 103 }
+
+     pmVgwV5PrMHistoryFramesOutCCH24 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 24. "
+        ::= { pmVgwV5PrMHistoryEntry 104 }
+
+     pmVgwV5PrMHistoryFramesOutCCH25 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 25. "
+        ::= { pmVgwV5PrMHistoryEntry 105 }
+
+     pmVgwV5PrMHistoryFramesOutCCH26 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 26. "
+        ::= { pmVgwV5PrMHistoryEntry 106 }
+
+     pmVgwV5PrMHistoryFramesOutCCH27 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 27. "
+        ::= { pmVgwV5PrMHistoryEntry 107 }
+
+     pmVgwV5PrMHistoryFramesOutCCH28 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 28. "
+        ::= { pmVgwV5PrMHistoryEntry 108 }
+
+     pmVgwV5PrMHistoryFramesOutCCH29 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 29. "
+         ::= { pmVgwV5PrMHistoryEntry 109 }
+
+     pmVgwV5PrMHistoryFramesOutCCH30 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 30. "
+         ::= { pmVgwV5PrMHistoryEntry 110 }
+
+     pmVgwV5PrMHistoryFramesOutCCH31 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 31. "
+         ::= { pmVgwV5PrMHistoryEntry 111 }
+
+     pmVgwV5PrMHistoryFramesOutCCH32 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 32. "
+         ::= { pmVgwV5PrMHistoryEntry 112 }
+
+     pmVgwV5PrMHistoryFramesOutCCH33 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 33. "
+         ::= { pmVgwV5PrMHistoryEntry 113 }
+
+     pmVgwV5PrMHistoryFramesOutCCH34 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 34. "
+         ::= { pmVgwV5PrMHistoryEntry 114 }
+
+     pmVgwV5PrMHistoryFramesOutCCH35 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 35. "
+         ::= { pmVgwV5PrMHistoryEntry 115 }
+
+     pmVgwV5PrMHistoryFramesOutCCH36 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 36. "
+         ::= { pmVgwV5PrMHistoryEntry 116 }
+
+     pmVgwV5PrMHistoryFramesOutCCH37 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 37. "
+         ::= { pmVgwV5PrMHistoryEntry 117 }
+
+     pmVgwV5PrMHistoryFramesOutCCH38 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 38. "
+         ::= { pmVgwV5PrMHistoryEntry 118 }
+
+     pmVgwV5PrMHistoryFramesOutCCH39 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 39. "
+        ::= { pmVgwV5PrMHistoryEntry 119 }
+
+     pmVgwV5PrMHistoryFramesOutCCH40 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 40. "
+        ::= { pmVgwV5PrMHistoryEntry 120 }
+
+     pmVgwV5PrMHistoryFramesOutCCH41 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 41. "
+        ::= { pmVgwV5PrMHistoryEntry 121 }
+
+     pmVgwV5PrMHistoryFramesOutCCH42 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 42. "
+        ::= { pmVgwV5PrMHistoryEntry 122 }
+
+     pmVgwV5PrMHistoryFramesOutCCH43 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 43. "
+        ::= { pmVgwV5PrMHistoryEntry 123 }
+
+     pmVgwV5PrMHistoryFramesOutCCH44 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 44. "
+        ::= { pmVgwV5PrMHistoryEntry 124 }
+
+     pmVgwV5PrMHistoryFramesOutCCH45 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 45. "
+        ::= { pmVgwV5PrMHistoryEntry 125 }
+
+     pmVgwV5PrMHistoryFramesOutCCH46 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 46. "
+        ::= { pmVgwV5PrMHistoryEntry 126 }
+
+     pmVgwV5PrMHistoryFramesOutCCH47 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 47. "
+        ::= { pmVgwV5PrMHistoryEntry 127 }
+
+     pmVgwV5PrMHistoryFramesOutCCH48 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of transmitted HDLC frames (layer 2) on c-channel 48. "
+        ::= { pmVgwV5PrMHistoryEntry 128 }
+
+     pmVgwV5PrMHistoryDataLinkErrorCtrl OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of detected data link failures (layer 2). "
+        ::= { pmVgwV5PrMHistoryEntry 129 }
+	
+     pmVgwV5PrMHistoryDataLinkErrorBCC OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of detected data link failures (layer 2). "
+        ::= { pmVgwV5PrMHistoryEntry 130 }
+
+     pmVgwV5PrMHistoryDataLinkErrorPSTN OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of detected data link failures (layer 2). "
+        ::= { pmVgwV5PrMHistoryEntry 131 }
+
+     pmVgwV5PrMHistoryDataLinkErrorLink OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of detected data link failures (layer 2). "
+        ::= { pmVgwV5PrMHistoryEntry 132 }
+
+     pmVgwV5PrMHistoryDataLinkErrorProt1 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of detected data link failures (layer 2). "
+        ::= { pmVgwV5PrMHistoryEntry 133 }
+
+     pmVgwV5PrMHistoryDataLinkErrorProt2 OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of detected data link failures (layer 2). "
+        ::= { pmVgwV5PrMHistoryEntry 134 }
+
+    pmVgwV5PrMHistoryWrongL3AdrIn OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Number of received frames with wrong layer 3 address. "
+        ::= { pmVgwV5PrMHistoryEntry 135 }
+	
+     pmVgwV5PrMHistoryUnblockedSubsc OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-ROU:       GET db
+     -- info-IMPL:      V2.1-> 
+     -- info-VERCTRL:   -
+        SYNTAX        Counter
+        ACCESS        read-only
+        STATUS        mandatory
+        DESCRIPTION
+           " Minimum number of unblocked subscribers. "
+        ::= { pmVgwV5PrMHistoryEntry 136 }
+
+
+     -- ==============================================================
+     --          P e r f o r m a n c e   M a n a g e m e n t
+     --                      T r a p   g r o u p
+     -- ==============================================================
+ 
+     -- --------------------------------------------------------------
+     --            t r a p   v a r i a b l e s   g r o u p
+     -- --------------------------------------------------------------
+     
+     pmVgwTrapVars OBJECT IDENTIFIER ::= { pmVgwTraps 1 }
+     -- info-IMPL:      V2.1->
+ 
+
+     pmVgwTvTimeAndDate OBJECT-TYPE
+     -- info-VALUE:   -2147483648..2147483647
+     -- info-IMPL:    V2.1->          
+        SYNTAX        INTEGER 
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+           " The time stamp in seconds. "
+        ::= { pmVgwTrapVars 1 }
+ 
+     pmVgwTvAal2PMoObjectIndex OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-IMPL:      V2.1->
+        SYNTAX        Unsigned16
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+             " The index of an Performance Monitoring 
+             object for AAL2 interface. "
+        ::= { pmVgwTrapVars 2 }
+
+     pmVgwTvAal2PrMObjectIndex OBJECT-TYPE
+     -- info-VALUE:     -
+     -- info-IMPL:      V2.1->
+        SYNTAX        Unsigned16
+        ACCESS        not-accessible
+        STATUS        mandatory
+        DESCRIPTION
+             " The index of an Protocol Monitoring
+             object for AAL2 interface. "
+        ::= { pmVgwTrapVars 3 }
+
+     -- --------------------------------------------------------------
+     --                t r a p   g r o u p
+     -- --------------------------------------------------------------
+
+     pmVgwTrapTypes OBJECT IDENTIFIER ::= { pmVgwTraps 2 }
+     -- info-IMPL:      V2.1->
+ 
+ 
+     pmVgwTrAal2PMoObjectCreation TRAP-TYPE
+     -- info-TRAPTYPE:  event
+     -- info-TRAPID:    1200
+     -- info-IMPL:      V2.1->
+        ENTERPRISE xldv20Traps
+        VARIABLES { pmVgwTvTimeAndDate,
+                    pmVgwTvAal2PMoObjectIndex
+                    }
+        DESCRIPTION
+             " A Performance Monitoring object for an AAL2
+             interface is created. "
+        ::= 1200
+ 
+     pmVgwTrAal2PMoObjectDeletion TRAP-TYPE
+     -- info-TRAPTYPE:  event
+     -- info-TRAPID:    1201
+     -- info-IMPL:      V2.1->
+        ENTERPRISE xldv20Traps
+        VARIABLES { pmVgwTvTimeAndDate,
+                    pmVgwTvAal2PMoObjectIndex
+                    }
+        DESCRIPTION
+             " A Performance Monitoring object for an AAL2
+             interface is deleted. "
+        ::= 1201
+
+     pmVgwTrAal2PrMObjectCreation TRAP-TYPE
+     -- info-TRAPTYPE:  event
+     -- info-TRAPID:    1202
+     -- info-IMPL:      V2.1->
+        ENTERPRISE xldv20Traps
+        VARIABLES { pmVgwTvTimeAndDate,
+                    pmVgwTvAal2PrMObjectIndex
+                    }
+        DESCRIPTION
+             " A Protocol Monitoring object for an AAL2
+             interface is created. "
+        ::= 1202
+ 
+     pmVgwTrAal2PrMObjectDeletion TRAP-TYPE
+     -- info-TRAPTYPE:  event
+     -- info-TRAPID:    1203
+     -- info-IMPL:      V2.1->
+        ENTERPRISE xldv20Traps
+        VARIABLES { pmVgwTvTimeAndDate,
+                    pmVgwTvAal2PrMObjectIndex
+                    }
+        DESCRIPTION
+             " A Protocol Monitoring object for an AAL2
+             interface is deleted. "
+        ::= 1203
+
+
+END

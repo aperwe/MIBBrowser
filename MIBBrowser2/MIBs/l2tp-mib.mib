@@ -1,0 +1,2188 @@
+L2TP-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+        Integer32, Counter32, experimental, Gauge32,
+        MODULE-IDENTITY, OBJECT-TYPE, NOTIFICATION-TYPE
+            FROM SNMPv2-SMI
+        TEXTUAL-CONVENTION, DisplayString, RowStatus, TruthValue
+            FROM SNMPv2-TC
+        OBJECT-GROUP, MODULE-COMPLIANCE
+            FROM SNMPv2-CONF
+        InterfaceIndex
+            FROM IF-MIB;
+
+l2tp    MODULE-IDENTITY
+        LAST-UPDATED    "200003071800Z"
+        ORGANIZATION    "IETF L2TP Working Group"
+        CONTACT-INFO
+          "Evan Caves
+           Postal: Ericsson
+                   340 Storke Road
+                   Santa Barbara, CA, 93117
+           Tel:    +1 805685 4455
+           Email:  evan@acc.com
+
+           Pat R. Calhoun
+           Postal: Sun Microsystems, Inc.
+                   15 Network Circle
+                   Menlo Park, CA, 94025
+           Tel:    +1 650786 7733
+           Email:  pcalhoun@eng.sun.com
+
+           Ross Wheeler
+           Postal: RouterWare
+                   3961 MacArthur Blvd, Suite 212
+                   Newport Beach, CA, 92660
+           Tel:    +1 714442 0770
+           Email:  ross@routerware.com"
+        DESCRIPTION
+           "The MIB module that describes managed objects of
+            general use by the Layer Two Transport Protocol."
+        ::= { experimental 9999 1 }
+
+
+--
+--      Textual Conventions
+--
+
+MilliSeconds ::=  TEXTUAL-CONVENTION
+        DISPLAY-HINT    "d-3"
+        STATUS          current
+        DESCRIPTION
+           "A period of time measured in units of .001 of seconds
+            when used in conjunction with the DISPLAY-HINT will
+            show seconds and fractions of second with a resolution
+            of .001 of a second."
+        SYNTAX          Integer32 (0..2147483646)
+--
+--      Definitions of significant branches
+--
+l2tpObjects         OBJECT IDENTIFIER  ::= { l2tp 1 }
+l2tpTraps           OBJECT IDENTIFIER  ::= { l2tp 2 }
+l2tpTransports      OBJECT IDENTIFIER  ::= { l2tp 3 }
+l2tpConformance     OBJECT IDENTIFIER  ::= { l2tp 4 }
+
+--
+--      Definitions of significant branches under l2tpObjects
+--
+l2tpScalar          OBJECT IDENTIFIER  ::= { l2tpObjects 1 }
+l2tpConfig          OBJECT IDENTIFIER  ::= { l2tpScalar 1 }
+l2tpStats           OBJECT IDENTIFIER  ::= { l2tpScalar 2 }
+
+--
+--      Definitions of significant branches under l2tpTransports
+--
+l2tpTransportIpUdp  OBJECT IDENTIFIER  ::= { l2tpTransports 1 }
+l2tpIpUdpObjects    OBJECT IDENTIFIER  ::= { l2tpTransportIpUdp 1 }
+l2tpIpUdpTraps      OBJECT IDENTIFIER  ::= { l2tpTransportIpUdp 2 }
+
+
+--
+--      The L2TP Scalar Configuration Group
+--
+--      This group of objects is used to manage configuration
+--      of the L2TP protocol environment.
+
+l2tpAdminState          OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            enabled(1),
+                            disabled(2)
+                        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object defines the administrative state of
+            the L2TP protocol. Setting this object to
+            'disabled' causes all tunnels to be immediately
+            disconnected and no further tunnels to be either
+            initiated or accepted."
+        DEFVAL { enabled }
+        ::= { l2tpConfig 1 }
+
+l2tpDrainTunnels        OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            yes(1),
+                            no(2)
+                        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "Setting this object to 'yes' will prevent any new
+            tunnels and/or sessions to be either initiated or
+            accepted but does NOT disconnect any active
+            tunnels/sessions. Setting this object to yes(1)
+            causes all domains and their respective tunnels
+            to transition to the draining state. When the
+            last tunnel disconnects the l2tpAdminState
+            transitions to disabled(2). Note that the
+            administrative states of the domains and its
+            tunnels do not transition to the disabled state.
+            When reading this object it should always return
+            no(2). The object l2tpDrainingTunnels reflects
+            the current draining state."
+        DEFVAL { no }
+        ::= { l2tpConfig 2 }
+
+
+--
+--      The L2TP Scalar Status and Statistics Group
+--
+--      This group of objects describe the current state and
+--      statistics of L2TP.
+
+l2tpProtocolVersion     OBJECT-TYPE
+        SYNTAX          OCTET STRING (SIZE(2..256))
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+            "Vector of supported L2TP protocol version and
+             revision numbers. Supported versions are identified
+             via a two octet pairing where the first octet indicates
+             the version and the second octet contains the revision."
+        ::= { l2tpStats 1 }
+
+l2tpVendorName          OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object identifies the Vendor name of the L2TP
+            protocol stack."
+        ::= { l2tpStats 2 }
+
+l2tpFirmwareRev         OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object defines the firmware revision for the
+            L2TP protocol stack."
+        ::= { l2tpStats 3 }
+
+l2tpDrainingTunnels     OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            yes(1),
+                            no(2)
+                        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates if the local L2TP is draining
+            off sessions from all tunnels. This object will
+            return no(2) when L2TP is not draining sessions or
+            after the last L2TP session has disconnected when
+            L2TP is in the draining state."
+        ::= { l2tpStats 4 }
+
+
+--
+--      The L2TP Domain Configuration Table
+--
+--      This table contains objects that can be used to
+--      configure the operational characteristics of a tunnel
+--      domain.
+
+l2tpDomainConfigTable   OBJECT-TYPE
+        SYNTAX          SEQUENCE OF L2tpDomainConfigEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "The L2TP Domain configuration table."
+        ::= { l2tpObjects 2 }
+
+l2tpDomainConfigEntry   OBJECT-TYPE
+        SYNTAX          L2tpDomainConfigEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "An L2TP Domain configuration entry. An entry in this
+            table may correspond to a single endpoint or a group
+            of tunnel endpoints."
+        INDEX { IMPLIED l2tpDomainConfigIdentifier }
+        ::= { l2tpDomainConfigTable 1 }
+
+L2tpDomainConfigEntry ::=
+        SEQUENCE {
+            l2tpDomainConfigIdentifier
+                DisplayString,
+            l2tpDomainConfigAdminState
+                INTEGER,
+            l2tpDomainConfigDrainTunnels
+                INTEGER,
+            l2tpDomainConfigAuthentication
+                INTEGER,
+            l2tpDomainConfigSecret
+                OCTET STRING,
+            l2tpDomainConfigTunnelSecurity
+                INTEGER,
+            l2tpDomainConfigTunnelHelloInterval
+                Integer32,
+            l2tpDomainConfigTunnelIdleTimeout
+                Integer32,
+            l2tpDomainConfigControlRWS
+                Integer32,
+            l2tpDomainConfigControlMaxRetransmissions
+                Integer32,
+            l2tpDomainConfigControlMaxRetransmissionTimeout
+                Integer32,
+            l2tpDomainConfigPayloadSequencing
+                INTEGER,
+            l2tpDomainConfigReassemblyTimeout
+                MilliSeconds,
+            l2tpDomainConfigStatus
+                RowStatus
+        }
+
+l2tpDomainConfigIdentifier OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..80))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "The identifier, usually in the form of a Domain
+            Name (full or partial), describing a single tunnel
+            endpoint or a domain of tunnel endpoints. This is
+            typically used as a 'handle' to identify the
+            tunnel configuration requirements for both incoming
+            and outgoing tunnel connection attempts. Both the
+            LAC and  LNS could use information provided in the
+            Host Name AVP attribute however the tunnel initiator
+            could use other means not specified to identify
+            the domains tunnel configuration requirements. For
+            example; three rows in this table have
+            l2tpDomainConfigIdentifier values of 'lac1.isp.com',
+            'isp.com' and 'com'. A tunnel endpoint then identifies
+            itself as 'lac1.isp.com' which would match the
+            'lac1.isp.com' entry in this table. A second tunnel
+            endpoint then identifies itself as 'lac2.isp.com'.
+            This endpoint is then associated with the 'isp.com'
+            entry of this table."
+        ::= { l2tpDomainConfigEntry 1 }
+
+l2tpDomainConfigAdminState OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            enabled(1),
+                            disabled(2)
+                        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "This object defines the administrative state of this
+            tunnel domain. Setting this object to disabled(2)
+            causes all tunnels to be immediately disconnected
+            and no further tunnels to be either initiated or
+            accepted."
+        DEFVAL { enabled }
+        ::= { l2tpDomainConfigEntry 2 }
+
+l2tpDomainConfigDrainTunnels OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            yes(1),
+                            no(2)
+                        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "Setting this object to 'yes' will prevent any new
+            tunnels and/or sessions to be either initiated or
+            accepted but does NOT disconnect any active
+            tunnels/sessions for this tunnel domain. Setting
+            this object to yes(1) causes all tunnels within
+            this domain to transition to the draining state.
+            When the last tunnel disconnects the
+            l2tpDomainConfigAdminState transitions to
+            disabled(2). Note that the administrative states
+            of the domains tunnels do not transition to the
+            disabled state. When reading this object it should
+            always return no(2). The object
+            l2tpDomainStatsDrainingTunnels reflects the
+            current draining status."
+        DEFVAL { no }
+        ::= { l2tpDomainConfigEntry 3 }
+
+l2tpDomainConfigAuthentication OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            none(1),
+                            simple(2),
+                            challenge(3)
+                        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "This object describes how tunnel peers belonging
+            to this domain are to be authenticated. The value
+            simple(2) indicates that peers are authenticated simply
+            by their host name as described in the Host Name AVP.
+            The value challenge(3) indicates that all peers are
+            challenged to prove their identification. This mechanism
+            is described in the L2TP protocol."
+        DEFVAL { none }
+        ::= { l2tpDomainConfigEntry 4 }
+
+l2tpDomainConfigSecret  OBJECT-TYPE
+        SYNTAX          OCTET STRING (SIZE (0..255))
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "This object is used to configure the shared secret
+            used during the tunnel authentication phase of
+            tunnel establishment. NOTE that this object should
+            not be visible if the proper SNMPv3 security
+            mechanisms are in place."
+        ::= { l2tpDomainConfigEntry 5 }
+
+l2tpDomainConfigTunnelSecurity OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            none(1),
+                            other(2),
+                            ipSec(3)
+                        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "This object defines whether this tunnel domain
+            requires that all tunnels are to be secured. The
+            value of ipsec(3) indicates that all tunnel packets,
+            control and session, have IP Security headers. The
+            type of IP Security headers (AH, ESP etc) and how
+            they are further described is outside the scope of
+            this document."
+        DEFVAL { none }
+        ::= { l2tpDomainConfigEntry 6 }
+
+l2tpDomainConfigTunnelHelloInterval OBJECT-TYPE
+        SYNTAX          Integer32 (0..3600)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "This object defines the interval (in seconds) in
+            which Hello (or keep-alive) packets are to be sent
+            by local peers belonging to this tunnel domain."
+        DEFVAL { 60 }
+        ::= { l2tpDomainConfigEntry 7 }
+
+l2tpDomainConfigTunnelIdleTimeout OBJECT-TYPE
+        SYNTAX          Integer32 (-1..86400)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "This object defines the period of time (in seconds)
+            that an established tunnel belonging to this tunnel
+            domain with no active sessions will wait before
+            disconnecting the tunnel. A value of zero indicates
+            that the tunnel will disconnect immediately after the
+            last session disconnects. A value of -1 leaves the
+            tunnel up indefinitely."
+        DEFVAL { 0 }
+        ::= { l2tpDomainConfigEntry 8 }
+
+l2tpDomainConfigControlRWS OBJECT-TYPE
+        SYNTAX          Integer32 (1..65535)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "This object defines the control channel receive
+            window size for tunnels belonging to this domain. It
+            specifies the maximum number of packets the tunnel
+            peer belonging to this domain can send without waiting
+            for an acknowledgement from this peer."
+        DEFVAL { 4 }
+        ::= { l2tpDomainConfigEntry 9 }
+
+l2tpDomainConfigControlMaxRetransmissions OBJECT-TYPE
+        SYNTAX          Integer32 (0..32)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "This object defines the maximum number of retransmission's
+            which the L2TP stack will attempt for tunnels belonging
+            to this domain before assuming that the peer is no
+            longer responding."
+        DEFVAL { 5 }
+        ::= { l2tpDomainConfigEntry 10 }
+
+l2tpDomainConfigControlMaxRetransmissionTimeout OBJECT-TYPE
+        SYNTAX          Integer32 (1..32)
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "This object defines the maximum retransmission timeout
+            interval which the L2TP stack will wait for tunnels
+            belonging to this domain before retransmitting a control
+            packet that has not been acknowledged."
+        DEFVAL { 16 }
+        ::= { l2tpDomainConfigEntry 11 }
+
+l2tpDomainConfigPayloadSequencing OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            onDemand(1),
+                            never(2),
+                            always(3)
+                        }
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "This object determines whether or not session payload
+            packets will be requested to be sent with sequence
+            numbers from tunnel peer's belonging to this domain.
+            The value onDemand(1) allows the L2TP implementation
+            to initiate payload sequencing when neccessary based
+            on local information (e.g: during LCP/NCP negotiations
+            or for CCP). The value never(2) indicates that L2TP
+            will never initiate sequencing but will do sequencing
+            if asked. The value always(3) indicates that L2TP
+            will send the Sequencing Required AVP during session
+            establishment."
+        DEFVAL { onDemand }
+        ::= { l2tpDomainConfigEntry 12 }
+
+l2tpDomainConfigReassemblyTimeout OBJECT-TYPE
+        SYNTAX          MilliSeconds
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "This object defines the number of milliseconds that
+            local peer's of this tunnel domain will wait before
+            processing payload packets that were received out of
+            sequence (which are waiting for the packet(s) to put
+            them in sequence).  A low value increases the chance
+            of delayed packets to be discarded (which MAY causes
+            the PPP decompression engine to reset) while a high
+            value may cause more queueing and possibly degrade
+            throughput if packets are truly lost. The default
+            value for this object is zero which will result in
+            all delayed packets being lost."
+        DEFVAL { 0 }
+        ::= { l2tpDomainConfigEntry 13 }
+
+l2tpDomainConfigStatus  OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "The status of this Domain entry."
+        ::= { l2tpDomainConfigEntry 14 }
+
+
+--
+--      The L2TP Domain Status and Statistics Table
+--
+--      This table contains objects that can be used to desribe
+--      the current status and statistics of a tunnel domain.
+
+l2tpDomainStatsTable    OBJECT-TYPE
+        SYNTAX          SEQUENCE OF L2tpDomainStatsEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "The L2TP Domain Status and Statistics table."
+        ::= { l2tpObjects 3 }
+
+l2tpDomainStatsEntry    OBJECT-TYPE
+        SYNTAX          L2tpDomainStatsEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "An L2TP Domain Stats entry. An entry in this table
+            may correspond to a single endpoint or a group of
+            tunnel endpoints."
+        INDEX { IMPLIED l2tpDomainStatsIdentifier }
+        ::= { l2tpDomainStatsTable 1 }
+
+L2tpDomainStatsEntry ::=
+        SEQUENCE {
+            l2tpDomainStatsIdentifier
+                DisplayString,
+            l2tpDomainStatsTotalTunnels
+                Counter32,
+            l2tpDomainStatsFailedTunnels
+                Counter32,
+            l2tpDomainStatsFailedAuthentications
+                Counter32,
+            l2tpDomainStatsActiveTunnels
+                Gauge32,
+            l2tpDomainStatsTotalSessions
+                Counter32,
+            l2tpDomainStatsFailedSessions
+                Counter32,
+            l2tpDomainStatsActiveSessions
+                Gauge32,
+            l2tpDomainStatsDrainingTunnels
+                INTEGER,
+            l2tpDomainStatsControlRecvOctets
+                Counter32,
+            l2tpDomainStatsControlRecvPackets
+                Counter32,
+            l2tpDomainStatsControlSendOctets
+                Counter32,
+            l2tpDomainStatsControlSendPackets
+                Counter32,
+            l2tpDomainStatsPayloadRecvOctets
+                Counter32,
+            l2tpDomainStatsPayloadRecvPackets
+                Counter32,
+            l2tpDomainStatsPayloadRecvDiscards
+                Counter32,
+            l2tpDomainStatsPayloadSendOctets
+                Counter32,
+            l2tpDomainStatsPayloadSendPackets
+                Counter32
+        }
+
+l2tpDomainStatsIdentifier OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..80))
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "The identifier, usually in the form of a Domain
+            Name (full or partial), describing a single tunnel
+            endpoint or a domain of tunnel endpoints."
+        ::= { l2tpDomainStatsEntry 1 }
+
+l2tpDomainStatsTotalTunnels OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the total number of tunnels
+            that have successfully reached the established
+            state for this tunnel domain."
+        ::= { l2tpDomainStatsEntry 2 }
+
+l2tpDomainStatsFailedTunnels OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the number of tunnels that
+            failed to reach the established state for this
+            tunnel domain."
+        ::= { l2tpDomainStatsEntry 3 }
+
+l2tpDomainStatsFailedAuthentications OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the number of failed tunnel
+            connection attempts for this domain because the
+            tunnel peer failed authentication."
+        ::= { l2tpDomainStatsEntry 4 }
+
+l2tpDomainStatsActiveTunnels OBJECT-TYPE
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the number of tunnels that
+            are currently active for this domain."
+        ::= { l2tpDomainStatsEntry 5 }
+
+l2tpDomainStatsTotalSessions OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the total number of sessions
+            that have successfully reached the established state
+            for this tunnel domain."
+        ::= { l2tpDomainStatsEntry 6 }
+
+l2tpDomainStatsFailedSessions OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the number of sessions that
+            failed to reach the established state for this
+            tunnel domain."
+        ::= { l2tpDomainStatsEntry 7 }
+
+l2tpDomainStatsActiveSessions OBJECT-TYPE
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the number of sessions that
+            are currently active for this domain."
+        ::= { l2tpDomainStatsEntry 8 }
+
+l2tpDomainStatsDrainingTunnels OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            yes(1),
+                            no(2)
+                        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates if this domain is draining
+            off sessions from all tunnels. This object will
+            return no(2) when the domain is not draining sessions
+            or after the last L2TP session has disconnected when
+            the domain is in the draining state."
+        ::= { l2tpDomainStatsEntry 9 }
+
+l2tpDomainStatsControlRecvOctets OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the number of control channel
+            octets received for this tunnel domain."
+        ::= { l2tpDomainStatsEntry 10 }
+
+l2tpDomainStatsControlRecvPackets OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the number of control packets
+            received for this tunnel domain."
+        ::= { l2tpDomainStatsEntry 11 }
+
+l2tpDomainStatsControlSendOctets OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the number of control channel
+            octets that were transmitted to tunnel endpoints
+            for this domain."
+        ::= { l2tpDomainStatsEntry 12 }
+
+l2tpDomainStatsControlSendPackets OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the number of control packets
+            that were transmitted to tunnel endpoints for
+            this domain."
+        ::= { l2tpDomainStatsEntry 13 }
+
+l2tpDomainStatsPayloadRecvOctets OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the number of payload channel
+            octets that were received for this tunnel domain."
+        ::= { l2tpDomainStatsEntry 14 }
+
+l2tpDomainStatsPayloadRecvPackets OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the number of payload packets
+            that were received for this tunnel domain."
+        ::= { l2tpDomainStatsEntry 15 }
+
+l2tpDomainStatsPayloadRecvDiscards OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the number of received payload
+            packets that were discarded by this tunnel domain."
+        ::= { l2tpDomainStatsEntry 16 }
+
+l2tpDomainStatsPayloadSendOctets OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the number of payload channel
+            octets that were transmitted to tunnel peers
+            within this tunnel domain."
+        ::= { l2tpDomainStatsEntry 17 }
+
+l2tpDomainStatsPayloadSendPackets OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the number of payload packets
+            that were transmitted to tunnel peers within
+            this tunnel domain."
+        ::= { l2tpDomainStatsEntry 18 }
+
+--
+--      The L2TP Tunnel Configuration Table
+--
+--      This table contains objects that can be used to
+--      (re)configure the operational characteristics of a
+--      single L2TP tunnel.
+
+l2tpTunnelConfigTable   OBJECT-TYPE
+        SYNTAX          SEQUENCE OF L2tpTunnelConfigEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "The L2TP tunnel configuration table."
+        ::= { l2tpObjects 4 }
+
+l2tpTunnelConfigEntry   OBJECT-TYPE
+        SYNTAX          L2tpTunnelConfigEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "A L2TP tunnel interface configuration entry."
+        INDEX { l2tpTunnelConfigIfIndex }
+        ::= { l2tpTunnelConfigTable 1 }
+
+L2tpTunnelConfigEntry ::=
+        SEQUENCE {
+            l2tpTunnelConfigIfIndex
+                InterfaceIndex,
+            l2tpTunnelConfigDomainIdentifier
+                DisplayString,
+            l2tpTunnelConfigAuthentication
+                INTEGER,
+            l2tpTunnelConfigSecret
+                OCTET STRING,
+            l2tpTunnelConfigSecurity
+                INTEGER,
+            l2tpTunnelConfigHelloInterval
+                Integer32,
+            l2tpTunnelConfigIdleTimeout
+                Integer32,
+            l2tpTunnelConfigControlRWS
+                Integer32,
+            l2tpTunnelConfigControlMaxRetransmissions
+                Integer32,
+            l2tpTunnelConfigControlMaxRetransmissionTimeout
+                Integer32,
+            l2tpTunnelConfigPayloadSequencing
+                INTEGER,
+            l2tpTunnelConfigReassemblyTimeout
+                MilliSeconds,
+            l2tpTunnelConfigTransport
+                INTEGER,
+            l2tpTunnelConfigDrainTunnel
+                INTEGER
+        }
+
+l2tpTunnelConfigIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "This value for this object is equal to the value
+            of ifIndex of the Interfaces MIB for tunnel
+            interfaces of type L2TP."
+        ::= { l2tpTunnelConfigEntry 1 }
+
+l2tpTunnelConfigDomainIdentifier OBJECT-TYPE
+        SYNTAX          DisplayString (SIZE (1..80))
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "The tunnel domain that this tunnel belongs
+            to. A LNS tunnel endpoint will typically inherit
+            this value from the endpoint domain table. A
+            LAC may be provided with this information during
+            tunnel setup. When a zero length string is returned
+            this tunnel does not belong belong to any particular
+            domain."
+        ::= { l2tpTunnelConfigEntry 2 }
+
+l2tpTunnelConfigAuthentication OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            none(1),
+                            simple(2),
+                            challenge(3)
+                        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object describes how L2TP tunnel peers are
+            to be authenticated. The value 'simple' indicates
+            that peers are authenticated simply by their host
+            name as described in the Host Name AVP. The value
+            'challenge' indicates that all peers are challenged
+            to prove their identification. This mechanism is
+            described in the L2TP protocol. This object cannot
+            be modified when the tunnel is in a connecting or
+            connected state."
+        DEFVAL { none }
+        ::= { l2tpTunnelConfigEntry 3 }
+
+l2tpTunnelConfigSecret  OBJECT-TYPE
+        SYNTAX          OCTET STRING (SIZE (0..255))
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object is used to configure the shared secret
+            used during the tunnel authentication phase of
+            tunnel establishment. NOTE that this object should
+            not be visible if the proper SNMPv3 security
+            mechanisms are in place. This object cannot be
+            modified when the tunnel is in a connecting or
+            connected state."
+        ::= { l2tpTunnelConfigEntry 4 }
+
+l2tpTunnelConfigSecurity OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            none(1),
+                            other(2),
+                            ipsec(3)
+                        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object defines whether this tunnel is to be
+            secured. The value of 'ipSec' indicates that all
+            tunnel packets, control and session, have IP
+            Security headers. The type of IP Security headers
+            (AH, ESP etc) and how they are further described
+            is outside the scope of this document. This object
+            cannot be modified when the tunnel is in a con-
+            necting or connected state."
+        DEFVAL { none }
+        ::= { l2tpTunnelConfigEntry 5 }
+
+l2tpTunnelConfigHelloInterval OBJECT-TYPE
+        SYNTAX          Integer32  (0..3600)
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object defines the interval (in seconds) in
+            which Hello (or keep-alive) packets are to be sent
+            to the tunnel peer. Modifications to this object
+            have immediate effect."
+        DEFVAL { 60 }
+        ::= { l2tpTunnelConfigEntry 6 }
+
+l2tpTunnelConfigIdleTimeout OBJECT-TYPE
+        SYNTAX          Integer32 (0..86400)
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object defines the period of time (in seconds)
+            that an established tunnel with no sessions will
+            wait before disconnecting the tunnel. A value of
+            zero indicates that the tunnel will disconnect
+            immediately after the last session disconnects.
+            A value of -1 leaves the tunnel up indefinitely.
+            Modifications to this object have immediate effect."
+        DEFVAL { 0 }
+        ::= { l2tpTunnelConfigEntry 7 }
+
+l2tpTunnelConfigControlRWS OBJECT-TYPE
+        SYNTAX          Integer32 (1..65535)
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object defines the control channel receive
+            window size. It specifies the maximum number of
+            packets the tunnel peer can send without waiting
+            for an acknowledgement from this peer. This object
+            cannot be modified when the tunnel is in a con-
+            necting or connected state."
+        DEFVAL { 4 }
+        ::= { l2tpTunnelConfigEntry 8 }
+
+l2tpTunnelConfigControlMaxRetransmissions OBJECT-TYPE
+        SYNTAX          Integer32 (0..32)
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object defines the number of retransmission's
+            which the tunnel will attempt before assuming that
+            the peer is no longer responding. A value of zero
+            indicates that this peer will not attempt to
+            retransmit an unacknowledged control packet.
+            Modifications to this object have immediate
+            effect."
+        DEFVAL { 5 }
+        ::= { l2tpTunnelConfigEntry 9 }
+
+l2tpTunnelConfigControlMaxRetransmissionTimeout OBJECT-TYPE
+        SYNTAX          Integer32 (1..32)
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object defines the maximum retransmission timeout
+            interval which the tunnel will wait before retransmitting
+            a control packet that has not been acknowledged.
+            Modifications to this object have immediate effect."
+        DEFVAL { 16 }
+        ::= { l2tpTunnelConfigEntry 10 }
+
+l2tpTunnelConfigPayloadSequencing OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            onDemand(1),
+                            never(2),
+                            always(3)
+                        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object determines whether or not session payload
+            packets will be requested to be sent with sequence
+            numbers from tunnel peer's belonging to this domain.
+            The value onDemand(1) allows the L2TP implementation
+            to initiate payload sequencing when neccessary based
+            on local information (e.g: during LCP/NCP negotiations
+            or for CCP). The value never(2) indicates that L2TP
+            will never initiate sequencing but will do sequencing
+            if asked. The value always(3) indicates that L2TP
+            will send the Sequencing Required AVP during session
+            establishment. Modifications to this object have
+            immediate effect."
+        DEFVAL { onDemand }
+        ::= { l2tpTunnelConfigEntry 11 }
+
+l2tpTunnelConfigReassemblyTimeout OBJECT-TYPE
+        SYNTAX          MilliSeconds
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object defines the number of milliseconds that
+            this tunnel will wait before processing payload packets
+            that were received out of sequence (which are waiting
+            for the packet(s) to put them in sequence).  A low value
+            increases the chance of delayed packets to be discarded
+            (which MAY causes the PPP decompression engine to
+            reset) while a high value may cause more queueing and
+            possibly degrade throughput if packets are truly lost.
+
+            The default value for this object is zero which will
+            result in all delayed packets being lost. Modifications
+            to this object have immediate effect."
+        DEFVAL { 0 }
+        ::= { l2tpTunnelConfigEntry 12 }
+
+l2tpTunnelConfigTransport OBJECT-TYPE
+        SYNTAX          INTEGER {
+                           other(1),
+                           none(2),
+                           udpIp(3),
+                           frameRelay(4)
+                        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "This object defines the underlying transport media
+            that is in use for this tunnel entry. Different tunnel
+            transports may define MIB extensions to the L2TP tunnel
+            table to realize the transport layer. For example if the
+            value of this object is 'udpIp' then the value of ifIndex
+            for this table may be used to determine state from the
+            l2tpUdpStatsTable. This object cannot be modified when
+            the tunnel is in a connecting or connected state."
+        ::= { l2tpTunnelConfigEntry 13 }
+
+l2tpTunnelConfigDrainTunnel OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            yes(1),
+                            no(2)
+                        }
+        MAX-ACCESS      read-write
+        STATUS          current
+        DESCRIPTION
+           "Setting this object to 'yes' will prevent any new
+            session to be either initiated or accepted but does
+            NOT disconnect any active sessions for this tunnel.
+            When the last session disconnects the ifAdminStatus
+            transitions to down(2). When reading this object
+            it should always return no(2). The object
+            l2tpTunnelStatsDrainingTunnel reflects the current
+            the current draining state."
+        DEFVAL { no }
+        ::= { l2tpTunnelConfigEntry 14 }
+
+--
+--      The L2TP Tunnel Status and Statisticss Table
+--
+--      This table contains objects that can be used to describe
+--      the current status and statistics of a single L2TP tunnel.
+
+
+l2tpTunnelStatsTable    OBJECT-TYPE
+        SYNTAX          SEQUENCE OF L2tpTunnelStatsEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "The L2TP tunnel status and statistics table."
+        ::= { l2tpObjects 5 }
+
+l2tpTunnelStatsEntry    OBJECT-TYPE
+        SYNTAX          L2tpTunnelStatsEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "An L2TP tunnel interface stats entry."
+        INDEX { l2tpTunnelStatsIfIndex }
+        ::= { l2tpTunnelStatsTable 1 }
+
+L2tpTunnelStatsEntry ::=
+        SEQUENCE {
+            l2tpTunnelStatsIfIndex
+                InterfaceIndex,
+            l2tpTunnelStatsLocalTID
+                Integer32,
+            l2tpTunnelStatsRemoteTID
+                Integer32,
+            l2tpTunnelStatsState
+                INTEGER,
+            l2tpTunnelStatsInitiated
+                INTEGER,
+            l2tpTunnelStatsRemoteHostName
+                DisplayString,
+            l2tpTunnelStatsRemoteVendorName
+                DisplayString,
+            l2tpTunnelStatsRemoteFirmwareRevision
+                Integer32,
+            l2tpTunnelStatsRemoteProtocolVersion
+                OCTET STRING,
+            l2tpTunnelStatsInitialRemoteRWS
+                Integer32,
+            l2tpTunnelStatsBearerCapabilities
+                INTEGER,
+            l2tpTunnelStatsFramingCapabilities
+                INTEGER,
+            l2tpTunnelStatsControlRecvPackets
+                Counter32,
+            l2tpTunnelStatsControlRecvZLB
+                Counter32,
+            l2tpTunnelStatsControlOutOfSequence
+                Counter32,
+            l2tpTunnelStatsControlOutOfWindow
+                Counter32,
+            l2tpTunnelStatsControlSendPackets
+                Counter32,
+            l2tpTunnelStatsControlSendZLB
+                Counter32,
+            l2tpTunnelStatsControlAckTimeouts
+                Counter32,
+            l2tpTunnelStatsCurrentRemoteRWS
+                Gauge32,
+            l2tpTunnelStatsSendSeq
+                Integer32,
+            l2tpTunnelStatsSendSeqAck
+                Integer32,
+            l2tpTunnelStatsRecvSeq
+                Integer32,
+            l2tpTunnelStatsRecvSeqAck
+                Integer32,
+            l2tpTunnelStatsTotalSessions
+                Counter32,
+            l2tpTunnelStatsFailedSessions
+                Counter32,
+            l2tpTunnelStatsActiveSessions
+                Gauge32,
+            l2tpTunnelStatsLastResultCode
+                Integer32,
+            l2tpTunnelStatsLastErrorCode
+                Integer32,
+            l2tpTunnelStatsLastErrorMessage
+                DisplayString,
+            l2tpTunnelStatsDrainingTunnel
+                INTEGER
+        }
+
+l2tpTunnelStatsIfIndex  OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This value for this object is equal to the value
+            of ifIndex of the Interfaces MIB for tunnel
+            interfaces of type L2TP."
+        ::= { l2tpTunnelStatsEntry 1 }
+
+l2tpTunnelStatsLocalTID OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the local tunnel Identifier."
+        ::= { l2tpTunnelStatsEntry 2 }
+
+l2tpTunnelStatsRemoteTID OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the remote tunnel Identifier."
+        ::= { l2tpTunnelStatsEntry 3 }
+
+l2tpTunnelStatsState    OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            tunnelIdle(1),
+                            tunnelConnecting(2),
+                            tunnelEstablished(3),
+                            tunnelDisconnecting(4)
+                        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This field contains the current state of the control
+            tunnel."
+        ::= { l2tpTunnelStatsEntry 4 }
+
+l2tpTunnelStatsInitiated OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            locally(1),
+                            remotely(2)
+                        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates whether the tunnel was
+            initiated locally or by the remote tunnel peer."
+        ::= { l2tpTunnelStatsEntry 5 }
+
+l2tpTunnelStatsRemoteHostName OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the host name as discovered
+            during the tunnel establishment phase (via the Host
+            Name AVP) of the L2TP peer. If the tunnel is idle
+            this object should maintain its value from the last
+            time it was connected."
+        ::= { l2tpTunnelStatsEntry 6 }
+
+l2tpTunnelStatsRemoteVendorName OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object identifies the vendor name of the peer's
+            L2TP implementation. If the tunnel is idle this
+            object should maintain its value from the last time
+            it was connected."
+        ::= { l2tpTunnelStatsEntry 7 }
+
+l2tpTunnelStatsRemoteFirmwareRevision OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the tunnel peer's firmware
+            revision number. If the tunnel is idle this object
+            should maintain its value from the last time it
+            was connected."
+        ::= { l2tpTunnelStatsEntry 8 }
+
+l2tpTunnelStatsRemoteProtocolVersion OBJECT-TYPE
+        SYNTAX          OCTET STRING (SIZE(2))
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object describes the protocol version and
+            revision of the tunnel peers implementation. The
+            first octet contains the protocol version. The
+            second octet contains the protocol revision."
+        ::= { l2tpTunnelStatsEntry 9 }
+
+l2tpTunnelStatsInitialRemoteRWS OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the initial remote peers
+            receive window size as indicated by the tunnel peer
+            (in the RWS AVP) during the tunnel establishment
+            phase. If the tunnel is idle this object should
+            maintain its value from the last time it was
+            connected."
+        ::= { l2tpTunnelStatsEntry 10 }
+
+l2tpTunnelStatsBearerCapabilities OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            none(1),
+                            digital(2),
+                            analog(3),
+                            digitalAnalog(4)
+                        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object describes the Bearer Capabilities of
+            the tunnel peer. If the tunnel is idle this object
+            should maintain its value from the last time it was
+            connected."
+        ::= { l2tpTunnelStatsEntry 11 }
+
+l2tpTunnelStatsFramingCapabilities OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            none(1),
+                            sync(2),
+                            async(3),
+                            syncAsync(4)
+                        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object describes the Framing Capabilities of
+            the tunnel peer. If the tunnel is idle this object
+            should maintain its value from the last time it was
+            connected."
+        ::= { l2tpTunnelStatsEntry 12 }
+
+l2tpTunnelStatsControlRecvPackets OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the number of control packets
+            received on the tunnel."
+        ::= { l2tpTunnelStatsEntry 13 }
+
+l2tpTunnelStatsControlRecvZLB OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns a count of the number of Zero
+            Length Body control packet acknowledgement packets
+            that were received."
+        ::= { l2tpTunnelStatsEntry 14 }
+
+l2tpTunnelStatsControlOutOfSequence OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns a count of the number of
+            control packets that were not received in the
+            correct order (as per the sequence number) on
+            this tunnel."
+        ::= { l2tpTunnelStatsEntry 15 }
+
+l2tpTunnelStatsControlOutOfWindow OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the number of control
+            packets that were received outside of the
+            offered receive window. It is implementation
+            specific as to whether these packets are queued
+            or discarded."
+        ::= { l2tpTunnelStatsEntry 16 }
+
+l2tpTunnelStatsControlSendPackets OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the number of control
+            packets that were transmitted to the tunnel
+            peer."
+        ::= { l2tpTunnelStatsEntry 17 }
+
+l2tpTunnelStatsControlSendZLB OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the number of Zero Length
+            Body control packets transmitted transitted to
+            the tunnel peer."
+        ::= { l2tpTunnelStatsEntry 18 }
+
+l2tpTunnelStatsControlAckTimeouts OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns a count of the number of
+            control packet timeouts due to the lack of a
+            timely acknowledgement from the tunnel peer."
+        ::= { l2tpTunnelStatsEntry 19 }
+
+l2tpTunnelStatsCurrentRemoteRWS OBJECT-TYPE
+        SYNTAX          Gauge32 (0..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the current remote receive
+            window size as determined by the local flow
+            control mechanism employed."
+        ::= { l2tpTunnelStatsEntry 20 }
+
+l2tpTunnelStatsSendSeq  OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the next send sequence number
+            for the control channel."
+        ::= { l2tpTunnelStatsEntry 21 }
+
+l2tpTunnelStatsSendSeqAck OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the send sequence number that
+            the tunnel peer has acknowledged for the control
+            channel. The flow control state can be determined
+            by subtracting the l2tpTunnelStatsSendSeq from
+            l2tpTunnelStatsSendSeqAck and comparing this value
+            to l2tpTunnelStatsCurrentRemoteRWS."
+        ::= { l2tpTunnelStatsEntry 22 }
+
+l2tpTunnelStatsRecvSeq  OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the next receive sequence
+            number expected to be received on this control
+            channel."
+        ::= { l2tpTunnelStatsEntry 23 }
+
+l2tpTunnelStatsRecvSeqAck OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the last receive sequence
+            number that was acknowledged back to the tunnel
+            peer for the control channel."
+        ::= { l2tpTunnelStatsEntry 24 }
+
+l2tpTunnelStatsTotalSessions OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the total number of sessions
+            that this tunnel has successfully connected through
+            to its tunnel peer since this tunnel was created."
+        ::= { l2tpTunnelStatsEntry 25 }
+
+l2tpTunnelStatsFailedSessions OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the total number of sessions
+            that were initiated but failed to reach the
+            established phase."
+        ::= { l2tpTunnelStatsEntry 26 }
+
+l2tpTunnelStatsActiveSessions OBJECT-TYPE
+        SYNTAX          Gauge32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the total number of sessions
+            in the established state for this tunnel."
+        ::= { l2tpTunnelStatsEntry 27 }
+
+l2tpTunnelStatsLastResultCode OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the last value of the result
+            code as described in the Result Code AVP which
+            caused the tunnel to disconnect."
+        ::= { l2tpTunnelStatsEntry 28 }
+
+l2tpTunnelStatsLastErrorCode OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the last value of the error
+            code as described in the Result Code AVP which
+            caused the tunnel to disconnect."
+        ::= { l2tpTunnelStatsEntry 29 }
+
+l2tpTunnelStatsLastErrorMessage OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the last value of the optional
+            message as described in the Result Code AVP which
+            caused the tunnel to disconnect."
+        ::= { l2tpTunnelStatsEntry 30 }
+
+l2tpTunnelStatsDrainingTunnel OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            yes(1),
+                            no(2)
+                        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates if this tunnel is draining
+            off sessions. This object will return no(2) when the
+            tunnel is not draining sessions or after the last
+            session has disconnected when the tunnel is in the
+            draining state."
+        ::= { l2tpTunnelStatsEntry 31 }
+
+
+--
+--      { l2tpObjects 6 } reserved for future use
+--
+--
+--      The L2TP Session Status and Statistics Table
+--
+--      This table contains the objects that can be used to
+--      describe the current status and statistics of a single
+--      L2TP tunneled session.
+
+
+l2tpSessionStatsTable   OBJECT-TYPE
+        SYNTAX          SEQUENCE OF L2tpSessionStatsEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "The L2TP session status and statistics table."
+        ::= { l2tpObjects 7 }
+
+l2tpSessionStatsEntry   OBJECT-TYPE
+        SYNTAX          L2tpSessionStatsEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "An L2TP session interface stats entry."
+        INDEX { l2tpSessionStatsTunnelIfIndex, l2tpSessionStatsLocalSID }
+        ::= { l2tpSessionStatsTable 1 }
+
+L2tpSessionStatsEntry ::=
+        SEQUENCE {
+            l2tpSessionStatsTunnelIfIndex
+                InterfaceIndex,
+            l2tpSessionStatsIfIndex
+                InterfaceIndex,
+            l2tpSessionStatsLocalSID
+                Integer32,
+            l2tpSessionStatsRemoteSID
+                Integer32,
+            l2tpSessionStatsUserName
+                DisplayString,
+            l2tpSessionStatsState
+                INTEGER,
+            l2tpSessionStatsCallType
+                INTEGER,
+            l2tpSessionStatsCallSerialNumber
+                Integer32,
+            l2tpSessionStatsTxConnectSpeed
+                Integer32,
+            l2tpSessionStatsRxConnectSpeed
+                Integer32,
+            l2tpSessionStatsCallBearerType
+                INTEGER,
+            l2tpSessionStatsFramingType
+                INTEGER,
+            l2tpSessionStatsPhysChanId
+                Integer32,
+            l2tpSessionStatsDNIS
+                DisplayString,
+            l2tpSessionStatsCLID
+                DisplayString,
+            l2tpSessionStatsSubAddress
+                DisplayString,
+            l2tpSessionStatsPrivateGroupID
+                DisplayString,
+            l2tpSessionStatsProxyLcp
+                TruthValue,
+            l2tpSessionStatsAuthMethod
+                INTEGER,
+            l2tpSessionStatsSequencingState
+                INTEGER,
+            l2tpSessionStatsOutSequence
+                Counter32,
+            l2tpSessionStatsReassemblyTimeouts
+                Counter32,
+            l2tpSessionStatsSendSeq
+                Integer32,
+            l2tpSessionStatsRecvSeq
+                Integer32
+        }
+
+l2tpSessionStatsTunnelIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "This object identifies the sessions associated
+            L2TP tunnel ifIndex value."
+        ::= { l2tpSessionStatsEntry 1 }
+
+l2tpSessionStatsIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object identifies the ifIndex value of the
+            interface from which PPP packets are being tunneled.
+            For example this could be a DS0 ifIndex on a
+            LAC or it would be the PPP ifIndex on the LNS."
+        ::= { l2tpSessionStatsEntry 2 }
+
+l2tpSessionStatsLocalSID OBJECT-TYPE
+        SYNTAX          Integer32 (1..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the local assigned session
+            identifier for this session."
+        ::= { l2tpSessionStatsEntry 3 }
+
+l2tpSessionStatsRemoteSID OBJECT-TYPE
+        SYNTAX          Integer32  (0..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the remote assigned session
+            identifier for this session."
+        ::= { l2tpSessionStatsEntry 4 }
+
+l2tpSessionStatsUserName OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object identifies the peer session name on
+            this interface. This is typically the login name
+            of the remote user. If the user name is unknown to
+            the local tunnel peer then this object will contain
+            a null string."
+        ::= { l2tpSessionStatsEntry 5 }
+
+l2tpSessionStatsState   OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            sessionIdle(1),
+                            sessionConnecting(2),
+                            sessionEstablished(3),
+                            sessionDisconnecting(4)
+                        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the current state of the
+            session."
+        ::= { l2tpSessionStatsEntry 6 }
+
+l2tpSessionStatsCallType OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            lacIncoming(1),
+                            lnsIncoming(2),
+                            lacOutgoing(3),
+                            lnsOutgoing(4)
+                        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object indicates the type of call and the
+            role this tunnel peer is providing for this
+            session. For example, lacIncoming(1) indicates
+            that this tunnel peer is acting as a LAC and
+            generated a Incoming-Call-Request to the tunnel
+            peer (the LNS). Note that tunnel peers can be
+            both LAC and LNS simultaneously."
+        ::= { l2tpSessionStatsEntry 7 }
+
+l2tpSessionStatsCallSerialNumber OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the serial number that has
+            been assigned to this  session."
+        ::= { l2tpSessionStatsEntry 8 }
+
+l2tpSessionStatsTxConnectSpeed OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the last known transmit
+            baud rate for this session."
+        ::= { l2tpSessionStatsEntry 9 }
+
+l2tpSessionStatsRxConnectSpeed OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the last known receive
+            baud rate for this session established."
+        ::= { l2tpSessionStatsEntry 10 }
+
+l2tpSessionStatsCallBearerType OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            none(1),
+                            digital(2),
+                            analog(3)
+                        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object describes the bearer type of this
+            session."
+        ::= { l2tpSessionStatsEntry 11 }
+
+l2tpSessionStatsFramingType OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            none(1),
+                            sync(2),
+                            async(3)
+                        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object describes the framing type of this
+            session."
+        ::= { l2tpSessionStatsEntry 12 }
+
+l2tpSessionStatsPhysChanId OBJECT-TYPE
+        SYNTAX          Integer32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the physical channel
+            identifier for the session."
+        ::= { l2tpSessionStatsEntry 13 }
+
+l2tpSessionStatsDNIS    OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object identifies the Dialed Number
+            Information String that the LAC obtained from
+            the network for the session. If no DNIS was
+            provided then a null string will be returned."
+        ::= { l2tpSessionStatsEntry 14 }
+
+l2tpSessionStatsCLID    OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object identifies the Calling Line ID
+            that the LAC obtained from the network for
+            the session. If no CLID was provided then a
+            null string will be returned."
+        ::= { l2tpSessionStatsEntry 15 }
+
+l2tpSessionStatsSubAddress OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object identifies the Sub Address that
+            the LAC obtained from the network for the
+            session. If no Sub Address was provided then
+            a null string will be returned."
+        ::= { l2tpSessionStatsEntry 16 }
+
+l2tpSessionStatsPrivateGroupID OBJECT-TYPE
+        SYNTAX          DisplayString
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object identifies the Private Group
+            Identifier used for this tunneled session.
+            If no Private Group Identifier was provided
+            then a null string will be returned."
+        ::= { l2tpSessionStatsEntry 17 }
+
+l2tpSessionStatsProxyLcp OBJECT-TYPE
+        SYNTAX          TruthValue
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "Indicates whether the LAC performed proxy LCP
+            for this session."
+        ::= { l2tpSessionStatsEntry 18 }
+
+l2tpSessionStatsAuthMethod OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            none(1),
+                            text(2),
+                            pppChap(3),
+                            pppPap(4),
+                            pppEap(5)
+                        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the proxy authentication
+            method employed by the LAC for the session. If
+            l2tpSessionProxyLcp is false(2) this object should
+            not be interpreted."
+        ::= { l2tpSessionStatsEntry 19 }
+
+l2tpSessionStatsSequencingState OBJECT-TYPE
+        SYNTAX          INTEGER {
+                            none(1),
+                            remote(2),
+                            local(3),
+                            both(4)
+                        }
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object defines which tunnel peers have
+            requested payload sequencing. The value of
+            both(4) indicates that both peers have requested
+            payload sequencing."
+        ::= { l2tpSessionStatsEntry 20 }
+
+l2tpSessionStatsOutSequence OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the total number of packets
+            received for this session which were received out
+            of sequence."
+        ::= { l2tpSessionStatsEntry 21 }
+
+l2tpSessionStatsReassemblyTimeouts OBJECT-TYPE
+        SYNTAX          Counter32
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object returns the number of reassembly
+            timeouts that have occured for this session."
+        ::= { l2tpSessionStatsEntry 22 }
+
+l2tpSessionStatsSendSeq OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the next send sequence number
+            for for this session."
+        ::= { l2tpSessionStatsEntry 23 }
+
+l2tpSessionStatsRecvSeq OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the next receive sequence
+            number expected to be received on this session."
+        ::= { l2tpSessionStatsEntry 24 }
+
+--
+--      The L2TP Tunnel Mapping Table
+--
+--      This table is intended to assist management
+--      applications to quickly determine what the ifIndex
+--      value is for a given local tunnel identifier.
+
+l2tpTunnelMapTable      OBJECT-TYPE
+        SYNTAX          SEQUENCE OF L2tpTunnelMapEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "The L2TP Tunnel index mapping table."
+        ::= { l2tpObjects 8 }
+
+l2tpTunnelMapEntry OBJECT-TYPE
+        SYNTAX          L2tpTunnelMapEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "An L2TP tunnel index map entry."
+        INDEX { l2tpTunnelMapLocalTID }
+        ::= { l2tpTunnelMapTable 1 }
+
+L2tpTunnelMapEntry ::=
+        SEQUENCE {
+            l2tpTunnelMapLocalTID
+                Integer32,
+            l2tpTunnelMapIfIndex
+                InterfaceIndex
+        }
+
+l2tpTunnelMapLocalTID   OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "This object contains the local tunnel Identifier."
+        ::= { l2tpTunnelMapEntry 1 }
+
+l2tpTunnelMapIfIndex    OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This value for this object is equal to the value
+            of ifIndex of the Interfaces MIB for tunnel
+            interfaces of type L2TP."
+        ::= { l2tpTunnelMapEntry 2 }
+
+
+--
+--      The L2TP Session Mapping Table
+--
+--      This table is intended to assist management
+--      applications to map interfaces to a tunnel
+--      and session identifier.
+
+l2tpSessionMapTable     OBJECT-TYPE
+        SYNTAX          SEQUENCE OF L2tpSessionMapEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "The L2TP Session index mapping table."
+        ::= { l2tpObjects 9 }
+
+l2tpSessionMapEntry     OBJECT-TYPE
+        SYNTAX          L2tpSessionMapEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "An L2TP Session index map entry."
+        INDEX { l2tpSessionMapIfIndex }
+        ::= { l2tpSessionMapTable 1 }
+
+L2tpSessionMapEntry ::=
+        SEQUENCE {
+            l2tpSessionMapIfIndex
+                InterfaceIndex,
+            l2tpSessionMapTunnelIfIndex
+                InterfaceIndex,
+            l2tpSessionMapLocalSID
+                Integer32,
+            l2tpSessionMapStatus
+                RowStatus
+        }
+
+l2tpSessionMapIfIndex   OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "This object identifies the ifIndex value of the
+            interface which is receiving or sending its packets
+            over an L2TP tunnel. For example this could be a DS0
+            ifIndex on a LAC or a PPP ifIndex on the LNS."
+        ::= { l2tpSessionMapEntry 1 }
+
+l2tpSessionMapTunnelIfIndex OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "This object identifies the sessions associated
+            L2TP tunnel ifIndex value. When this object is
+            set it provides a binding between a particular
+            interface identified by l2tpSessionMapIfIndex
+            to a particular tunnel."
+        ::= { l2tpSessionMapEntry 2 }
+
+l2tpSessionMapLocalSID  OBJECT-TYPE
+        SYNTAX          Integer32 (1..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object contains the local assigned session
+            identifier for this session."
+        ::= { l2tpSessionMapEntry 3 }
+
+l2tpSessionMapStatus    OBJECT-TYPE
+        SYNTAX          RowStatus
+        MAX-ACCESS      read-create
+        STATUS          current
+        DESCRIPTION
+           "The status of this Domain entry."
+        ::= { l2tpSessionMapEntry 4 }
+
+
+--
+--      { l2tpIpUdpObjects 1 } reserved for future use
+--
+--      The L2TP UDP/IP Transport Status and Statistics Table
+--
+--      This table contains objects that can be used to
+--      describe the current status and statistics of the
+--      UDP/IP L2TP tunnel transport.
+
+
+l2tpUdpStatsTable       OBJECT-TYPE
+        SYNTAX          SEQUENCE OF L2tpUdpStatsEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "The L2TP UDP/IP transport stats table."
+        ::= { l2tpIpUdpObjects 2 }
+
+l2tpUdpStatsEntry       OBJECT-TYPE
+        SYNTAX          L2tpUdpStatsEntry
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "An L2TP UDP/IP transport stats entry."
+        INDEX { l2tpUdpStatsIfIndex }
+        ::= { l2tpUdpStatsTable 1 }
+
+L2tpUdpStatsEntry ::=
+        SEQUENCE {
+            l2tpUdpStatsIfIndex
+                InterfaceIndex,
+            l2tpUdpStatsPeerPort
+                Integer32,
+            l2tpUdpStatsLocalPort
+                Integer32
+        }
+
+l2tpUdpStatsIfIndex     OBJECT-TYPE
+        SYNTAX          InterfaceIndex
+        MAX-ACCESS      not-accessible
+        STATUS          current
+        DESCRIPTION
+           "This value for this object is equal to the
+            value of ifIndex of the Interfaces MIB for
+            tunnel interfaces of type L2TP and which have
+            a L2TP transport of UDP/IP."
+        ::= { l2tpUdpStatsEntry 1 }
+
+l2tpUdpStatsPeerPort    OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object reflects the peer's UDP port number
+            used for this tunnel."
+        ::= { l2tpUdpStatsEntry 2 }
+
+l2tpUdpStatsLocalPort   OBJECT-TYPE
+        SYNTAX          Integer32 (0..65535)
+        MAX-ACCESS      read-only
+        STATUS          current
+        DESCRIPTION
+           "This object reflects the local UDP port number
+            that this tunnel is bound to."
+        ::= { l2tpUdpStatsEntry 3 }
+
+
+--
+--      Definition of generic L2TP traps
+--
+
+l2tpTunnelAuthFailure NOTIFICATION-TYPE
+        OBJECTS         {
+                        l2tpTunnelStatsIfIndex,
+                        l2tpTunnelStatsInitiated,
+                        l2tpTunnelStatsRemoteHostName
+                        }
+        STATUS          current
+        DESCRIPTION
+           "A l2tpTunnelAuthFailure trap signifies that an
+            attempt to establish a tunnel to a remote peer
+            has failed authentication."
+        ::= { l2tpTraps 1 }
+
+--
+--      conformance information
+--
+
+l2tpGroups      OBJECT IDENTIFIER ::= { l2tpConformance 1 }
+l2tpCompliances OBJECT IDENTIFIER ::= { l2tpConformance 2 }
+
+--
+--      compliance statements
+--
+
+l2tpCompliance MODULE-COMPLIANCE
+        STATUS          current
+        DESCRIPTION
+           "The compliance statement for SNMPv2 entities
+            which implement the L2TP MIB."
+
+        MODULE          -- this module
+
+     -- unconditionally mandatory groups
+        MANDATORY-GROUPS {
+                            l2tpConfigGroup,
+                            l2tpStatsGroup
+                         }
+
+     -- conditionally mandatory groups
+        GROUP           l2tpIpUdpGroup
+        DESCRIPTION
+           "This group is mandatory for implementations that
+            support L2TP over UDP/IP."
+
+     -- optional groups
+        GROUP           l2tpDomainGroup
+        DESCRIPTION
+           "This group is optional for L2TP devices that desire
+            to group tunnel endpoints into tunnel domains."
+
+        GROUP           l2tpMappingGroup
+        DESCRIPTION
+           "This group is optional for L2TP devices that wish
+            to provide index mapping."
+
+        ::= { l2tpCompliances 1 }
+
+
+-- units of conformance
+
+l2tpConfigGroup OBJECT-GROUP
+        OBJECTS {
+            l2tpAdminState,
+            l2tpDrainTunnels,
+            l2tpTunnelConfigDomainIdentifier,
+            l2tpTunnelConfigAuthentication,
+            l2tpTunnelConfigSecret,
+            l2tpTunnelConfigSecurity,
+            l2tpTunnelConfigHelloInterval,
+            l2tpTunnelConfigIdleTimeout,
+            l2tpTunnelConfigControlRWS,
+            l2tpTunnelConfigControlMaxRetransmissions,
+            l2tpTunnelConfigControlMaxRetransmissionTimeout,
+            l2tpTunnelConfigPayloadSequencing,
+            l2tpTunnelConfigReassemblyTimeout,
+            l2tpTunnelConfigTransport,
+            l2tpTunnelConfigDrainTunnel
+        }
+        STATUS          current
+        DESCRIPTION
+           "A collection of objects providing configuration
+            information of the L2TP protocol, tunnels and sessions."
+        ::= { l2tpGroups 1 }
+
+l2tpStatsGroup OBJECT-GROUP
+        OBJECTS {
+            l2tpProtocolVersion,
+            l2tpVendorName,
+            l2tpFirmwareRev,
+            l2tpDrainingTunnels,
+            l2tpTunnelStatsIfIndex,
+            l2tpTunnelStatsLocalTID,
+            l2tpTunnelStatsRemoteTID,
+            l2tpTunnelStatsState,
+            l2tpTunnelStatsInitiated,
+            l2tpTunnelStatsRemoteHostName,
+            l2tpTunnelStatsRemoteVendorName,
+            l2tpTunnelStatsRemoteFirmwareRevision,
+            l2tpTunnelStatsRemoteProtocolVersion,
+            l2tpTunnelStatsInitialRemoteRWS,
+            l2tpTunnelStatsBearerCapabilities,
+            l2tpTunnelStatsFramingCapabilities,
+            l2tpTunnelStatsControlRecvPackets,
+            l2tpTunnelStatsControlRecvZLB,
+            l2tpTunnelStatsControlOutOfSequence,
+            l2tpTunnelStatsControlOutOfWindow,
+            l2tpTunnelStatsControlSendPackets,
+            l2tpTunnelStatsControlSendZLB,
+            l2tpTunnelStatsControlAckTimeouts,
+            l2tpTunnelStatsCurrentRemoteRWS,
+            l2tpTunnelStatsSendSeq,
+            l2tpTunnelStatsSendSeqAck,
+            l2tpTunnelStatsRecvSeq,
+            l2tpTunnelStatsRecvSeqAck,
+            l2tpTunnelStatsTotalSessions,
+            l2tpTunnelStatsFailedSessions,
+            l2tpTunnelStatsActiveSessions,
+            l2tpTunnelStatsLastResultCode,
+            l2tpTunnelStatsLastErrorCode,
+            l2tpTunnelStatsLastErrorMessage,
+            l2tpTunnelStatsDrainingTunnel,
+            l2tpSessionStatsIfIndex,
+            l2tpSessionStatsLocalSID,
+            l2tpSessionStatsRemoteSID,
+            l2tpSessionStatsUserName,
+            l2tpSessionStatsState,
+            l2tpSessionStatsCallType,
+            l2tpSessionStatsCallSerialNumber,
+            l2tpSessionStatsTxConnectSpeed,
+            l2tpSessionStatsRxConnectSpeed,
+            l2tpSessionStatsCallBearerType,
+            l2tpSessionStatsFramingType,
+            l2tpSessionStatsPhysChanId,
+            l2tpSessionStatsDNIS,
+            l2tpSessionStatsCLID,
+            l2tpSessionStatsSubAddress,
+            l2tpSessionStatsPrivateGroupID,
+            l2tpSessionStatsProxyLcp,
+            l2tpSessionStatsAuthMethod,
+            l2tpSessionStatsSequencingState,
+            l2tpSessionStatsOutSequence,
+            l2tpSessionStatsReassemblyTimeouts,
+            l2tpSessionStatsSendSeq,
+            l2tpSessionStatsRecvSeq
+        }
+        STATUS          current
+        DESCRIPTION
+           "A collection of objects providing status and
+            statistics of the L2TP protocol, tunnels and
+            sessions."
+        ::= { l2tpGroups 2 }
+
+l2tpIpUdpGroup OBJECT-GROUP
+        OBJECTS {
+            l2tpUdpStatsPeerPort,
+            l2tpUdpStatsLocalPort
+        }
+        STATUS          current
+        DESCRIPTION
+           "A collection of objects providing status and
+            statistics of the L2TP UDP/IP transport layer."
+        ::= { l2tpGroups 3 }
+
+l2tpDomainGroup OBJECT-GROUP
+        OBJECTS {
+            l2tpDomainConfigAdminState,
+            l2tpDomainConfigDrainTunnels,
+            l2tpDomainConfigAuthentication,
+            l2tpDomainConfigSecret,
+            l2tpDomainConfigTunnelSecurity,
+            l2tpDomainConfigTunnelHelloInterval,
+            l2tpDomainConfigTunnelIdleTimeout,
+            l2tpDomainConfigControlRWS,
+            l2tpDomainConfigControlMaxRetransmissions,
+            l2tpDomainConfigControlMaxRetransmissionTimeout,
+            l2tpDomainConfigPayloadSequencing,
+            l2tpDomainConfigReassemblyTimeout,
+            l2tpDomainConfigStatus,
+            l2tpDomainStatsTotalTunnels,
+            l2tpDomainStatsFailedTunnels,
+            l2tpDomainStatsFailedAuthentications,
+            l2tpDomainStatsActiveTunnels,
+            l2tpDomainStatsTotalSessions,
+            l2tpDomainStatsFailedSessions,
+            l2tpDomainStatsActiveSessions,
+            l2tpDomainStatsDrainingTunnels,
+            l2tpDomainStatsControlRecvOctets,
+            l2tpDomainStatsControlRecvPackets,
+            l2tpDomainStatsControlSendOctets,
+            l2tpDomainStatsControlSendPackets,
+            l2tpDomainStatsPayloadRecvOctets,
+            l2tpDomainStatsPayloadRecvPackets,
+            l2tpDomainStatsPayloadRecvDiscards,
+            l2tpDomainStatsPayloadSendOctets,
+            l2tpDomainStatsPayloadSendPackets
+        }
+        STATUS          current
+        DESCRIPTION
+           "A collection of objects providing configuration,
+            status and statistics of L2TP tunnel domains."
+        ::= { l2tpGroups 4 }
+
+l2tpMappingGroup OBJECT-GROUP
+        OBJECTS {
+            l2tpTunnelMapIfIndex,
+            l2tpSessionMapTunnelIfIndex,
+            l2tpSessionMapLocalSID,
+            l2tpSessionMapStatus
+        }
+        STATUS          current
+        DESCRIPTION
+           "A collection of objects providing index mapping."
+        ::= { l2tpGroups 5 }
+
+END
+

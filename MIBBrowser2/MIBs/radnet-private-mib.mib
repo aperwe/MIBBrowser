@@ -1,0 +1,477 @@
+-- @(#)rnet_priv.mib
+-- ----------------------------------------------------------------------
+-- RADNET Private MIB
+-- Copyright (c) 1996 RADNET.
+-- ----------------------------------------------------------------------
+--
+--  MIB Module :   RADNET-PRIVATE-MIB
+--
+--  Revision   :   2.201
+-- 
+--  Description:   Definition of the MIB tree structure supported by
+--                 the SNMP Agent of RADNET Products.
+-- 
+-- 
+--  ----------------------------------------------------------------------
+RADNET-PRIVATE-MIB DEFINITIONS ::= BEGIN
+
+	IMPORTS
+		MODULE-IDENTITY FROM SNMPv2-SMI
+		enterprises		FROM RFC1155-SMI;
+
+-- ************************************************************
+-- 		RADNET Private MIB
+-- ************************************************************
+
+
+-- ------------------------------------------------------------
+-- RADNET Object Identifier Definition
+-- ------------------------------------------------------------
+				radnet	MODULE-IDENTITY
+                    LAST-UPDATED "9709021300Z"
+                    ORGANIZATION "RADNET"
+                    CONTACT-INFO
+                      "          Eitan Mardiks
+                        Postal:  RADNET Ltd.
+				24 Raul Wallenberg St.
+				Tel-Aviv 69719, Israel.
+                        Tel:     +972 3 6455700
+                        Fax:     +972 3 6480582
+                        E-Mail:  eitan@gate.radnet.co.il"
+
+                    DESCRIPTION
+                    "Definition of the MIB tree structure supported by
+					      the SNMP Agent of RADNET Products."
+                    ::= { enterprises 1551 }
+
+
+-- -------------------------------------------------------------
+-- Groups in RADNET-PRIVATE-MIB
+-- -------------------------------------------------------------
+
+rnetOids		OBJECT IDENTIFIER ::= { radnet 1 }
+rnetObjects		OBJECT IDENTIFIER ::= { radnet 2 }
+radnetDrafts		OBJECT IDENTIFIER ::= { radnet 3 }
+
+
+-- ***************************************************************
+--             RADNET object identifiers (oid's)
+--             ---------------------------------
+-- The groups provide objects that give identification number for
+-- each product or functional type that might exist in the system.
+-- ***************************************************************
+
+rnetProductsOids	OBJECT IDENTIFIER ::= { rnetOids 1 }
+rnetFuncTypeOids	OBJECT IDENTIFIER ::= { rnetOids 2 }
+rnetTestTypeOids	OBJECT IDENTIFIER ::= { rnetOids 3 }
+rnetSWTypeOids    	OBJECT IDENTIFIER ::= { rnetOids 4 }
+
+-- ***************************************************************
+--                  RADNET product oid's
+--                  --------------------
+-- The groups provide objects that give identification number for
+-- each product that is provided by RADNET.
+-- ***************************************************************
+
+
+rnetChassisOids		OBJECT IDENTIFIER ::= { rnetProductsOids 1 }
+rnetBackplaneOids	OBJECT IDENTIFIER ::= { rnetProductsOids 2 }
+rnetBusOids		OBJECT IDENTIFIER ::= { rnetProductsOids 3 }
+rnetPowerSupplyOids	OBJECT IDENTIFIER ::= { rnetProductsOids 4 }
+rnetPhysicalSlotOids	OBJECT IDENTIFIER ::= { rnetProductsOids 5 }
+rnetClockOids		OBJECT IDENTIFIER ::= { rnetProductsOids 6 }
+rnetCardOids		OBJECT IDENTIFIER ::= { rnetProductsOids 7 }
+rnetAuxCardOids		OBJECT IDENTIFIER ::= { rnetProductsOids 8 }
+rnetPortOids		OBJECT IDENTIFIER ::= { rnetProductsOids 9 }
+rnetChipsOids		OBJECT IDENTIFIER ::= { rnetProductsOids 10 }
+rnetFanOids		OBJECT IDENTIFIER ::= { rnetProductsOids 11 }
+
+
+-- Chassis Names
+rnetATMux2000		OBJECT IDENTIFIER ::= { rnetChassisOids 1 }
+rnetATMux2002		OBJECT IDENTIFIER ::= { rnetChassisOids 2 }
+rnetATMux2004		OBJECT IDENTIFIER ::= { rnetChassisOids 3 }
+rnetACE2002		OBJECT IDENTIFIER ::= { rnetChassisOids 4 }
+rnetACE2005		OBJECT IDENTIFIER ::= { rnetChassisOids 5 }
+
+
+-- Backplane
+rnetIOBackplane		OBJECT IDENTIFIER ::= { rnetBackplaneOids 1 }
+rnetHSBackplane		OBJECT IDENTIFIER ::= { rnetBackplaneOids 2 }
+rnet2004Backplane	OBJECT IDENTIFIER ::= { rnetBackplaneOids 3 }
+
+-- Busses
+rnetControlBus		OBJECT IDENTIFIER ::= { rnetBusOids 1 }
+rnetCellBus		OBJECT IDENTIFIER ::= { rnetBusOids 2 }
+rnetRedundancyBus	OBJECT IDENTIFIER ::= { rnetBusOids 3 }
+
+-- Power Supplies
+rnetPowerSupplyLeftAC	OBJECT IDENTIFIER ::= { rnetPowerSupplyOids 1 }
+rnetPowerSupplyRightAC	OBJECT IDENTIFIER ::= { rnetPowerSupplyOids 2 }
+rnetPowerSupplyLeftDC	OBJECT IDENTIFIER ::= { rnetPowerSupplyOids 3 }
+rnetPowerSupplyRightDC	OBJECT IDENTIFIER ::= { rnetPowerSupplyOids 4 }
+rnetPowerSupply2004AC	OBJECT IDENTIFIER ::= { rnetPowerSupplyOids 5 }
+
+
+-- Physical Slots
+rnetPSSlot		OBJECT IDENTIFIER ::= { rnetPhysicalSlotOids 1 }
+rnetMCPSlot		OBJECT IDENTIFIER ::= { rnetPhysicalSlotOids 2 }
+rnetAggregateSlot	OBJECT IDENTIFIER ::= { rnetPhysicalSlotOids 3 }
+rnetTributarySlot	OBJECT IDENTIFIER ::= { rnetPhysicalSlotOids 4 }
+rnetServiceSlot		OBJECT IDENTIFIER ::= { rnetPhysicalSlotOids 5 }
+
+
+-- Clocks
+rnetExternalClock	OBJECT IDENTIFIER ::= { rnetClockOids 1 }
+rnetTribClock		OBJECT IDENTIFIER ::= { rnetClockOids 2 }
+rnetLineClock		OBJECT IDENTIFIER ::= { rnetClockOids 3 }
+rnetInternalClock	OBJECT IDENTIFIER ::= { rnetClockOids 4 }
+rnetUndefinedClock	OBJECT IDENTIFIER ::= { rnetClockOids 5 }
+rnetDisabledClock	OBJECT IDENTIFIER ::= { rnetClockOids 6 }
+
+
+-- Fans
+rnetLeftFan		OBJECT IDENTIFIER ::= { rnetFanOids 1 }
+rnetRightFan		OBJECT IDENTIFIER ::= { rnetFanOids 2 }
+
+-- -------------------------------------------------------------
+--RADNET Card types oid's
+-- -------------------------------------------------------------
+
+rnetMcpCardOids		OBJECT IDENTIFIER ::= { rnetCardOids 1 }
+rnetAubCardOids		OBJECT IDENTIFIER ::= { rnetCardOids 2 }
+rnetNimhCardOids	OBJECT IDENTIFIER ::= { rnetCardOids 3 }
+rnetNimmCardOids	OBJECT IDENTIFIER ::= { rnetCardOids 4 }
+rnetHabCardOids		OBJECT IDENTIFIER ::= { rnetCardOids 5 }
+rnetMabCardOids		OBJECT IDENTIFIER ::= { rnetCardOids 6 }
+rnetCebCardOids		OBJECT IDENTIFIER ::= { rnetCardOids 7 }
+rnetDabCardOids		OBJECT IDENTIFIER ::= { rnetCardOids 8 }
+rnetEthCardOids		OBJECT IDENTIFIER ::= { rnetCardOids 9 }
+--rnetAdslCardOids	OBJECT IDENTIFIER ::= { rnetCardOids 10}
+--rnetHssiCardOids	OBJECT IDENTIFIER ::= { rnetCardOids 11}
+
+rnetMcpjCardOids              OBJECT IDENTIFIER ::= { rnetMcpCardOids 1 }
+rnetMcpj2004CardOids          OBJECT IDENTIFIER ::= { rnetMcpCardOids 2 }
+rnetAub4CardOids              OBJECT IDENTIFIER ::= { rnetAubCardOids 1 }
+rnetAub8CardOids              OBJECT IDENTIFIER ::= { rnetAubCardOids 2 }
+rnetNimhOpticalCardOids       OBJECT IDENTIFIER ::= { rnetNimhCardOids 1 }
+rnetNimhElectricalCardOids    OBJECT IDENTIFIER ::= { rnetNimhCardOids 2 }
+rnetHabOpticalCardOids        OBJECT IDENTIFIER ::= { rnetHabCardOids 1 }
+rnetHabElectricalCardOids     OBJECT IDENTIFIER ::= { rnetHabCardOids 2 }
+rnetNimmElectrical1CardOids   OBJECT IDENTIFIER ::= { rnetNimmCardOids 1 }
+rnetNimmElectrical2CardOids   OBJECT IDENTIFIER ::= { rnetNimmCardOids 2 }
+rnetNimmOpticalCardOids       OBJECT IDENTIFIER ::= { rnetNimmCardOids 3 }
+rnetMabElectrical1CardOids    OBJECT IDENTIFIER ::= { rnetMabCardOids 1 }
+rnetMabElectrical2CardOids    OBJECT IDENTIFIER ::= { rnetMabCardOids 2 }
+rnetCeb4CardOids              OBJECT IDENTIFIER ::= { rnetCebCardOids 1 }
+rnetCeb4T1CardOids				OBJECT IDENTIFIER ::= { rnetCeb4CardOids 2 }
+rnetCeb8CardOids              OBJECT IDENTIFIER ::= { rnetCebCardOids 2 }
+rnetCeb8T1CardOids				OBJECT IDENTIFIER ::= { rnetCeb8CardOids 2 }
+rnetDab4CardOids              OBJECT IDENTIFIER ::= { rnetDabCardOids 1 }
+rnetDab8CardOids              OBJECT IDENTIFIER ::= { rnetDabCardOids 2 }
+rnetEth6CardOids	      OBJECT IDENTIFIER ::= { rnetEthCardOids 1 }
+
+-- MCP Cards
+rnetMcpjCard            OBJECT IDENTIFIER ::= { rnetMcpjCardOids 1 }
+rnetMcpj2004Card        OBJECT IDENTIFIER ::= { rnetMcpj2004CardOids 1 }
+
+-- AUB Cards
+rnetAub4E1Card         	OBJECT IDENTIFIER ::= { rnetAub4CardOids 1 }
+rnetAub4T1Card         	OBJECT IDENTIFIER ::= { rnetAub4CardOids 2 }
+rnetAub8E1Card         	OBJECT IDENTIFIER ::= { rnetAub8CardOids 1 }
+rnetAub8T1Card         	OBJECT IDENTIFIER ::= { rnetAub8CardOids 2 }
+
+-- NIMH Cards
+rnetNimhOpticalSDHCard  OBJECT IDENTIFIER ::= { rnetNimhOpticalCardOids 1 }
+rnetNimhOpticalSONETCard  OBJECT IDENTIFIER ::= { rnetNimhOpticalCardOids 2 }
+rnetNimhElectricalSDHCard OBJECT IDENTIFIER ::= { rnetNimhElectricalCardOids 1 }
+rnetNimhElectricalSONETCard OBJECT IDENTIFIER ::= { rnetNimhElectricalCardOids 2 }
+
+-- HAB Cards
+rnetHabOpticalCard     OBJECT IDENTIFIER ::= { rnetHabOpticalCardOids 1 }
+rnetHabElectricalCard  OBJECT IDENTIFIER ::= { rnetHabElectricalCardOids 1 }
+
+-- NIMM Cards
+rnetNimmElectrical1E3Card OBJECT IDENTIFIER ::= { rnetNimmElectrical1CardOids 1 }
+rnetNimmElectrical1T3Card OBJECT IDENTIFIER ::= { rnetNimmElectrical1CardOids 2 }
+rnetNimmElectrical2Card OBJECT IDENTIFIER ::= { rnetNimmElectrical2CardOids 1 }
+rnetNimmOpticalCard     OBJECT IDENTIFIER ::= { rnetNimmOpticalCardOids 1 }
+
+
+-- MAB Cards
+rnetMabElectrical1Card    OBJECT IDENTIFIER ::= { rnetMabElectrical1CardOids 1 }
+rnetMabElectrical2Card    OBJECT IDENTIFIER ::= { rnetMabElectrical2CardOids 1 }
+
+-- CEB Cards
+rnetCeb4E1Card         OBJECT IDENTIFIER ::= { rnetCeb4CardOids 1 }
+rnetCeb4T1Dsx1Card     OBJECT IDENTIFIER ::= { rnetCeb4T1CardOids 1 }
+rnetCeb4T1CsuDsuCard   OBJECT IDENTIFIER ::= { rnetCeb4T1CardOids 2 }
+rnetCeb8E1Card         OBJECT IDENTIFIER ::= { rnetCeb8CardOids 1 }
+rnetCeb8T1Dsx1Card     OBJECT IDENTIFIER ::= { rnetCeb8T1CardOids 1 }
+rnetCeb8T1CsuDsuCard   OBJECT IDENTIFIER ::= { rnetCeb8T1CardOids 2 }
+
+-- Enhanced CEB Cards
+rnetEnhCeb4E1Card         OBJECT IDENTIFIER ::= { rnetCeb4E1Card 1 }
+rnetEnhCeb4T1Dsx1Card     OBJECT IDENTIFIER ::= { rnetCeb4T1Dsx1Card 1 }
+rnetEnhCeb4T1CsuDsuCard   OBJECT IDENTIFIER ::= { rnetCeb4T1CsuDsuCard 1 }
+rnetEnhCeb8E1Card         OBJECT IDENTIFIER ::= { rnetCeb8E1Card 1 }
+rnetEnhCeb8T1Dsx1Card     OBJECT IDENTIFIER ::= { rnetCeb8T1Dsx1Card 1 }
+rnetEnhCeb8T1CsuDsuCard   OBJECT IDENTIFIER ::= { rnetCeb8T1CsuDsuCard 1 }
+
+-- DAB Cards
+rnetDab4E1Card         OBJECT IDENTIFIER ::= { rnetDab4CardOids 1 }
+rnetDab4V35Card        OBJECT IDENTIFIER ::= { rnetDab4CardOids 2 }
+rnetDab4T1Card         OBJECT IDENTIFIER ::= { rnetDab4CardOids 3 }
+rnetDab4X21Card        OBJECT IDENTIFIER ::= { rnetDab4CardOids 4 }
+rnetDab8E1Card         OBJECT IDENTIFIER ::= { rnetDab8CardOids 1 }
+rnetDab8V35Card        OBJECT IDENTIFIER ::= { rnetDab8CardOids 2 }
+rnetDab8T1Card         OBJECT IDENTIFIER ::= { rnetDab8CardOids 3 }
+rnetDab8X21Card        OBJECT IDENTIFIER ::= { rnetDab8CardOids 4 }
+
+-- Ethernet Cards
+rnetEth6Card           OBJECT IDENTIFIER ::= { rnetEth6CardOids 1 }
+
+-- -------------------------------------------------------------
+-- RADNET Auxiliary Cards oid's
+-- -------------------------------------------------------------
+rnetBlankPanelAuxCardOids	OBJECT IDENTIFIER ::= { rnetAuxCardOids 1 }
+rnetMcpAuxCardOids			OBJECT IDENTIFIER ::= { rnetAuxCardOids 2 }
+rnetE1AuxCardOids				OBJECT IDENTIFIER ::= { rnetAuxCardOids 3 }
+rnetDataAuxCardOids			OBJECT IDENTIFIER ::= { rnetAuxCardOids 4 }
+rnetE3AggrAuxCardOids		OBJECT IDENTIFIER ::= { rnetAuxCardOids 5 }
+rnetE3TribAuxCardOids		OBJECT IDENTIFIER ::= { rnetAuxCardOids 6 }
+rnetSdhAggrOpAuxCardOids	OBJECT IDENTIFIER ::= { rnetAuxCardOids 7 }
+rnetSdhAggrEleAuxCardOids	OBJECT IDENTIFIER ::= { rnetAuxCardOids 8 }
+rnetSdhTribEleAuxCardOids	OBJECT IDENTIFIER ::= { rnetAuxCardOids 9 }
+rnetLanTwo4AuxCardOids		OBJECT IDENTIFIER ::= { rnetAuxCardOids 10}
+
+rnetBlankPanelAuxCard	OBJECT IDENTIFIER ::= { rnetBlankPanelAuxCardOids 1 }
+
+
+
+-- MCP Auxiliary Cards
+rnetMcpAuxCard					OBJECT IDENTIFIER ::= { rnetMcpAuxCardOids 1 }
+rnetMcpServiceAuxLeftCard	OBJECT IDENTIFIER ::= { rnetMcpAuxCardOids 2 }
+rnetMcpServiceAuxRightCard	OBJECT IDENTIFIER ::= { rnetMcpAuxCardOids 3 }
+
+-- E1 Auxiliary Cards
+rnetE1Balance4AuxCard		OBJECT IDENTIFIER ::= { rnetE1AuxCardOids 1 }
+rnetE1Balance8AuxCard		OBJECT IDENTIFIER ::= { rnetE1AuxCardOids 2 }
+rnetE1UnBal4Type1AuxCard	OBJECT IDENTIFIER ::= { rnetE1AuxCardOids 3 }
+rnetE1UnBal8Type1AuxCard	OBJECT IDENTIFIER ::= { rnetE1AuxCardOids 4 }
+rnetE1UnBal4Type2AuxCard	OBJECT IDENTIFIER ::= { rnetE1AuxCardOids 5 }
+rnetE1UnBal8Type2AuxCard	OBJECT IDENTIFIER ::= { rnetE1AuxCardOids 6 }
+rnetE1Redund4AuxCard			OBJECT IDENTIFIER ::= { rnetE1AuxCardOids 7 }
+rnetE1Redund8AuxCard			OBJECT IDENTIFIER ::= { rnetE1AuxCardOids 8 }
+
+-- Data Auxiliary Cards
+rnetData4AuxCard		OBJECT IDENTIFIER ::= { rnetDataAuxCardOids 1 }
+rnetData8AuxCard		OBJECT IDENTIFIER ::= { rnetDataAuxCardOids 2 }
+
+-- E3 Aggregate Auxiliary Cards
+rnetE3Aggr1AuxCard		OBJECT IDENTIFIER ::= { rnetE3AggrAuxCardOids 1 }
+rnetE3Aggr2AuxCard		OBJECT IDENTIFIER ::= { rnetE3AggrAuxCardOids 2 }
+
+-- E3 Tributary Auxiliary Cards
+rnetE3Trib1AuxCard		OBJECT IDENTIFIER ::= { rnetE3TribAuxCardOids 1 }
+rnetE3Trib2AuxCard		OBJECT IDENTIFIER ::= { rnetE3TribAuxCardOids 2 }
+
+-- SDH Aggregate Auxiliary Cards - Optical
+rnetSdhAggrOpAuxCard	OBJECT IDENTIFIER ::= { rnetSdhAggrOpAuxCardOids 1 }
+
+-- SDH  Auxiliary Cards - Electrical
+rnetSdhAggrEleAuxCard	OBJECT IDENTIFIER ::= { rnetSdhAggrEleAuxCardOids 1 }
+
+-- E3  Auxiliary Cards - Electrical
+rnetSdhTribEleAuxCard	OBJECT IDENTIFIER ::= { rnetSdhTribEleAuxCardOids 1 }
+
+-- Lan Auxiliary Cards 
+rnetLanTwo4AuxCard		OBJECT IDENTIFIER ::= { rnetLanTwo4AuxCardOids 1 }
+
+
+-- -------------------------------------------------------------
+--RADNET Port types oid's
+-- -------------------------------------------------------------
+
+rnetAdslPortOids		OBJECT IDENTIFIER ::= { rnetPortOids 1 }
+rnetE1PortOids			OBJECT IDENTIFIER ::= { rnetPortOids 2 }
+rnetE3PortOids			OBJECT IDENTIFIER ::= { rnetPortOids 3 }
+rnetEthPortOids		OBJECT IDENTIFIER ::= { rnetPortOids 4 }
+rnetHssiPortOids		OBJECT IDENTIFIER ::= { rnetPortOids 5 }
+rnetOc3cPortOids		OBJECT IDENTIFIER ::= { rnetPortOids 6 }
+rnetRS232PortOids		OBJECT IDENTIFIER ::= { rnetPortOids 7 }
+rnetRS422PortOids		OBJECT IDENTIFIER ::= { rnetPortOids 8 }	
+rnetRS449PortOids		OBJECT IDENTIFIER ::= { rnetPortOids 9 }
+rnetRS530PortOids		OBJECT IDENTIFIER ::= { rnetPortOids 10 }
+rnetStm1PortOids		OBJECT IDENTIFIER ::= { rnetPortOids 11 }
+rnetT1PortOids			OBJECT IDENTIFIER ::= { rnetPortOids 12 }
+rnetT3PortOids			OBJECT IDENTIFIER ::= { rnetPortOids 13 }
+rnetV35PortOids		OBJECT IDENTIFIER ::= { rnetPortOids 14 }
+rnetX21PortOids		OBJECT IDENTIFIER ::= { rnetPortOids 15 }
+
+
+-- -------------------------------------------------------------
+--RADNET Port types oid's
+-- -------------------------------------------------------------
+
+-- ADSL Ports
+rnetAdslPort		      OBJECT IDENTIFIER ::= { rnetAdslPortOids 1 }
+
+-- E1 Ports
+rnetE1StructuredPort	    	OBJECT IDENTIFIER ::= { rnetE1PortOids 1 }
+rnetE1UnstructuredPort	   OBJECT IDENTIFIER ::= { rnetE1PortOids 2 }
+rnetE1PisdnPort		    	OBJECT IDENTIFIER ::= { rnetE1PortOids 3 }
+rnetE1AuxPort		    		OBJECT IDENTIFIER ::= { rnetE1PortOids 4 }
+rnetE1ProtectedAuxPort	   OBJECT IDENTIFIER ::= { rnetE1PortOids 5 }
+rnetE1T1RedundantAuxPort   OBJECT IDENTIFIER ::= { rnetE1PortOids 6 }
+
+-- E3 Ports
+rnetE3Port		     	 OBJECT IDENTIFIER ::= { rnetE3PortOids 1 }
+
+-- Eth Ports
+rnetEthPort		    	 OBJECT IDENTIFIER ::= { rnetEthPortOids 1 }
+
+-- Hssi Ports
+rnetHssiPort		    OBJECT IDENTIFIER ::= { rnetHssiPortOids 1 }
+
+-- Oc3c Ports
+rnetOc3cPort		    OBJECT IDENTIFIER ::= { rnetOc3cPortOids 1 }
+
+-- RS232 Ports
+rnetRS232Port		    OBJECT IDENTIFIER ::= { rnetRS232PortOids 1 }
+
+-- RS422 Ports
+rnetRS422Port		    OBJECT IDENTIFIER ::= { rnetRS422PortOids 1 }
+
+-- RS449 Ports
+rnetRS499Port		    OBJECT IDENTIFIER ::= { rnetRS449PortOids 1 }
+
+-- RS530 Ports
+rnetRS530Port		    OBJECT IDENTIFIER ::= { rnetRS530PortOids 1 }
+
+-- Stm1 Ports
+rnetStm1Port		    OBJECT IDENTIFIER ::= { rnetStm1PortOids 1 }
+
+-- T1 Ports
+rnetT1StructuredPort	    OBJECT IDENTIFIER ::= { rnetT1PortOids 1 }
+rnetT1UnstructuredPort	 OBJECT IDENTIFIER ::= { rnetT1PortOids 2 }
+rnetT1PisdnPort		    OBJECT IDENTIFIER ::= { rnetT1PortOids 3 }
+rnetT1AuxPort		    	 OBJECT IDENTIFIER ::= { rnetT1PortOids 4 }
+rnetT1ProtectedAuxPort	 OBJECT IDENTIFIER ::= { rnetT1PortOids 5 }
+
+-- T3 Ports
+rnetT3Port		    OBJECT IDENTIFIER ::= { rnetT3PortOids 1 }
+
+-- V35 Ports
+rnetV35Port		    OBJECT IDENTIFIER ::= { rnetV35PortOids 1 }
+
+-- X21 Ports
+rnetX21Port		    OBJECT IDENTIFIER ::= { rnetX21PortOids 1 }
+
+-- -------------------------------------------------------------
+--RADNET Chips Types
+-- -------------------------------------------------------------
+
+rnetBootPromOids		OBJECT IDENTIFIER ::= { rnetChipsOids 1 }
+rnetFpgasOids			OBJECT IDENTIFIER ::= { rnetChipsOids 2 }
+rnetAsicsOids			OBJECT IDENTIFIER ::= { rnetChipsOids 3 }
+
+
+-- ***************************************************************
+--                RADNET Functional Types oid's
+--                -----------------------------
+-- The groups provide objects that give identification number for
+-- each functional type that is required by RADNET.
+-- ***************************************************************
+
+rnetUndefinedFunction	OBJECT IDENTIFIER ::= { rnetFuncTypeOids 1 }
+rnetAtmUniFunction	   OBJECT IDENTIFIER ::= { rnetFuncTypeOids 2 }
+rnetAtmNniFunction	   OBJECT IDENTIFIER ::= { rnetFuncTypeOids 3 }
+rnetFrameRelayFunction  OBJECT IDENTIFIER ::= { rnetFuncTypeOids 4 }
+rnetFuniFunction	   	OBJECT IDENTIFIER ::= { rnetFuncTypeOids 5 }
+rnetSmdsDxiFunction	   OBJECT IDENTIFIER ::= { rnetFuncTypeOids 6 }
+rnetAtmDxiFunction	   OBJECT IDENTIFIER ::= { rnetFuncTypeOids 7 }
+rnetCesFunction		   OBJECT IDENTIFIER ::= { rnetFuncTypeOids 8 }
+rnetMcpFunction		   OBJECT IDENTIFIER ::= { rnetFuncTypeOids 9 }
+rnetLanFunction		   OBJECT IDENTIFIER ::= { rnetFuncTypeOids 10}
+
+rnetTestTypePortOids	   OBJECT IDENTIFIER ::= { rnetTestTypeOids 1 }
+rnetTestTypeCardOids	   OBJECT IDENTIFIER ::= { rnetTestTypeOids 2 }
+rnetTestTypebusOids	   OBJECT IDENTIFIER ::= { rnetTestTypeOids 3 }
+
+-- ***************************************************************
+--                RADNET Test Types oid's
+--                -----------------------------
+-- The groups provide objects that give identification number for
+-- each test type that is required by RADNET.
+-- ***************************************************************
+
+-- Port test types
+rnetTestTypePortLocalLB	   OBJECT IDENTIFIER ::= { rnetTestTypePortOids 1 }
+rnetTestTypePortLoopBack   OBJECT IDENTIFIER ::= { rnetTestTypePortOids 2 }
+rnetTestTypePayloadLB	   OBJECT IDENTIFIER ::= { rnetTestTypePortOids 3 }
+
+-- Card test types
+rnetTestTypeBasicCard	   OBJECT IDENTIFIER ::= { rnetTestTypeCardOids 1 }
+
+-- Bus test types
+rnetTestTypeBasicDataBus    OBJECT IDENTIFIER ::= { rnetTestTypebusOids 1 }
+rnetTestTypeBasicControlBus OBJECT IDENTIFIER ::= { rnetTestTypebusOids 2 }
+
+
+-- ***************************************************************
+--                RADNET SW Types oid's
+--                -----------------------------
+-- The groups provide objects that give identification number for
+-- each SW type that is required by RADNET.
+-- ***************************************************************
+
+-- rnetSWTypeMcpJx      	OBJECT IDENTIFIER ::= { rnetSWTypeOids 1 }
+rnetSWTypeAtmLowSpeed 	 	OBJECT IDENTIFIER ::= { rnetSWTypeOids 2 }
+rnetSWTypeAtmHighSpeed		OBJECT IDENTIFIER ::= { rnetSWTypeOids 3 }
+-- rnetSWTypeAtmE3			OBJECT IDENTIFIER ::= { rnetSWTypeOids 4 }
+rnetSWTypeFrameRelay			OBJECT IDENTIFIER ::= { rnetSWTypeOids 5 }
+-- rnetSWTypeFRE1				OBJECT IDENTIFIER ::= { rnetSWTypeOids 6 }
+rnetSWTypeCES					OBJECT IDENTIFIER ::= { rnetSWTypeOids 7 }
+rnetSWTypeSMDS      			OBJECT IDENTIFIER ::= { rnetSWTypeOids 8 }
+rnetSWTypeMcpSx				OBJECT IDENTIFIER ::= { rnetSWTypeOids 9 }
+rnetSWTypeLAN       			OBJECT IDENTIFIER ::= { rnetSWTypeOids 10}
+
+
+-- ***************************************************************
+--                   RADNET Entity Objects 
+--                   ---------------------
+-- The groups provide objects that contain complete information 
+-- about all the entity instances managed in each moment, like
+-- cards, ports and interfaces.
+-- ***************************************************************
+
+
+-- -------------------------------------------------------------
+-- RADNET entity types objects
+-- -------------------------------------------------------------
+
+rnetGen				OBJECT IDENTIFIER ::= { rnetObjects 1 }
+rnetATM				OBJECT IDENTIFIER ::= { rnetObjects 2 }
+rnetEthernet		OBJECT IDENTIFIER ::= { rnetObjects 3 }
+
+-- 	rnetAgent		OBJECT IDENTIFIER ::= { rnetGen 1 }
+--		rnetSystem		OBJECT IDENTIFIER ::= { rnetGen 2 }
+--		rnetInterface	OBJECT IDENTIFIER ::= { rnetGen 3 }
+--		rnetProtocol	OBJECT IDENTIFIER ::= { rnetGen 4 }
+-- 	rnetEntity		OBJECT IDENTIFIER ::= { rnetGen 5 }
+
+rnetATMGen				OBJECT IDENTIFIER ::= { rnetATM 1 }
+rnetChasATMux2000		OBJECT IDENTIFIER ::= { rnetATM 2 }
+
+rnetATMConf				OBJECT IDENTIFIER ::= { rnetATMGen 1 }
+rnetATMSpecificIf		OBJECT IDENTIFIER ::= { rnetATMGen 2 }
+rnetATMEntity			OBJECT IDENTIFIER ::= { rnetATMGen 3 }
+
+
+END
+
+
+
+
+

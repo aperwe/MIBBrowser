@@ -1,0 +1,1132 @@
+-- @(#)rnet_entity.mib
+-- ----------------------------------------------------------------------
+-- RADNET entity MIB
+-- Copyright (c) 1996 RADNET Ltd.
+-- ----------------------------------------------------------------------
+--
+-- MIB Module :   RADNET-ENTITY-MIB
+--
+-- Revision   :   V2.102
+--
+-- Description:   Definition of all the physical entities in the device.
+--                The definition includes the following details:
+--                    - More details about all the entities, that are
+--                      not provided by the entity mib;
+--		      - If required, specific information about each
+--			type of entity;
+--		      - Relationships between physical entities (Physical
+--			to physical mapping);
+--
+--		  In order to avoid as much as possible the need of 
+--		  Physical to Physical mapping, the entities are always
+--		  referred through their entPhysicalEntityIndex index.
+--		  This number is also used as the index of the type
+--		  specific tables (such as Power Supply table, or Card 
+--		  table).		 		 
+--
+--
+-- ----------------------------------------------------------------------
+RADNET-ENTITY-MIB DEFINITIONS ::= BEGIN
+
+
+	IMPORTS
+      OBJECT-TYPE, MODULE-IDENTITY		FROM SNMPv2-SMI
+	
+		AutonomousType,
+		DisplayString		FROM SNMPv2-TC
+
+		rnetGen	FROM RADNET-PRIVATE-MIB
+
+		entPhysicalIndex,
+		entPhysicalEntry 	FROM ENTITY-MIB;
+
+	rnetEntity MODULE-IDENTITY
+                    LAST-UPDATED "9709021300Z"
+                    ORGANIZATION "RADNET"
+                    CONTACT-INFO
+                      "          Eitan Mardiks
+                        Postal:  RADNET Ltd.
+				24 Raul Wallenberg St.
+				Tel-Aviv 69719, Israel.
+                        Tel:     +972 3 6455700
+                        Fax:     +972 3 6480582
+                        E-Mail:  eitan@gate.radnet.co.il"
+
+                    DESCRIPTION
+                    "Definition of all the physical entities in the device.
+      					The definition includes the following details:
+				          - More details about all the entities, that are
+				            not provided by the entity mib;
+				          - If required, specific information about each
+						   type of entity;
+				          - Relationships between physical entities (Physical
+					       to physical mapping);
+
+					      In order to avoid as much as possible the need of
+					      Physical to Physical mapping, the entities are always
+					      referred through their entPhysicalEntityIndex index.
+					      This number is also used as the index of the type
+					      specific tables (such as Power Supply table, or Card
+					      table)."
+                    ::= { rnetGen 5 }
+
+
+
+
+rnetEntGeneral	OBJECT IDENTIFIER ::= { rnetEntity 1 }
+rnetEntChassis	OBJECT IDENTIFIER ::= { rnetEntity 2 }
+rnetEntCard	OBJECT IDENTIFIER ::= { rnetEntity 3 }
+rnetEntPort	OBJECT IDENTIFIER ::= { rnetEntity 4 }
+
+rnetEntExpansions	OBJECT IDENTIFIER ::= { rnetEntGeneral 1 }
+rnetEntRedundancy	OBJECT IDENTIFIER ::= { rnetEntGeneral 2 }
+rnetEntTest		OBJECT IDENTIFIER ::= { rnetEntGeneral 3 }
+
+-- --------------------------------------------------------------
+-- RADNET Chassis Objects
+-- --------------------------------------------------------------
+rnetEntClock		OBJECT IDENTIFIER ::= { rnetEntChassis 1 }
+rnetEntBackplane	OBJECT IDENTIFIER ::= { rnetEntChassis 2 }
+rnetEntBus 		OBJECT IDENTIFIER ::= { rnetEntChassis 3 }
+
+-- --------------------------------------------------------------
+-- RADNET General Objects
+-- --------------------------------------------------------------
+
+-- Physical entity expansion
+
+rnetEntPhysicalTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetEntPhysicalEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+               "A list of Physical entity entries. This table
+                contains additional objects for the Physical entity
+		table."
+	::= { rnetEntExpansions 1 }
+
+rnetEntPhysicalEntry	OBJECT-TYPE
+	SYNTAX	RnetEntPhysicalEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+               "An entry containing additional management information
+               applicable to a particular Physical entity."
+	AUGMENTS	{ entPhysicalEntry }
+	::= { rnetEntPhysicalTable 1 }
+
+RnetEntPhysicalEntry ::= SEQUENCE {
+	rnetEntPhysicalOperStatus
+		INTEGER,
+	rnetEntHWVersion  
+     	DisplayString,
+	rnetEntAdminStatus
+		INTEGER
+	}
+
+rnetEntPhysicalOperStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+			up(1),
+			down(2),
+			testing(3),
+			unknown(4),
+			dormant(5),
+			maintenace(6),
+			mismatch(7),
+			disabled(8),
+			non-exist(127)
+		} 
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+	        "The current operational state of the physical entity."
+	::= { rnetEntPhysicalEntry 1 }
+
+
+rnetEntHWVersion  OBJECT-TYPE
+        SYNTAX DisplayString
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                     "Defines the H/W version of the entity. If there
+		      is no version to the entity, return an empty
+		      string."
+	::= { rnetEntPhysicalEntry 2 }
+
+rnetEntAdminStatus  OBJECT-TYPE
+        SYNTAX INTEGER {
+						enable(1),
+						disable(2)
+					}
+	MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+                     "Defines the administrative status of the entity."
+	::= { rnetEntPhysicalEntry 3 }
+
+
+-- --------------------------------------------------------------
+-- the Redundancy group
+-- The Physical Redundancy table contains information about 
+-- physical wiring and their current status, which are built for 
+-- the redundancy purposes.
+-- --------------------------------------------------------------
+
+
+
+-- --------------------------------------------------------------
+-- the Configuration Redundancy table
+
+-- The Redundancy table contains information about physical entities that 
+-- are fault tolerant. 
+-- --------------------------------------------------------------
+
+rnetEntRedundancyTable OBJECT-TYPE
+	SYNTAX  SEQUENCE OF RnetEntRedundancyEntry
+	MAX-ACCESS  not-accessible
+	STATUS  current
+	DESCRIPTION
+		"A list of ordered pairs of physical entities. 
+		In case of one-to-one redundancy the pair of
+		the entities appears as a single entry in the table, 
+		where the first INDEX identifies the 
+		entity to be activated first. In case of one-to 
+		many redundancy there is an entry for each
+		entity to be backed up (All entries, which belong 
+		to the same Redundancy Group, have the same 
+		rnetEntRedundancyIndex).
+		In the last case the first INDEX identifies the 
+		entity to be backed up, the second 
+		INDEX identifies the redundant entity (which can be 
+		common for a number of entries)"
+
+	::= { rnetEntRedundancy 1 }
+
+rnetEntRedundancyEntry OBJECT-TYPE
+	SYNTAX RnetEntRedundancyEntry
+	MAX-ACCESS  not-accessible
+	STATUS  current
+	DESCRIPTION
+		"A specific physical entity with its redundant 
+		 peer and status."
+	INDEX   { 	rnetEntRedundancyGroupIndex,
+			rnetEntRedundancyPhyIndex, 					
+			rnetEntRedundancyPeerPhyIndex }
+	::= { rnetEntRedundancyTable 1 }
+
+RnetEntRedundancyEntry ::= SEQUENCE {
+	rnetEntRedundancyGroupIndex
+		INTEGER,
+	rnetEntRedundancyPhyIndex
+		INTEGER,
+	rnetEntRedundancyPeerPhyIndex
+		INTEGER,
+	rnetEntRedundancyType
+		INTEGER,
+	rnetEntRedundancyAutoChangeOver
+		INTEGER,
+	rnetEntRedundancyAutoChangeBack
+		INTEGER,
+	rnetEntRedundancyManualOperation
+		INTEGER,
+	rnetEntRedundancyStatus
+		INTEGER,
+	rnetEntRedundancyRowStatus
+		INTEGER
+
+	}
+
+rnetEntRedundancyGroupIndex OBJECT-TYPE
+	SYNTAX  INTEGER (1..12)
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The redundancy group identifier. "
+	::= { rnetEntRedundancyEntry 1 }
+
+rnetEntRedundancyPhyIndex OBJECT-TYPE
+	SYNTAX  INTEGER (1..2147483647)
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The index of the specific physical entity 
+		 from entPhysicalTable, which is backed up. "
+	::= { rnetEntRedundancyEntry 2 }
+
+rnetEntRedundancyPeerPhyIndex OBJECT-TYPE
+	SYNTAX  INTEGER (1..2147483647)
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		" The index of  the redundant physical entity from 
+		  entPhysicalTable, which is used as 		
+		  a backup for the entity pointed by the	 
+		  rnetEntRedundancyPhyIndex. "
+	::= { rnetEntRedundancyEntry 3 }
+
+rnetEntRedundancyType OBJECT-TYPE
+	SYNTAX  INTEGER {
+		one-to-many(1),	
+		one-to-one(2)		
+		}
+	MAX-ACCESS  read-only
+        STATUS  current
+	DESCRIPTION
+		"The redundancy type.
+		 one-to-many: the backed up entity  is one among 
+		 others, that are backed up by a single redundant 
+		 entity. 
+		 one-to-one: the backed up entity has its own 
+		 redundant entity. "
+	::= { rnetEntRedundancyEntry 4 }
+
+rnetEntRedundancyAutoChangeOver OBJECT-TYPE
+	SYNTAX  INTEGER {
+		true(1),
+		false(2)
+	}
+	MAX-ACCESS  read-write
+	STATUS  current
+	DESCRIPTION
+		"Indication whether the specific entity 
+		 should be backed up automatically in the 
+		 case of failure."
+	DEFVAL { true }
+	::= { rnetEntRedundancyEntry 5 }
+
+rnetEntRedundancyAutoChangeBack OBJECT-TYPE
+	SYNTAX  INTEGER {
+		true(1),
+		false(2)
+	}  
+	MAX-ACCESS  read-write
+	STATUS  current
+	DESCRIPTION
+		"Indication whether the specific backed up entity 
+		 should return to operation automatically 
+		 in the case of repair. "
+	DEFVAL  { false }
+	::= { rnetEntRedundancyEntry 6 }
+
+rnetEntRedundancyManualOperation OBJECT-TYPE
+	SYNTAX  INTEGER {
+		change-over(1),
+		change-back(2)
+	}
+	MAX-ACCESS  read-write
+	STATUS  current
+	DESCRIPTION
+		"Manual operations which can be performed on 
+		 the Redundancy Group. "
+	::= { rnetEntRedundancyEntry 7 }
+
+rnetEntRedundancyStatus OBJECT-TYPE
+	SYNTAX  INTEGER {
+		normal(1),
+		active(2),
+		unavailable(3)
+	}
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The actual state of the redundancy. If no backing up is 
+		 taking place, than the state is normal. If the redundant
+		 entity is backing up the first index' entity, the status
+		 will be active. If, for any reason, the redundancy can 
+		 not take place (e.g. the redundancy bus is backing up 
+		 another entity or the redundant card is down), 
+		 then the status will be unavailable(3)."		 
+	::= { rnetEntRedundancyEntry 8 }
+
+rnetEntRedundancyRowStatus OBJECT-TYPE
+	SYNTAX  INTEGER{
+		active(1),
+		createAndGo(4),
+		destroy(6)
+	}
+	MAX-ACCESS  read-write
+	STATUS  current
+	DESCRIPTION
+		" The status which is used for row creation/deletion. "
+	::= { rnetEntRedundancyEntry 9 }
+
+-- --------------------------------------------------------------
+-- the Test group
+-- The Physical Redundancy Test table contains information about 
+-- tests for different types of physical entities. 
+-- --------------------------------------------------------------
+
+rnetEntTestTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetEntTestEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+               "A table that defines objects which allow a network 
+	        manager to instruct an agent to test an entity for various
+                faults.  Tests for an entity are defined in the
+                RADNET-PRIVATE-MIB.  After invoking
+                a test, the object rnetEntTestResult can be read to
+                determine the outcome.  If an agent can not perform
+                the test, rnetEntTestResult is set to so indicate."
+	::= { rnetEntTest 1 }
+
+rnetEntTestEntry	OBJECT-TYPE
+	SYNTAX		RnetEntTestEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+               "An entry containing objects for invoking tests on an
+                entity."
+	INDEX	{entPhysicalIndex, rnetEntTestType }
+	::= { rnetEntTestTable 1 }
+
+RnetEntTestEntry ::= SEQUENCE {
+	rnetEntTestType         
+	   	AutonomousType,
+	rnetEntTestAdminStatus       
+		INTEGER,
+	rnetEntTestOperStatus       
+	   	INTEGER,
+	rnetEntTestCode      
+	   	OBJECT IDENTIFIER
+	}
+
+rnetEntTestType      OBJECT-TYPE
+	SYNTAX       AutonomousType
+	MAX-ACCESS   read-write
+	STATUS       current
+	DESCRIPTION
+		"Writing to this object is only valid when no test is
+		 currently in progress.
+		 When read, this object always returns the most recent
+		 value that rnetEntTestType was set to.  If it has not been
+		 set since the last initialization of the network
+		 management subsystem on the agent, a value of noTest
+		 is returned."
+	::= { rnetEntTestEntry 1 }
+
+rnetEntTestAdminStatus     OBJECT-TYPE
+	SYNTAX INTEGER { 
+		abort(1), 
+		start(2) 
+	}
+	MAX-ACCESS   read-write
+	STATUS       current
+	DESCRIPTION
+		"This object is used to start and abort a test."		 
+	::= { rnetEntTestEntry 2 }
+
+rnetEntTestOperStatus     OBJECT-TYPE
+	SYNTAX       INTEGER {
+			none(1),          -- no test yet requested
+                        success(2),
+                        in-progress(3),
+                        not-supported(4),
+                        unable-to-run(5),   -- due to state of system
+                        aborted(6),
+                        failed(7)
+	}
+	MAX-ACCESS   read-only
+	STATUS       current
+	DESCRIPTION
+               "This object contains the result of the most recently
+               requested test, or the value none(1) if no tests have
+               been requested since the last reset.  Note that this
+               facility provides no provision for saving the results
+               of one test when starting another, as could be
+               required if used by multiple managers concurrently."
+	::= { rnetEntTestEntry 3 }
+
+rnetEntTestCode	    OBJECT-TYPE
+       SYNTAX       OBJECT IDENTIFIER
+       MAX-ACCESS   read-only
+       STATUS       current
+       DESCRIPTION
+               "This object contains a code which contains more
+               specific information on the test result, for example
+               an error-code after a failed test.  Error codes and
+               other values this object may take are specific to the
+               type of interface and/or test.  The value may have the
+               semantics of either the AutonomousType or
+               InstancePointer textual conventions as defined in RFC
+               1443.  The identifier:
+
+                   testCodeUnknown  OBJECT IDENTIFIER ::= { 0 0 }
+
+               is defined for use if no additional result code is
+               available."
+       ::= { rnetEntTestEntry 4 }
+
+
+-- **************************************************************
+--  rnetEntClock Group
+--
+--  The group contains definitions of the clock' sources in the 
+--  system.
+-- **************************************************************
+
+-- --------------------------------------------------------------
+-- RADNET Clock Units Table
+-- --------------------------------------------------------------
+rnetEntClockUnitsTable OBJECT-TYPE
+	SYNTAX  SEQUENCE OF RnetEntClockUnitsEntry
+	MAX-ACCESS  not-accessible
+	STATUS  current
+	DESCRIPTION
+		"A Configuration and status of each Clock Unit which is available in the System."
+	::= { rnetEntClock 2 }
+
+rnetEntClockUnitsEntry OBJECT-TYPE
+	SYNTAX RnetEntClockUnitsEntry
+	MAX-ACCESS  not-accessible
+	STATUS  current
+	DESCRIPTION
+		"A list of two or less entries representing the currently 
+		configured Clock Units."
+	INDEX   { 	rnetEntClockUnitsIndex }
+	::= { rnetEntClockUnitsTable 1 }
+
+RnetEntClockUnitsEntry ::= SEQUENCE {
+   rnetEntClockUnitsIndex
+      INTEGER,
+   rnetEntClockUnitsRevertive
+      INTEGER,
+   rnetEntClockUnitsConfiguration
+      INTEGER,
+   rnetEntClockUnitsCurrentStatus
+      INTEGER,
+   rnetEntClockUnitsBandwidth
+      INTEGER,
+   rnetEntClockUnitsPhaseHitActivation
+      INTEGER,
+   rnetEntClockUnitsSourceAType
+      OBJECT IDENTIFIER,
+   rnetEntClockUnitsSourceAContainedIn
+      INTEGER,
+   rnetEntClockUnitsSourceAOperStatus
+      INTEGER,
+   rnetEntClockUnitsSourceBType
+      OBJECT IDENTIFIER,
+   rnetEntClockUnitsSourceBContainedIn
+      INTEGER,
+   rnetEntClockUnitsSourceBOperStatus
+      INTEGER
+   }
+ 
+rnetEntClockUnitsIndex OBJECT-TYPE
+   SYNTAX      INTEGER (1..2147483647)
+   MAX-ACCESS  read-only
+   STATUS       current
+   DESCRIPTION
+      "The Clock Unit's index which is its index as a Physical Entity
+         i.e. entPhysicalIndex.
+         For Clock Unit in slot #6 = 1001.
+         For Clock Unit in slot #7 = 1002."
+   ::= { rnetEntClockUnitsEntry 1 }
+ 
+rnetEntClockUnitsRevertive OBJECT-TYPE
+   SYNTAX  INTEGER {
+      revertive(1),
+      not-revertive(2)
+   }
+   MAX-ACCESS  read-write
+   STATUS  current
+   DESCRIPTION
+      "Indication whether the clock unit
+       should return to it`s primary source automatically
+       in case the primary source has recouvered from a failure."
+   DEFVAL { revertive }
+   ::= { rnetEntClockUnitsEntry 2 }
+ 
+rnetEntClockUnitsConfiguration OBJECT-TYPE
+   SYNTAX  INTEGER {
+      lock-on-sourceA(1),
+      lock-on-sourceB(2),
+      hold-over(3),
+      free-run(4),
+      normal(5)
+   }
+   MAX-ACCESS  read-write
+   STATUS  current
+   DESCRIPTION
+      "Clock Unit switch behavier"
+   DEFVAL { normal }
+   ::= { rnetEntClockUnitsEntry 3 }
+ 
+rnetEntClockUnitsCurrentStatus OBJECT-TYPE
+   SYNTAX  INTEGER {
+      sourceA(1),
+      sourceB(2),
+      hold-over(3),
+      free-run(4),
+      unavailable(5)
+   }
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+      "The source currently being used by the Clock Unit.
+       If the Clock Unit has failed the status will be unavailable."
+   ::= { rnetEntClockUnitsEntry 4 }
+ 
+rnetEntClockUnitsBandwidth OBJECT-TYPE
+   SYNTAX  INTEGER {
+      value-1-sec(1),
+      value-10-Hz(2),
+      value-5-Hz(3),
+      value-1-Hz(4),
+      value-0-1-Hz(5),
+      stratum3(6),
+      sonet(7),
+      other(127)
+   }
+   MAX-ACCESS  read-write
+   STATUS  current
+   DESCRIPTION
+      "DPLL Bandwidth selection and display."
+   DEFVAL { value-1-sec}
+   ::= { rnetEntClockUnitsEntry 5 }
+ 
+rnetEntClockUnitsPhaseHitActivation OBJECT-TYPE
+      SYNTAX INTEGER {
+         active(1),
+         not-active(2)
+   }
+   MAX-ACCESS  read-write
+   STATUS  current
+   DESCRIPTION
+      "Setting of this object will course Phasehit activation/deactivation. The
+reading of this object will provide information of its current status."
+   DEFVAL { not-active }
+   ::= { rnetEntClockUnitsEntry 6 }
+ 
+rnetEntClockUnitsSourceAType  OBJECT-TYPE
+   SYNTAX      OBJECT IDENTIFIER
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+           "The type of the source A.
+            The allowed source types :
+               rnetExternalClock
+               rnetTribClock
+               rnetLineClock
+               rnetDisabledClock"
+   ::= { rnetEntClockUnitsEntry 7 }
+ 
+rnetEntClockUnitsSourceAContainedIn OBJECT-TYPE
+   SYNTAX      INTEGER (0..2147483647)
+   MAX-ACCESS  read-write
+   STATUS      current
+   DESCRIPTION
+           "The entPhysicalIndex of the entity that contains
+       the main clocks' source. In case of tributary/aggregate, the
+       entity will be a port. In case of external clock source,
+       the entity will be the used auxiliary card.
+       The value 0 is set in case the clock source of this
+       type is disabled."
+   DEFVAL { 0 }
+   ::= { rnetEntClockUnitsEntry 8 }
+ 
+rnetEntClockUnitsSourceAOperStatus  OBJECT-TYPE
+   SYNTAX   INTEGER {
+      not-exists(1),
+      out-of-frequency(2),
+      phase-hits(3),
+      up(4),
+      unknown(255)
+   }
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+           "The operational status of the source A"
+   ::= { rnetEntClockUnitsEntry 9 }
+ 
+ 
+rnetEntClockUnitsSourceBType  OBJECT-TYPE
+   SYNTAX      OBJECT IDENTIFIER
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+           "The type of the clock source A.
+            The allowed source types :
+               rnetExternalClock
+               rnetTribClock
+               rnetLineClock
+               rnetDisabledClock"
+   ::= { rnetEntClockUnitsEntry 10 }
+ 
+rnetEntClockUnitsSourceBContainedIn OBJECT-TYPE
+   SYNTAX      INTEGER (0..2147483647)
+   MAX-ACCESS  read-write
+   STATUS      current
+   DESCRIPTION
+           "The entPhysicalIndex of the entity that contains
+       the secondary clocks' source. In case of tributary/aggregate, the
+       entity will be a port. In case of external clock source,
+       the entity will be the  used auxiliary card.
+       The value 0 is set in case the clock source of this
+       type is disabled."
+   DEFVAL { 0 }
+   ::= { rnetEntClockUnitsEntry 11 }
+ 
+rnetEntClockUnitsSourceBOperStatus  OBJECT-TYPE
+   SYNTAX   INTEGER {
+      not-exists(1),
+      out-of-frequency(2),
+      phase-hits(3),
+      up(4),
+      unknown(255)
+   }
+   MAX-ACCESS  read-only
+   STATUS      current
+   DESCRIPTION
+           "The operational status of the source B"
+   ::= { rnetEntClockUnitsEntry 12 }
+ 
+ 
+
+
+rnetEntClockSystemReference   OBJECT-TYPE
+        SYNTAX INTEGER {
+		clock-reference-A(1),
+		clock-reference-B(2)
+}
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+	        "Setting of this object to a specified Reference Clock will couse all IO Cards to be switched to this Reference Clock. The reading of this object will provide information of current System Clock Reference. "
+	::= { rnetEntClock 3 }
+
+rnetEntClockSystemRedundancyIndication   OBJECT-TYPE
+        SYNTAX INTEGER {
+		redundancy(1),
+		separated(2)
+}
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+	        "Defines if the Clock Units will work in Redundancy or Separate mode "
+	::= { rnetEntClock 4 }
+
+
+-- --------------------------------------------------------------
+-- RADNET Clock Source Redundancy Table
+-- --------------------------------------------------------------
+rnetEntClockSourceRedundancyTable OBJECT-TYPE
+	SYNTAX  SEQUENCE OF RnetEntClockSourceRedundancyEntry
+	MAX-ACCESS  not-accessible
+	STATUS  current
+	DESCRIPTION
+		"A list of ordered pairs of physical entities. 
+		The first INDEX identifies the clock source entity to be backed 
+		up, the second INDEX identifies the redundant 
+		clock source entity."
+	::= { rnetEntClock 5 }
+
+rnetEntClockSourceRedundancyEntry OBJECT-TYPE
+	SYNTAX RnetEntClockSourceRedundancyEntry
+	MAX-ACCESS  not-accessible
+	STATUS  current
+	DESCRIPTION
+		"A specific physical clock source entity with its redundant 
+		 peer and status."
+	INDEX   { 	rnetEntClockSourceRedundancyPriority }
+	::= { rnetEntClockSourceRedundancyTable 1 }
+
+RnetEntClockSourceRedundancyEntry ::= SEQUENCE {
+	rnetEntClockSourceRedundancyPriority
+		INTEGER,
+	rnetEntClockSourceRedundancyPhyIndex
+		INTEGER,
+	rnetEntClockSourceRedundancyPeerPhyIndex
+		INTEGER,
+	rnetEntClockSourceRedundancyRevertive
+		INTEGER,
+	rnetEntClockSourceRedundancyManualOperation
+		INTEGER,
+	rnetEntClockSourceRedundancyStatus
+		INTEGER,
+	rnetEntClockSourceRedundancyRowStatus
+		INTEGER
+	}
+
+rnetEntClockSourceRedundancyPriority OBJECT-TYPE
+	SYNTAX      INTEGER (1..2147483647)
+	MAX-ACCESS  read-only
+	STATUS	    current
+	DESCRIPTION
+		"The clock source redundancy priority. There is only
+		 one single row for each priority."
+	::= { rnetEntClockSourceRedundancyEntry 1 }
+
+rnetEntClockSourceRedundancyPhyIndex OBJECT-TYPE
+	SYNTAX  INTEGER (1..2147483647)
+	MAX-ACCESS  read-write
+	STATUS  current
+	DESCRIPTION
+		"The index of the specific physical clock source entity 
+		 from entPhysicalTable, which is backed up. "
+	::= { rnetEntClockSourceRedundancyEntry 2 }
+
+rnetEntClockSourceRedundancyPeerPhyIndex OBJECT-TYPE
+	SYNTAX  INTEGER (1..2147483647)
+	MAX-ACCESS  read-write
+	STATUS  current
+	DESCRIPTION
+		" The index of the redundant physical clock source 
+		  entity from entPhysicalTable, which is used as 		
+		  a backup for the entity pointed by the	 
+		  rnetEntClockSourceRedundancyPhyIndex. "
+	::= { rnetEntClockSourceRedundancyEntry 3 }
+
+rnetEntClockSourceRedundancyRevertive OBJECT-TYPE
+	SYNTAX  INTEGER {
+		true(1),
+		false(2)
+	}
+	MAX-ACCESS  read-write
+	STATUS  current
+	DESCRIPTION
+		"Indication whether the specific clock source entity 
+		 should be backed up and automatically in the 
+		 case of failure, and return back in case of
+		 recovery."
+	DEFVAL { true }
+	::= { rnetEntClockSourceRedundancyEntry 4 }
+
+rnetEntClockSourceRedundancyManualOperation OBJECT-TYPE
+	SYNTAX  INTEGER {
+		lock(1),
+		hold-over(2),
+		normal(3)
+	}
+	MAX-ACCESS  read-write
+	STATUS  current
+	DESCRIPTION
+		"Manual operations to switc between clocks' sources."
+	::= { rnetEntClockSourceRedundancyEntry 5 }
+
+rnetEntClockSourceRedundancyStatus OBJECT-TYPE
+	SYNTAX  INTEGER {
+		normal-main(1),
+		normal-secondary(2),
+		hold-over(3),
+		free-run(4),
+		unavailable(5)
+	}
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The actual state of the redundancy. If no backing up is 
+		 taking place, than the state is normal-main(1). If the redundant
+		 clock entity is backing up the first index' entity, the status
+		 will be normal-secondary(2). If, for any reason, the redundancy can 
+		 not take place then the status will be unavailable(5)."		 
+	::= { rnetEntClockSourceRedundancyEntry 6 }
+
+rnetEntClockSourceRedundancyRowStatus OBJECT-TYPE
+	SYNTAX  INTEGER{
+		active(1),
+		createAndGo(4),
+		destroy(6)
+	}
+	MAX-ACCESS  read-write
+	STATUS  current
+	DESCRIPTION
+		" The status which is used for row creation/deletion. "
+	::= { rnetEntClockSourceRedundancyEntry 7 }
+
+
+-- **************************************************************
+--  rnetEntCard Group
+--  The group contains a table that gives initial information
+--  about all the cards in the chassis, including card configuration.
+-- **************************************************************
+
+rnetEntNumSlots   OBJECT-TYPE
+        SYNTAX INTEGER (1..1024)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+	        "Number of slots in the device"
+	::= { rnetEntCard 1 }
+
+rnetEntCardTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetEntCardEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"The table contains basic information about the cards
+		 in the device." 
+	::= { rnetEntCard 2 }
+
+
+rnetEntCardEntry	OBJECT-TYPE
+	SYNTAX	RnetEntCardEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "A card entry, containing information about an 
+		 existing card in the device." 
+	INDEX { entPhysicalIndex }
+	::= { rnetEntCardTable 1 }
+
+RnetEntCardEntry ::= SEQUENCE {
+	rnetEntCardVendorType
+		AutonomousType,
+	rnetEntCardPhysicalClass
+		INTEGER,
+	rnetEntCardFunctionalType
+		OBJECT IDENTIFIER,
+	rnetEntCardSwVersion
+		DisplayString,
+	rnetEntCardBootSwVersion
+		DisplayString,
+	rnetEntCardMngmntStatus
+		INTEGER,
+	rnetEntCardMatchStatus
+		INTEGER,
+	rnetEntCardRedundancyCapability
+		INTEGER,
+	rnetEntCardRedundancyCapabilityType
+		INTEGER,
+	rnetEntCardOperRedundancyStatus
+		INTEGER,
+	rnetEntCardManualOperation
+		INTEGER,
+	rnetEntCardLeds  
+		INTEGER,
+	rnetEntCardActualVendorType
+		AutonomousType,
+   rnetEntCardClockConfiguration
+      INTEGER,
+   rnetEntCardClockCurrentReference
+      INTEGER
+	}
+	
+rnetEntCardVendorType   OBJECT-TYPE
+        SYNTAX AutonomousType
+	MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+                "An oid which defines the card type allowed to
+		 be plugged into the slot. The object has the same
+		 meaning as entPhysicalVendorType, but writable."
+	::= { rnetEntCardEntry 1 }
+
+rnetEntCardPhysicalClass OBJECT-TYPE
+	SYNTAX      INTEGER (1..256)
+	MAX-ACCESS  read-write
+	STATUS      current
+	DESCRIPTION
+		"An indication of the general hardware type of the physical
+		 entity.
+	    	 The object turns the draft entPhysicalClass to a writable
+		 one, for configuration purposes."
+
+    ::= { rnetEntCardEntry 2 }
+
+rnetEntCardFunctionalType   OBJECT-TYPE
+        SYNTAX OBJECT IDENTIFIER
+	MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+                "An oid which defines the functionality of the card."
+	::= { rnetEntCardEntry 3 }
+
+rnetEntCardSwVersion	OBJECT-TYPE
+	SYNTAX	DisplayString
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+	        "The software version of the card."
+	::= { rnetEntCardEntry 4 }
+
+rnetEntCardBootSwVersion	OBJECT-TYPE
+	SYNTAX			DisplayString
+	MAX-ACCESS		read-only
+	STATUS			current
+	DESCRIPTION
+	        "The Boot software version of the card."
+	::= { rnetEntCardEntry 5 }
+
+rnetEntCardMngmntStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		setup(1),
+		run(2),
+		redundant(3)
+	}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+	        "The management status of the card."
+	DEFVAL { run }
+	::= { rnetEntCardEntry 6 }
+
+
+rnetEntCardMatchStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		match(1),
+		card-mismatch(2),
+		aux-card-mismatch(3),
+		other(127)
+	}
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+	        "The matching status of the card. The status will be 
+		 match(1) if the rnetEntCardVendorType matches the
+		 card type that is physically plugged into the slot."
+	::= { rnetEntCardEntry 7 }
+
+
+rnetEntCardRedundancyCapability   OBJECT-TYPE
+        SYNTAX INTEGER {
+			no-redundancy(1),
+			redundant-standby(2),
+			currently-backing-up(3),
+			has-redundancy(4)
+		} 
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+	        "The redundancy capability of the card."
+	::= { rnetEntCardEntry 8 }
+
+rnetEntCardRedundancyCapabilityType   OBJECT-TYPE
+        SYNTAX INTEGER {
+			one-to-n(1),
+			one-plus-one(2)
+		} 
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+	        "The redundancy capability of the card.
+		 one-to-n(1) - the card is a dedicated redundancy card
+		               with a special auxiliary card.
+		 one-plus-one(2) - the card is able to back up only
+		                   another I/O card."
+	::= { rnetEntCardEntry 9 }
+
+rnetEntCardOperRedundancyStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+			no-redundancy(1),
+			redundant-standby(2),
+			currently-backing-up(3),
+			has-redundancy(4),
+			currently-backed-up(5)
+		} 
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+	        "The current redundancy state of the card."
+	::= { rnetEntCardEntry 10 }
+
+rnetEntCardManualOperation OBJECT-TYPE 
+	SYNTAX	INTEGER {
+		clear-configuration(1),
+		set-factory-defaults(2),
+		warm-reset(3),
+		cold-reset(4),
+		disable-events(5),
+		enable-events(6),
+		other(127)
+		}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Available manual operation that can be performed on the 
+		 agent.
+		 other(127) - returns when reading the object."
+	::= { rnetEntCardEntry 11 }
+
+rnetEntCardLeds  OBJECT-TYPE
+        SYNTAX INTEGER{
+			active(1),
+			line(2),
+			oos(3)
+	}
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"An integer that describes the status of 
+		 the leds in the card.
+		 active (1) - no alarm,
+		 line (2)   - an alarm regarding one of the ports of the card,
+		 oos (3)    - out-of-service - a fault in the card (such as a BIT fail)."
+	::= { rnetEntCardEntry 12 }
+
+rnetEntCardActualVendorType   OBJECT-TYPE
+        SYNTAX AutonomousType
+			MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                "An oid which defines the actual card type which is  
+					  plugged into the slot. "
+	::= { rnetEntCardEntry 13 }
+
+
+rnetEntCardClockConfiguration   OBJECT-TYPE
+        SYNTAX INTEGER {
+      clock-reference-A(1),
+      clock-reference-B(2),
+      internal(3)
+}
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+           "Presents the card`s desired clock reference."
+   ::= { rnetEntCardEntry 14 }
+ 
+rnetEntCardClockCurrentReference   OBJECT-TYPE
+        SYNTAX INTEGER {
+      clock-reference-A(1),
+      clock-reference-B(2),
+      internal(3),
+      none(255)
+}
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+           "The reading of this object will provide information of current Card'
+s Clock Reference."
+   ::= { rnetEntCardEntry 15 }
+ 
+
+
+-- --------------------------------------------------------------
+-- Port Group 
+-- --------------------------------------------------------------
+
+rnetEntPortTable  OBJECT-TYPE
+        SYNTAX  SEQUENCE OF RnetEntPortEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+                "A list of ports resident in this device."
+        ::= { rnetEntPort 1 }
+
+rnetEntPortEntry  OBJECT-TYPE
+        SYNTAX  RnetEntPortEntry
+        MAX-ACCESS  not-accessible
+        STATUS  current
+        DESCRIPTION
+                "A port entry containing objects for a particular
+                 port."
+        INDEX   { entPhysicalIndex }
+        ::= { rnetEntPortTable 1 }
+
+RnetEntPortEntry  ::=  SEQUENCE {
+        rnetEntPortLowestIf
+                INTEGER
+        }
+
+rnetEntPortLowestIf  OBJECT-TYPE
+        SYNTAX  INTEGER (1..2147483647)
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+                "The ifIndex of lowest interface associated with this 
+                 port. "
+        ::= { rnetEntPortEntry 1 }
+
+END

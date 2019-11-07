@@ -1,0 +1,955 @@
+SLMI-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY, OBJECT-TYPE, enterprises, TimeTicks
+        FROM SNMPv2-SMI
+    TEXTUAL-CONVENTION, DisplayString, DateAndTime, TruthValue
+        FROM SNMPv2-TC
+    sysName, sysLocation
+        FROM SNMPv2-MIB
+    entPhysicalIndex
+        FROM ENTITY-MIB;
+
+sni OBJECT IDENTIFIER ::= { enterprises 231 }
+
+siemensUnits OBJECT IDENTIFIER ::= { sni 7 }
+
+oenProductMibs OBJECT IDENTIFIER ::= { siemensUnits 1 }
+
+sn OBJECT IDENTIFIER ::= { oenProductMibs 4 }
+
+slmi MODULE-IDENTITY
+    LAST-UPDATED "200005260000Z"
+    ORGANIZATION "SIEMENS AG, ICN WN CS EP C13"
+    CONTACT-INFO
+        "   ICN WN CS EP C13
+            Hofmannstr. 51
+            81359 Munich, Germany
+
+            Thomas Rosenstock
+            Tel:   +49 (0)89 722 43209
+            Fax:   +49 (0)89 722 62211
+            Email: Thomas.Rosenstock@icn.siemens.de "
+    DESCRIPTION
+        "The MIB for Subscriber Line Modules Internode (SLMI)."
+    ::= { sn 1 }
+
+slmiMIBObjects  OBJECT IDENTIFIER ::= { slmi 1 }
+slmiMIBTraps    OBJECT IDENTIFIER ::= { slmi 2 }
+slmiMIBTrapVars OBJECT IDENTIFIER ::= { slmi 3 }
+
+-- MIB contains following groups
+
+slmiGeneral OBJECT IDENTIFIER ::= { slmiMIBObjects 1 }
+slmiVersion OBJECT IDENTIFIER ::= { slmiMIBObjects 2 }
+slmiState OBJECT IDENTIFIER ::= { slmiMIBObjects 3 }
+slmiCommand OBJECT IDENTIFIER ::= { slmiMIBObjects 4 }
+slmiDataTransfer OBJECT IDENTIFIER ::= { slmiMIBObjects 5 }
+slmiFeature OBJECT IDENTIFIER ::= { slmiMIBObjects 6 }
+slmiErrorNotebook OBJECT IDENTIFIER ::= { slmiMIBObjects 7 }
+slmiTrapConfiguration OBJECT IDENTIFIER ::= { slmiMIBObjects 8 }
+
+-- Textual Conventions
+
+SlmiMibType ::= TEXTUAL-CONVENTION
+    STATUS          current
+    DESCRIPTION
+        "Flag identifying the type of the module with respect to its
+        MIB support. The overall type of the network element (NE) can
+        be constructed by combining flags of all SLMIs belonging to this
+        NE."
+    SYNTAX          INTEGER {
+                phub (1),
+                slmi-udsl (2),
+                slmi-adsl (4),
+                slmi-sdsl (8),
+                mopc (16),
+                slmi-vosdsl (32)
+    }
+
+SlmiEwsdState ::= TEXTUAL-CONVENTION
+    STATUS          current
+    DESCRIPTION
+        "EWSD OAM states:
+            pla - (planned) The entity has been created in the system
+                  data base, but has not been configured for operation
+                  yet.
+            mbl - (maintenance blocked) Operation has been blocked for
+                  maintenance purposes e.g. diagnosis or module replacement.
+            cbl - (conditional blocked) The entity has been configured
+                  out of service, but shall remain in service as long
+                  as current seizures persist.
+            act - (active) The module/port has been configured to normal
+                  operation.
+            dst - (disturbed) The module/port is not fully operational due
+                  to internal problems.
+            una - (unavailable) The module/port is out of service due to
+                  internal faults.
+            nac - (not accessible) The module/port can not be accessed at
+                  this time.
+            unm - (unmanaged) The module/port is not managed by EWSD."
+    SYNTAX          INTEGER {
+                pla (1),
+                mbl (2),
+                cbl (3),
+                act (4),
+                dst (5),
+                una (6),
+                nac (7),
+                unm (8)
+    }
+
+SlmiOperationalState ::= TEXTUAL-CONVENTION
+    STATUS          current
+    DESCRIPTION
+        "Operational state of the SLMI:
+
+          up
+            The entity is fully operational.
+          down
+            The entity is inoperational due to startup in progress or
+            defects.
+          testing
+            The entity is currently executing internal tests.
+          unknown
+            The state of the entity is currently unknown.
+          dormant
+            The entity is ready to go into the up state, but is waiting
+            for some external actions in order to go into the up state.
+          restricted
+            The entities operation is restricted due to administrative
+            state, partial defects or missing configuration data.
+          disabled
+            The entity is administratively disabled.
+
+        A description for the operational state is given in the respective
+        details variable."
+    SYNTAX          INTEGER {
+                up (1),
+                down (2),
+                testing (3),
+                unknown (4),
+                dormant (5),
+                restricted (6),
+                disabled (7)
+    }
+
+SlmiAlarmState ::= TEXTUAL-CONVENTION
+    STATUS          current
+    DESCRIPTION
+        "Alarm state of the SLMI."
+    SYNTAX          INTEGER {
+                normal (1),
+                warning (2),
+                minor (3),
+                major (4),
+                critical (5),
+                unknown (6),
+                testing (7),
+                unmanaged (8),
+                disabled (9)
+    }
+
+SlmiReason ::= TEXTUAL-CONVENTION
+    STATUS          current
+    DESCRIPTION
+        "The reason values used for operational state or alarm state
+        variables. This is a category information."
+    SYNTAX          INTEGER {
+                unknownReason (1),
+                coldStart (2),
+                warmStart (3),
+                missingConfigurationData (4),
+                configurationError (5),
+                hwError (6),
+                swError (7),
+                startUp (8),
+                shutDown (9),
+                invalidKey (10),
+                switchOver (11),
+                switchBack (12),
+                normal (13),
+                adminState (14),
+                linkError (15),
+                backupFwRunning (16)
+    }
+
+SlmiDetailsId ::= TEXTUAL-CONVENTION
+    STATUS          current
+    DESCRIPTION
+        "A value defining a detailed reason for entering the current
+        state. The NMS can map this value into a textual description
+        by means of an external mapping file. This information is
+        intended to provide national language support in the NMS."
+    SYNTAX          Integer32
+
+-- slmiGeneral group
+
+slmiSystemName OBJECT-TYPE
+	SYNTAX			DisplayString
+	MAX-ACCESS		read-write
+	STATUS			current
+	DESCRIPTION
+		"The name of the system (EWSD exchange) to which the SLMI modules
+		belong."
+	::= { slmiGeneral 1 }
+
+-- slmiVersion group
+
+slmiVersionTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF SlmiVersionEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "Contains HW/FW version information for all physical
+        entities of type module."
+    ::= { slmiVersion 1 }
+
+slmiVersionEntry OBJECT-TYPE
+    SYNTAX          SlmiVersionEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "One entry per physical entity of type module."
+    INDEX   { entPhysicalIndex }
+    ::= { slmiVersionTable 1}
+
+SlmiVersionEntry ::= SEQUENCE {
+    slmiSerialNo                DisplayString,
+    slmiVersionHwVersion        DisplayString,
+    slmiVersionFwVersion        DisplayString,
+    slmiVersionBackupFwVersion  DisplayString,
+    slmiVersionMibType          SlmiMibType,
+    slmiVersionMibLevel         Integer32,
+    slmiVersionDataBackupDate   DateAndTime,
+    slmiVersionDataChanged      TruthValue,
+    slmiVersionCurrentFw        DisplayString,
+    slmiVersionBootstrapVersion DisplayString
+}
+
+slmiSerialNo OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "The serial number of the module. Empty if a serial number
+        is not available."
+    ::= { slmiVersionEntry 1 }
+
+slmiVersionHwVersion OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "A textual description of the version/revision level for
+         this module's hardware."
+    ::= { slmiVersionEntry 2 }
+
+slmiVersionFwVersion OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "A textual description of the version/revision level for
+         this module's firmware. This FW version will be started after
+         a reboot of the module."
+    ::= { slmiVersionEntry 3 }
+
+slmiVersionBackupFwVersion OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "A textual description of the version/revision level for
+         this module's backup firmware. The backup FW will be
+         started if startup with the primary FW is not possible."
+    ::= { slmiVersionEntry 4 }
+
+slmiVersionDataBackupDate OBJECT-TYPE
+    SYNTAX          DateAndTime
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "The date of the last data backup operation."
+    ::= { slmiVersionEntry 5 }
+
+slmiVersionMibType OBJECT-TYPE
+    SYNTAX          SlmiMibType
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Identifies the MIBs supported by this type of module."
+    ::= { slmiVersionEntry 6 }
+
+slmiVersionMibLevel OBJECT-TYPE
+    SYNTAX          Integer32
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Identifies the implemented revision level of the MIB.
+        The initial revision has the value 1. For each functional
+        enhancement the MIB level is incremented by 1."
+    ::= { slmiVersionEntry 7 }
+
+slmiVersionDataChanged OBJECT-TYPE
+    SYNTAX          TruthValue
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Indicates if the configuration data of the module
+         has changed since the last backup."
+    ::= { slmiVersionEntry 8 }
+
+slmiVersionCurrentFw OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "A textual description of the version/revision level for
+         the firmware which is currently running."
+    ::= { slmiVersionEntry 9 }
+
+slmiVersionBootstrapVersion OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "A textual description of the version/revision level for
+         this module's boot firmware."
+    ::= { slmiVersionEntry 10 }
+
+-- slmiState group
+
+slmiStateTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF SlmiStateEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "This table contains the module or port state."
+    ::= { slmiState 1}
+
+slmiStateEntry OBJECT-TYPE
+    SYNTAX          SlmiStateEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "One entry per module or port. Other physical entities
+        (chassis or backplane) do not have a state entry."
+    INDEX   { entPhysicalIndex }
+    ::= { slmiStateTable 1}
+
+SlmiStateEntry ::= SEQUENCE {
+    slmiAdminState          SlmiEwsdState,
+    slmiOpState             SlmiOperationalState,
+    slmiOpStateReason       SlmiReason,
+    slmiOpStateDetailsId    SlmiDetailsId,
+    slmiOpStateDetails      DisplayString,
+    slmiAlarmState          SlmiAlarmState,
+    slmiAlarmStateReason    SlmiReason,
+    slmiAlarmStateDetailsId SlmiDetailsId,
+    slmiAlarmStateDetails   DisplayString,
+    slmiUpTime              TimeTicks
+}
+
+slmiAdminState OBJECT-TYPE
+    SYNTAX          SlmiEwsdState
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "Administrative state of the physical entity (module or port)
+        according EWSD OAM. In EWSD mode the slmiAdminState is read-only.
+        In stand-alone mode the slmiAdminState can be set by the NMS."
+    ::= { slmiStateEntry 1 }
+
+slmiOpState OBJECT-TYPE
+    SYNTAX          SlmiOperationalState
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Operational state of the physical entity (module or port)."
+    ::= { slmiStateEntry 2 }
+
+slmiOpStateReason OBJECT-TYPE
+    SYNTAX          SlmiReason
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Reason for being in the current operational state."
+    ::= { slmiStateEntry 3 }
+
+slmiOpStateDetailsId OBJECT-TYPE
+    SYNTAX          SlmiDetailsId
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Descriptive text for current operational state."
+    ::= { slmiStateEntry 4 }
+
+slmiOpStateDetails OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Descriptive text for current operational state."
+    ::= { slmiStateEntry 5 }
+
+slmiAlarmState OBJECT-TYPE
+    SYNTAX          SlmiAlarmState
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Alarm state of the physical entity (module or port)."
+    ::= { slmiStateEntry 6 }
+
+slmiAlarmStateReason OBJECT-TYPE
+    SYNTAX          SlmiReason
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Reason for being in the current alarm state."
+    ::= { slmiStateEntry 7 }
+
+slmiAlarmStateDetailsId OBJECT-TYPE
+    SYNTAX          SlmiDetailsId
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "An identifier which can be mapped to a desciptive
+        text by means of an external mapping file."
+    ::= { slmiStateEntry 8 }
+
+slmiAlarmStateDetails OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Descritive text for current alarm state."
+    ::= { slmiStateEntry 9 }
+
+slmiUpTime OBJECT-TYPE
+    SYNTAX          TimeTicks
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "The time (in hundredths of a second) since the
+        physical entity was last re-initialized."
+    ::= { slmiStateEntry 10 }
+
+
+-- slmiCommand group
+
+slmiCommandTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF SlmiCommandEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "The SLMI Command table contains an entry for every
+        module of the network element."
+    ::= { slmiCommand 1}
+
+slmiCommandEntry OBJECT-TYPE
+    SYNTAX          SlmiCommandEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "There is one entry in the slmiCommandTable for
+        every module."
+    INDEX   { entPhysicalIndex }
+    ::= { slmiCommandTable 1}
+
+SlmiCommandEntry ::= SEQUENCE {
+    slmiCommandReqId        Integer32,
+    slmiCommandFunction     INTEGER,
+    slmiCommandParam        OCTET STRING,
+    slmiCommandResult       INTEGER,
+    slmiCommandResultInfo   INTEGER
+}
+
+slmiCommandReqId OBJECT-TYPE
+    SYNTAX          Integer32
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "This variable is set to the request-id field of the PDU
+        that has been sent to set slmiCommandFunction. This object
+        can be used to determine if another NMS is trying to execute
+        a command."
+    ::= { slmiCommandEntry 1 }
+
+slmiCommandFunction OBJECT-TYPE
+    SYNTAX          INTEGER {
+                noCommand (1),
+                removeFromService (2),
+                restoreToService (3),
+                resetHardware (4),
+                scheduleReboot (5),
+                forceReboot (6),
+                transferData (7),
+                forceAbort (8),
+                startTest (9),
+                createBackupFile (10),
+                executeScript (11),
+                setFactoryDefaults (12),
+                updateBootFw (13),
+                initSwEnb (14),
+                initHwEnb (15),
+                conditionalReboot (16),
+                updateSystemTime (17)
+    }
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "A control variable used to start and stop operator-
+        initiated commands.  A command is initiated by
+        setting this object to a value other than noCommand(1).
+        When the value noCommand(1) is written to this object, no
+        action is taken, unless a command is in progress, in which
+        case the command is aborted. Some commands may not be
+        aborted by setting the function to noCommand. If neverthe-
+        less the command shall be aborted, the value forceAbort has
+        to be used. Since the forceAbort can leave an inconsistent
+        state of the module, it shall be used carefully."
+    ::= { slmiCommandEntry 2 }
+
+slmiCommandParam OBJECT-TYPE
+    SYNTAX          OCTET STRING (SIZE(0..255))
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "This object can be used to pass additional parameters to a
+        function. If used, the parameter must be sent within the same
+        PDU as the function object.
+        Parameters have the format:
+          name1=value1,name2=value2,...
+        The values can optionally be enclosed in double quotes.
+        "
+    ::= { slmiCommandEntry 3 }
+
+slmiCommandResult OBJECT-TYPE
+    SYNTAX          INTEGER {
+                none (1),
+                success (2),
+                inProgress (3),
+                notSupported (4),
+                unableToRun (5),
+                unableToStop (6),
+                aborted (7),
+                failed (8)
+    }
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "The state of the command execution."
+    ::= { slmiCommandEntry 4 }
+
+slmiCommandResultInfo OBJECT-TYPE
+    SYNTAX          INTEGER {
+                noError (1),
+                unrecognizedCommand (2),
+                unsupportedCommand (3),
+                pendingFileTransfer (4),
+                pendingFlashProgramming (5),
+                error (6),
+                checksumError (7),
+                timeout (8),
+                fileFormatError (9),
+                portFailure (10),
+                pendingScheduleReboot (11),
+                pendingTest (12)
+    }
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Additional information in case of unsuccessful command
+        execution."
+    ::= { slmiCommandEntry 5 }
+
+
+-- slmiDataTransfer group
+
+slmiDataTransferTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF SlmiDataTransferEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "A table defining the parameters for file transfers to or
+        from the SLMI."
+    ::= { slmiDataTransfer 1 }
+
+slmiDataTransferEntry OBJECT-TYPE
+    SYNTAX          SlmiDataTransferEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "For each module of the network element a row in the table
+        is provided. Multiple modules can do a file transfer at the
+        same time. But multiple transfers per module are not supported.
+        The actual file transfer is started by setting
+        slmiCommandFunction."
+    INDEX   { entPhysicalIndex }
+    ::= { slmiDataTransferTable 1 }
+
+SlmiDataTransferEntry ::= SEQUENCE {
+    slmiDataSlmiFile        DisplayString,
+    slmiDataTftpFile        DisplayString,
+    slmiDataFileCrc         Integer32,
+    slmiDataDirection       INTEGER
+}
+
+slmiDataSlmiFile OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "Name defining the location of the file on the SLMI. Could be
+        a filename, if a file system is supported on the module, or a
+        name for a specific memory location otherwise."
+    ::= { slmiDataTransferEntry 1 }
+
+slmiDataTftpFile OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "Name of the file on the external TFTP in URL format."
+    ::= { slmiDataTransferEntry 2 }
+
+slmiDataFileCrc OBJECT-TYPE
+    SYNTAX          Integer32
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "CRC32 for the transferred data."
+    ::= { slmiDataTransferEntry 3 }
+
+slmiDataDirection OBJECT-TYPE
+    SYNTAX          INTEGER {
+                down (1),
+                up (2)
+    }
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "Direction of the file transfer:
+        down - From the TFTP server to the SLMI.
+        up - From the SLMI to the TFTP server."
+    ::= { slmiDataTransferEntry 4 }
+
+-- slmiFeature group
+
+slmiFeatureTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF SlmiFeatureEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "Table for unlocking special features of the network element
+        modules."
+    ::= { slmiFeature 1 }
+
+slmiFeatureEntry OBJECT-TYPE
+    SYNTAX          SlmiFeatureEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "For each physical entity of type module one entry is provided."
+    INDEX   { entPhysicalIndex }
+    ::= { slmiFeatureTable 1 }
+
+SlmiFeatureEntry ::= SEQUENCE {
+    slmiIdentityCode        DisplayString,
+    slmiFeatureKey          DisplayString,
+    slmiFeatures            DisplayString
+}
+
+slmiIdentityCode OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Provides a unique identity code for the module for the purpose of
+        unlocking features. The slmiIdentityCode is initially empty and must
+        be created by setting a preliminary key value for slmiFeatureKey
+        before feature unlocking is possible."
+    ::= { slmiFeatureEntry 1 }
+
+slmiFeatureKey OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "By setting slmiFeatureKey special features of a module can be
+        unlocked. The procedure to obtaining a key is described in the
+        product documentation."
+    ::= { slmiFeatureEntry 2 }
+
+slmiFeatures OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "A string identifying the unlocked features of the module. A detailed
+        description is given in the documentation of the module."
+    ::= { slmiFeatureEntry 3 }
+
+-- slmiErrorNotebook group
+
+slmiEnbMreTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF SlmiEnbMreEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "This table contains pointers to the most recent entries
+        into the error notebooks."
+    ::= { slmiErrorNotebook 1 }
+
+slmiEnbMreEntry OBJECT-TYPE
+    SYNTAX          SlmiEnbMreEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "These are the entries for a module."
+    INDEX   { entPhysicalIndex }
+    ::= { slmiEnbMreTable 1 }
+
+SlmiEnbMreEntry ::= SEQUENCE {
+    slmiHwEnbLast   Integer32,
+    slmiSwEnbLast   Integer32
+}
+
+slmiHwEnbLast OBJECT-TYPE
+    SYNTAX          Integer32
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Index of most recent entry in HW Error Notebook"
+    ::= { slmiEnbMreEntry 1 }
+
+slmiSwEnbLast OBJECT-TYPE
+    SYNTAX          Integer32
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Index of most recent entry in SW Error Notebook"
+    ::= { slmiEnbMreEntry 2 }
+
+slmiHwEnbTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF SlmiHwEnbEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "Contains entries for occurences of HW errors for all modules
+        of the network element."
+    ::= { slmiErrorNotebook 2 }
+
+slmiHwEnbEntry OBJECT-TYPE
+    SYNTAX          SlmiHwEnbEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "An entry into the HW error notebook."
+    INDEX   { entPhysicalIndex, slmiHwEnbIndex }
+    ::= { slmiHwEnbTable 1 }
+
+SlmiHwEnbEntry ::= SEQUENCE {
+    slmiHwEnbIndex  INTEGER,
+    slmiHwEnbText   DisplayString
+}
+
+slmiHwEnbIndex OBJECT-TYPE
+    SYNTAX          INTEGER (1..1024)
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "Index for entry in HW error notebook. The ENB supports only
+        a limited number of entries. If the capacity limit is reached,
+        all further entries are lost."
+    ::= { slmiHwEnbEntry 1 }
+
+slmiHwEnbText OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Information about occurence of an HW error in human readable
+        form."
+    ::= { slmiHwEnbEntry 2 }
+
+slmiSwEnbTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF SlmiSwEnbEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "Contains entries for occurences of SW errors for all modules
+        of the network element."
+    ::= { slmiErrorNotebook 3 }
+
+slmiSwEnbEntry OBJECT-TYPE
+    SYNTAX          SlmiSwEnbEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "An entry into the SW error notebook."
+    INDEX   { entPhysicalIndex, slmiSwEnbIndex }
+    ::= { slmiSwEnbTable 1 }
+
+SlmiSwEnbEntry ::= SEQUENCE {
+    slmiSwEnbIndex  INTEGER,
+    slmiSwEnbText   DisplayString
+}
+
+slmiSwEnbIndex OBJECT-TYPE
+    SYNTAX          INTEGER (1..1024)
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "Index for entry in SW error notebook. The ENB supports only
+        a limited number of entries. If the capacity limit is reached,
+        the oldest entry is deleted for each new entry."
+    ::= { slmiSwEnbEntry 1 }
+
+slmiSwEnbText OBJECT-TYPE
+    SYNTAX          DisplayString
+    MAX-ACCESS      read-only
+    STATUS          current
+    DESCRIPTION
+        "Information about occurence of a SW error in human readable
+        form."
+    ::= { slmiSwEnbEntry 2 }
+
+-- slmiTrapConfigurationGroup
+
+slmiTrapConfTable OBJECT-TYPE
+    SYNTAX          SEQUENCE OF SlmiTrapConfEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "This table allows to enable or disable sending specific traps.
+        "
+    ::= { slmiTrapConfiguration 1 }
+
+slmiTrapConfEntry OBJECT-TYPE
+    SYNTAX          SlmiTrapConfEntry
+    MAX-ACCESS      not-accessible
+    STATUS          current
+    DESCRIPTION
+        "An entry allows the configuration of traps for one module. The
+        table is indexed by the entPhysicalIndex of the module.
+        "
+    INDEX   { entPhysicalIndex }
+    ::= { slmiTrapConfTable 1 }
+
+SlmiTrapConfEntry ::= SEQUENCE {
+    slmiTrapsGeneral    Integer32,
+    slmiTrapsSpecific   Integer32
+}
+
+slmiTrapsGeneral OBJECT-TYPE
+    SYNTAX          Integer32
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "This objects provides a bitmap to enable/disable traps or
+         trap groups available on all SLMI modules. A trap (group) is
+         enabled if the corresponding flag is set. The following flags
+         are defined:
+
+                   1: SLMI ENB traps
+                   2: \
+                 ...   reserved for generic traps
+          2147483647: /
+
+         The default value for all configurable flag groups is off.
+        "
+    DEFVAL { 0 }
+    ::= { slmiTrapConfEntry 1 }
+
+slmiTrapsSpecific OBJECT-TYPE
+    SYNTAX          Integer32
+    MAX-ACCESS      read-write
+    STATUS          current
+    DESCRIPTION
+        "This objects provides a bitmap to enable/disable specific traps or
+         trap groups available on an SLMI module. A trap (group) is
+         enabled if the corresponding flag is set.
+
+         The definition of module specific flags are contained in
+         the module documentation.
+
+         The default value for all configurable flag groups is off.
+        "
+    DEFVAL { 0 }
+    ::= { slmiTrapConfEntry 2 }
+
+-- SLMI MIB Notification types
+
+slmiAdminStateTrap NOTIFICATION-TYPE
+    OBJECTS     {
+        sysName,
+        slmiAdminState
+    }
+    STATUS      current
+    DESCRIPTION
+        "Indicates that the admin state of a module or port has changed."
+    ::= { slmiMIBTraps 1 }
+
+slmiOpStateTrap NOTIFICATION-TYPE
+    OBJECTS     {
+        sysName,
+        slmiOpState,
+        slmiOpStateReason,
+        slmiOpStateDetailsId,
+        slmiOpStateDetails
+    }
+    STATUS      current
+    DESCRIPTION
+        "Indicates that the operational state of a module or port has changed."
+    ::= { slmiMIBTraps 2 }
+
+slmiAlarmStateTrap NOTIFICATION-TYPE
+    OBJECTS     {
+        sysName,
+        slmiAlarmState,
+        slmiAlarmStateReason,
+        slmiAlarmStateDetailsId,
+        slmiAlarmStateDetails
+    }
+    STATUS      current
+    DESCRIPTION
+        "Indicates that the alarm state of a module or port has changed."
+    ::= { slmiMIBTraps 3 }
+
+slmiCommandResultTrap NOTIFICATION-TYPE
+    OBJECTS     {
+        sysName,
+        slmiCommandReqId,
+        slmiCommandResult,
+        slmiCommandResultInfo
+    }
+    STATUS      current
+    DESCRIPTION
+        "Indicates that the command execution has completed."
+    ::= { slmiMIBTraps 4 }
+
+slmiHwEnbTrap NOTIFICATION-TYPE
+    OBJECTS     {
+        sysName,
+        slmiHwEnbLast,
+        slmiHwEnbText
+    }
+    STATUS      current
+    DESCRIPTION
+        "Indicates a new entry into the HW error notebook."
+    ::= { slmiMIBTraps 5 }
+
+slmiSwEnbTrap NOTIFICATION-TYPE
+    OBJECTS     {
+        sysName,
+        slmiSwEnbLast,
+        slmiSwEnbText
+    }
+    STATUS      current
+    DESCRIPTION
+        "Indicates a new entry into the SW error notebook."
+    ::= { slmiMIBTraps 6 }
+
+END

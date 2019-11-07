@@ -1,0 +1,1026 @@
+-- @(#)rnet system.mib
+-- ----------------------------------------------------------------------
+-- RADNET system MIB
+-- Copyright (c) 1996 RADNET Ltd.
+-- ----------------------------------------------------------------------
+--
+-- MIB Module :   RADNET-SYSTEM-MIB
+--
+-- Revision   :   V2.105
+--
+-- Description:   Definition of the system parameters and configuration. 
+--
+-- ----------------------------------------------------------------------
+RADNET-SYSTEM-MIB DEFINITIONS ::= BEGIN
+
+	IMPORTS
+       	TimeTicks, IpAddress, MODULE-IDENTITY,
+       	OBJECT-TYPE, Integer32			FROM SNMPv2-SMI
+       	DisplayString, DateAndTime		FROM SNMPv2-TC
+	
+
+			rnetGen		FROM RADNET-PRIVATE-MIB;
+
+
+			rnetSystem MODULE-IDENTITY
+                    LAST-UPDATED "9709021300Z"
+                    ORGANIZATION "RADNET"
+                    CONTACT-INFO
+                      "          Eitan Mardiks
+                        Postal:  RADNET Ltd.
+				24 Raul Wallenberg St.
+				Tel-Aviv 69719, Israel.
+                        Tel:     +972 3 6455700
+                        Fax:     +972 3 6480582
+                        E-Mail:  eitan@gate.radnet.co.il"
+
+                    DESCRIPTION
+                     "Definition of the system parameters and configuration."
+                    ::= { rnetGen 2 }
+
+
+
+-- --------------------------------------------------------------
+-- RADNET System Objects
+-- --------------------------------------------------------------
+rnetSystemInfo				OBJECT IDENTIFIER ::= { rnetSystem 1 }
+rnetSystemAlarms			OBJECT IDENTIFIER ::= { rnetSystem 2 }
+rnetSystemEvents  		OBJECT IDENTIFIER ::= { rnetSystem 3 }
+rnetSystemSecurity		OBJECT IDENTIFIER ::= { rnetSystem 4 }
+rnetSystemFlash			OBJECT IDENTIFIER ::= { rnetSystem 5 }
+rnetSysDownLoad			OBJECT IDENTIFIER ::= { rnetSystem 6 }
+rnetSystemDefaultParams OBJECT IDENTIFIER ::= { rnetSystem 7 }
+
+-- --------------------------------------------------------------
+-- RADNET System Information Group
+-- --------------------------------------------------------------
+
+rnetSystemDate OBJECT-TYPE 
+	SYNTAX	DateAndTime 
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"The current date and time. "
+	::= { rnetSystemInfo 1 }
+
+rnetSystemMngmntStatus OBJECT-TYPE 
+	SYNTAX	INTEGER {
+		set-up(1),
+		run(2),
+		busy(3)
+	}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"The management status of the system.
+		 busy (3) - The system is occupied with long operations.
+			    The busy state is an internal state of the 
+			    system, and can not be set by the manager."
+	DEFVAL { run }
+	::= { rnetSystemInfo 2 }
+
+rnetSystemMatchStatus	OBJECT-TYPE
+	SYNTAX	INTEGER {
+		match(1),
+		mismatch(2),
+		other(127)
+	}
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+	        "The matching status of the device. If the device passed 
+		 the configuration consistency check, the value will
+		 be match(1). If the device failed configuration 
+		 consistency check, the value will, mismatch(2). If the 
+		 device is in setup mode, configuration consistency has
+		 not been checked yet, and the value will be other(127)."
+	::= { rnetSystemInfo 3 }
+
+rnetSystemManualOperation OBJECT-TYPE 
+	SYNTAX	INTEGER {
+		clear-configuration(1),
+		set-factory-defaults(2),
+		cold-reset(3),
+		warm-reset(4),
+		other(127)
+		}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Available manual operation that can be performed on the 
+		 agent.
+		 clear-configuration(1) - clears system configuration.
+		 set-factory-defaults(2) - resets all system values
+		 other(127) is returned when this object is read." 
+	::= { rnetSystemInfo 4 }
+
+rnetSystemLeds  OBJECT-TYPE
+        SYNTAX INTEGER{
+			normal(1),
+			minor(2),
+			major(3),
+			critical(4)
+	}
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"An integer that describes the status of 
+		 the device global leds."
+	::= { rnetSystemInfo 5 }
+
+
+
+
+-- --------------------------------------------------------------
+-- RADNET System Alarm Definitions Tables 
+-- --------------------------------------------------------------
+
+-- --------------------------------------------------------------
+-- RADNET System Alarms Objects 
+-- --------------------------------------------------------------
+rnetSystemAlarmDefs	OBJECT IDENTIFIER ::= { rnetSystemAlarms 1 }
+rnetSystemAlarmLog	OBJECT IDENTIFIER ::= { rnetSystemAlarms 2 }
+
+-- --------------------------------------------------------------
+-- RADNET System Alarm Definitions Objects 
+-- --------------------------------------------------------------
+rnetSystemPhyAlarm	OBJECT IDENTIFIER ::= { rnetSystemAlarmDefs 1 }
+rnetSystemFuncAlarm	OBJECT IDENTIFIER ::= { rnetSystemAlarmDefs 2 }
+
+
+-- ----------------------------------------------------------------------
+-- RADNET Physical Alarm Table
+-- ----------------------------------------------------------------------
+rnetSystemPhyAlarmTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetSystemPhyAlarmEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"The table defines different physical alarm types. A 
+		 physical alarm type is defined by the affected physical
+		 entity, the physical entity that caused the alarm and
+		 the alarm severity." 
+	::= { rnetSystemPhyAlarm 1 }
+
+rnetSystemPhyAlarmEntry	OBJECT-TYPE
+	SYNTAX	RnetSystemPhyAlarmEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry that defines an alarm type. Each entry 
+		 actually contains the action to be taken (trap) and
+		 the alarm threshold." 
+	INDEX   { 	rnetSystemPhyAlarmType,
+			rnetSystemPhyAlarmCause,
+			rnetSystemPhyAlarmSeverity }
+	::= { rnetSystemPhyAlarmTable 1 }
+
+RnetSystemPhyAlarmEntry ::= SEQUENCE {	
+	rnetSystemPhyAlarmType
+		OBJECT IDENTIFIER,
+	rnetSystemPhyAlarmCause
+		OBJECT IDENTIFIER,
+	rnetSystemPhyAlarmSeverity
+		INTEGER,
+	rnetSystemPhyAlarmThreshold
+		INTEGER,
+	rnetSystemPhyAlarmTrapEnable
+		INTEGER
+	}
+
+rnetSystemPhyAlarmType	OBJECT-TYPE
+	SYNTAX	OBJECT IDENTIFIER
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+	        "The type of the affected physical entity."
+	::= { rnetSystemPhyAlarmEntry 1 }
+
+rnetSystemPhyAlarmCause	OBJECT-TYPE
+	SYNTAX	OBJECT IDENTIFIER
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+	        "The type of the failed physical entity that caused the 
+		 alarm. This entity can be either a component of the 
+		 'affected physical entity', or the 'affected physical 
+		 entity' itself."
+	::= { rnetSystemPhyAlarmEntry 2 }
+
+rnetSystemPhyAlarmSeverity   OBJECT-TYPE
+        SYNTAX INTEGER {
+			none(1),
+			minor(2),
+			major(3),
+			critical(4)
+		} 
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+	        "Defined alarm's severity. The table is able to contain
+		 more than one severity for the same alarm type and cause
+		 type. In order to distinguish between two thresholds, 
+		 the severity is used as a third index and the name used
+		 as the fourth index."
+	::= { rnetSystemPhyAlarmEntry 3 }
+
+rnetSystemPhyAlarmThreshold   OBJECT-TYPE
+        SYNTAX INTEGER (0..2147483647)
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+	        "The minimal number of failed entities of 
+		 rnetSystemPhyAlarmCause that cause the entity of
+		 rnetSystemPhyAlarmType to be announced to be in alarm state
+		 of rnetSystemPhyAlarmSeverity. If the object is set to 0, the
+		 alarm will be disabled."
+	::= { rnetSystemPhyAlarmEntry 4 }
+
+rnetSystemPhyAlarmTrapEnable   OBJECT-TYPE
+        SYNTAX INTEGER{
+			false(1),
+			true(2)
+	} 
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+	        "The value determines whether a trap has to be generated
+		 each time the alarm occurs."
+	::= { rnetSystemPhyAlarmEntry 5 }
+
+
+
+-- ----------------------------------------------------------------------
+-- RADNET Functional Alarm Table
+-- ----------------------------------------------------------------------
+
+rnetSystemFuncAlarmTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetSystemFuncAlarmEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"The table defines different functional alarm types. A 
+		 functional alarm type is defined per supported stack
+		 of protocols per ifType."
+	::= { rnetSystemFuncAlarm 1 }
+
+rnetSystemFuncAlarmEntry	OBJECT-TYPE
+	SYNTAX	RnetSystemFuncAlarmEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry that defines an alarm type. Each entry 
+		 actually contains the action to be taken (trap) and
+		 the alarm threshold." 
+	INDEX   { 	rnetSystemFuncAlarmFuncType,			
+			rnetSystemFuncAlarmIfType,
+			rnetSystemFuncAlarmSeverity,
+			rnetSystemFuncAlarmName }
+	::= { rnetSystemFuncAlarmTable 1 }
+
+RnetSystemFuncAlarmEntry ::= SEQUENCE {
+	rnetSystemFuncAlarmFuncType
+		OBJECT IDENTIFIER,
+	rnetSystemFuncAlarmIfType
+		INTEGER,
+	rnetSystemFuncAlarmName
+		INTEGER,
+	rnetSystemFuncAlarmSeverity
+		INTEGER,
+	rnetSystemFuncAlarmThreshold
+		INTEGER,
+	rnetSystemFuncAlarmTrapEnable
+		INTEGER
+	}
+
+rnetSystemFuncAlarmFuncType	OBJECT-TYPE
+	SYNTAX	OBJECT IDENTIFIER
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+	        "The functional type of the affected entity."
+	::= { rnetSystemFuncAlarmEntry 1 }
+
+rnetSystemFuncAlarmIfType   OBJECT-TYPE
+        SYNTAX INTEGER (1..100)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The IANAifType interface type number, as defined in 
+		 RFC1573."
+	::= { rnetSystemFuncAlarmEntry 2 }
+
+rnetSystemFuncAlarmName   OBJECT-TYPE
+        SYNTAX INTEGER {
+			no-name(1)
+		} 
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+	        "The alarm name."
+	::= { rnetSystemFuncAlarmEntry 3 }
+
+rnetSystemFuncAlarmSeverity   OBJECT-TYPE
+        SYNTAX INTEGER {
+			normal(1),
+			minor(2),
+			major(3),
+			critical(4)
+		} 
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+	        "Defined alarm's severity. The table is able to contain
+		 more than one severity for the same alarm functional
+		 type and cause type. In order to distinguish between 
+		 two thresholds, the severity and the name are used as 
+		 the third and the fourth indexes"
+	::= { rnetSystemFuncAlarmEntry 4 }
+
+rnetSystemFuncAlarmThreshold   OBJECT-TYPE
+        SYNTAX INTEGER (0..2147483647)
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+	        "The minimal number of failed entities that cause the
+		 alarm to be announced. If the object is set to 0, the
+		 entry becomes disabled."
+	::= { rnetSystemFuncAlarmEntry 5 }
+
+rnetSystemFuncAlarmTrapEnable   OBJECT-TYPE
+        SYNTAX INTEGER{
+			false(1),
+			true(2)
+	} 
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+	        "The value determines whether a trap has to be generated
+		 each time the alarm reaches its threshold."
+	::= { rnetSystemFuncAlarmEntry 6 }
+
+
+
+-- --------------------------------------------------------------
+-- RADNET System Alarms  
+-- --------------------------------------------------------------
+
+rnetSystemCurrentAlarmTable OBJECT-TYPE
+      SYNTAX SEQUENCE OF RnetSystemCurrentAlarmEntry
+      MAX-ACCESS not-accessible
+      STATUS current
+      DESCRIPTION
+      		"A list of current alarms."
+	::= { rnetSystemAlarmLog 1 }
+
+rnetSystemCurrentAlarmEntry OBJECT-TYPE
+      SYNTAX RnetSystemCurrentAlarmEntry
+      MAX-ACCESS not-accessible
+      STATUS current
+        DESCRIPTION
+	        "An alarm entry."
+      INDEX { rnetSystemCurrentAlarmEntity,
+              rnetSystemCurrentAlarmIndex }
+	::= { rnetSystemCurrentAlarmTable 1}
+
+RnetSystemCurrentAlarmEntry ::= SEQUENCE {
+	rnetSystemCurrentAlarmEntity  
+		INTEGER,
+	rnetSystemCurrentAlarmIndex 
+		INTEGER,
+	rnetSystemCurrentAlarmCode  
+		INTEGER,
+	rnetSystemCurrentAlarmSeverity 
+		INTEGER,
+	rnetSystemCurrentAlarmDescr 
+		DisplayString,
+	rnetSystemCurrentAlarmDate 
+		DateAndTime
+      }
+
+
+rnetSystemCurrentAlarmEntity   OBJECT-TYPE
+        SYNTAX INTEGER (1..4096)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+	        "The physical entity that generated the alarm. If the 
+		 alarm is a system alarm the entity number is 1. If the
+		 alarm is a card or a port alarm, the entity number  
+		 represents the card or the port."
+	::= { rnetSystemCurrentAlarmEntry 1 }
+
+rnetSystemCurrentAlarmIndex   OBJECT-TYPE
+        SYNTAX INTEGER (1..2147483647)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+	        "The alarm index."
+	::= { rnetSystemCurrentAlarmEntry 2 }
+
+rnetSystemCurrentAlarmCode   OBJECT-TYPE
+        SYNTAX INTEGER (1..1024)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+	        "The alarm error code."
+	::= { rnetSystemCurrentAlarmEntry 3 }
+
+rnetSystemCurrentAlarmSeverity   OBJECT-TYPE
+        SYNTAX INTEGER {
+			normal (1),
+			minor (2),
+			major (3),
+			critical (4)
+	}
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+	        "The alarm severity."
+	::= { rnetSystemCurrentAlarmEntry 4 }
+
+rnetSystemCurrentAlarmDescr  OBJECT-TYPE
+        SYNTAX DisplayString
+        MAX-ACCESS read-only
+        STATUS deprecated
+        DESCRIPTION
+	        "The alarm type description.
+				The description is deprecated, and the alarm code is translated
+				to a description by the manager."
+	::= { rnetSystemCurrentAlarmEntry 5 }
+
+rnetSystemCurrentAlarmDate       OBJECT-TYPE
+        SYNTAX  DateAndTime
+	MAX-ACCESS	read-only
+	STATUS	current
+        DESCRIPTION
+                "The date when the event occurred."
+        ::= { rnetSystemCurrentAlarmEntry 6 }
+
+
+-- --------------------------------------------------------------
+-- RADNET System Alarm Mask 
+--
+-- The mask is split to three objects only for readability 
+-- purposes.
+-- --------------------------------------------------------------
+
+rnetSystemAlarmMask OBJECT-TYPE
+        SYNTAX OCTET STRING 
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+		"A bit string, one bit for each System alarm type.
+		 (The alarm type is identified by a code.)
+		 0 - Not Masked, 1 - Masked."
+	::= { rnetSystemAlarms 3 }
+	
+-- --------------------------------------------------------------
+-- RADNET System Events Group 
+-- --------------------------------------------------------------
+
+rnetSystemEventsNumber	OBJECT-TYPE
+	SYNTAX	INTEGER (1..100)
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"Maximum number of events that are kept."
+	::= { rnetSystemEvents 1 }
+
+
+rnetSystemEventsManualOperation	OBJECT-TYPE
+	SYNTAX	INTEGER{
+			clear-all(1),
+			other(127)
+		}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Operations that can be performed on the Event table.
+		 Setting this object to clear-all(1) value, clears the 
+		 events that are kept in the table.
+
+		 other(127) is returned when this object is read. 
+
+		 The write access of this object is restricted to 
+		 'expert' MIB view."
+	::= { rnetSystemEvents 2 }
+
+
+rnetSystemEventsTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetSystemEventsEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"The table contains the events occurred in the system.
+		 An event can be anything that happened in the past 
+		 and needs to be mentioned."  
+    	::= { rnetSystemEvents 3 }
+
+
+rnetSystemEventsEntry	OBJECT-TYPE
+	SYNTAX	RnetSystemEventsEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"The description of an event that occurred in the system."
+	INDEX { rnetSystemEventsIndex }
+	::= { rnetSystemEventsTable 1 }
+
+RnetSystemEventsEntry ::= SEQUENCE {
+	rnetSystemEventsIndex
+		INTEGER,
+	rnetSystemEventsOriginID
+		INTEGER,
+	rnetSystemEventsCode
+		INTEGER,
+ 	rnetSystemEventsDescr
+		DisplayString,
+	rnetSystemEventsSeverity 
+		INTEGER,
+	rnetSystemEventsDate
+		DateAndTime
+	}
+
+
+rnetSystemEventsIndex	OBJECT-TYPE
+	SYNTAX	INTEGER (1..2147483647)
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"The index of the event."
+	::= { rnetSystemEventsEntry 1 }
+
+
+rnetSystemEventsOriginID	OBJECT-TYPE
+	SYNTAX	INTEGER (1..2147483647)
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"An identifier of the entity which generated the event."
+	::= { rnetSystemEventsEntry 2 }
+
+rnetSystemEventsCode	OBJECT-TYPE
+	SYNTAX	INTEGER (1..1024)
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+	        "The event's alarm error code. A special error code 
+		 should be set for each event which is not an alarm."
+	::= { rnetSystemEventsEntry 3 }
+
+
+rnetSystemEventsDescr	OBJECT-TYPE
+	SYNTAX	DisplayString
+	MAX-ACCESS	read-only
+	STATUS	current
+	DESCRIPTION
+		"ASCII Description of the event."
+	::= { rnetSystemEventsEntry 4 }
+
+rnetSystemEventsSeverity   OBJECT-TYPE
+        SYNTAX INTEGER {
+			normal (1),
+			minor (2),
+			major (3),
+			critical (4)
+	}
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+	        "The event severity."
+	::= { rnetSystemEventsEntry 5 }
+
+rnetSystemEventsDate       OBJECT-TYPE
+        SYNTAX  DateAndTime
+	MAX-ACCESS	read-only
+	STATUS	current
+        DESCRIPTION
+                "The date when the event occurred."
+        ::= { rnetSystemEventsEntry 6 }
+
+-- **************************************************************
+--         RADNET System Security Group
+-- **************************************************************
+
+-- --------------------------------------------------------------
+-- RADNET System Time Intervals Table
+--
+-- This table contains information about the time intervals of
+-- the device.
+-- --------------------------------------------------------------
+rnetSystemTimeIntervalTable  OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetSystemTimeIntervalEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"A table that contains definition of 48 time interval
+		 zones."
+	::= { rnetSystemSecurity 1 }
+
+rnetSystemTimeIntervalEntry	OBJECT-TYPE
+	SYNTAX	RnetSystemTimeIntervalEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry that defines a time interval. The interval definition
+		 consists of two times indications: begin and end. 
+		 Overlap of two time intervals is prohibited." 
+	INDEX   { rnetSystemTimeIntervalIndex }
+	::= { rnetSystemTimeIntervalTable 1 }
+
+RnetSystemTimeIntervalEntry ::= SEQUENCE {	
+	rnetSystemTimeIntervalIndex
+		INTEGER,
+	rnetSystemTimeIntervalBegin
+		DateAndTime,
+	rnetSystemTimeIntervalEnd
+		DateAndTime
+	}
+
+
+rnetSystemTimeIntervalIndex   OBJECT-TYPE
+        SYNTAX INTEGER (1..48)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The time interval ID"
+	::= { rnetSystemTimeIntervalEntry 1 }
+
+rnetSystemTimeIntervalBegin   OBJECT-TYPE
+        SYNTAX DateAndTime
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+		"The beginning time of the interval."
+	::= { rnetSystemTimeIntervalEntry 2 }
+
+rnetSystemTimeIntervalEnd   OBJECT-TYPE
+        SYNTAX DateAndTime
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+		"The terminating time of the interval."
+	::= { rnetSystemTimeIntervalEntry 3 }
+
+
+
+-- **************************************************************
+--         RADNET System Flash Group
+-- **************************************************************
+
+rnetSystemFlashConfig	OBJECT IDENTIFIER ::= { rnetSystemFlash 1 }
+rnetSystemFlashSoftware	OBJECT IDENTIFIER ::= { rnetSystemFlash 2 }
+rnetSystemFlashDataBase	OBJECT IDENTIFIER ::= { rnetSystemFlash 3 }
+
+-- --------------------------------------------------------------
+-- RADNET System Flash configuration Group
+--
+-- This table contains configuration of the Flash Banks of
+-- software versions and configuration data base parameters.
+-- --------------------------------------------------------------
+
+rnetSysFlashBanksSize	OBJECT-TYPE
+	SYNTAX		INTEGER (1..2147483647)
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+                "The size of FLASH Banks which are allocated for
+                 all software versions (Primary and Secondary)."		
+	::= { rnetSystemFlashConfig 1 }
+
+rnetSysFlashCDBSize	OBJECT-TYPE
+	SYNTAX		INTEGER (1..2147483647)
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+                "The size of FLASH Bank which is allocated for
+                 configuration data base parameters."		
+	::= { rnetSystemFlashConfig 2 }
+
+rnetSysFlashManualOperation   OBJECT-TYPE
+   SYNTAX      INTEGER {
+      disable-flash-activities(1),
+      enable-flash-activities(2),
+      other(127)
+}
+   MAX-ACCESS  read-write
+   STATUS      current
+   DESCRIPTION
+
+      "  Available manual operation that can be performed on the agent.
+
+         disable-flash-activities(1) - In order to extract the Flash card
+         legally. This request will be accepted only if the MCP is not in
+         a middle of an activity o the Flash.
+
+         enable-flash-activities(2) - In order to re-allow activities on
+         the Flash, after a request of 'disable-flash-activities', where
+         the Flash card hasn't been extracted."
+   ::= { rnetSystemFlashConfig 3 }
+
+
+
+-- --------------------------------------------------------------
+-- RADNET System Software Group
+--
+-- This table contains software verions parameters.
+-- --------------------------------------------------------------
+
+rnetSysSwPrimaryVersion	 OBJECT-TYPE
+	SYNTAX		 DisplayString
+	MAX-ACCESS	 read-only
+	STATUS		 current
+	DESCRIPTION
+                "Description of the primary sofware version."
+	::= { rnetSystemFlashSoftware 1 }
+
+rnetSysSwSecondaryVersion  OBJECT-TYPE
+	SYNTAX		   DisplayString
+	MAX-ACCESS	   read-only
+	STATUS		   current
+	DESCRIPTION
+                "Description of the secondary sofware version."
+	::= { rnetSystemFlashSoftware 2 }
+
+rnetSysSwManualOperation OBJECT-TYPE 
+	SYNTAX	INTEGER {
+		start-tftp-server-read(1),
+		start-tftp-server-write(2),
+		switch-primary-version(3),
+		start-card-download(4),
+		invalidate-primary-version(5),
+		invalidate-secondary-version(6),
+		other(127)
+		}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Available manual operation that can be performed on the 
+		 system versions:
+
+		 Setting this object to start-tftp-server-read(1) causes the 
+		 system to start a TFTP server process in read mode (for 
+		 uploading software to an external host).
+
+		 Setting this object to start-tftp-server-write(2) causes the 
+		 system to start a TFTP server process in write mode (for 
+		 downloading software from an external host).
+
+		 Setting this object to switch-primary-version(3) causes the 
+		 system to switch between the primary and secondary software versions.
+
+		 Setting this object to start-card-download(4) causes the system to 
+		 load all needed cards with their software from the MCP card.
+
+		 Setting this object to invalidate-primary-version(5) causes the 
+		 system to disable the primary software version, and switch between
+		 the versions, if a secondary version exists.
+
+		 Setting this object to invalidate-secondary-version(6) causes the 
+		 system to disable the secondary software version."
+	::= { rnetSystemFlashSoftware 3 }
+
+
+
+rnetSysSwTable	OBJECT-TYPE
+	SYNTAX  SEQUENCE OF RnetSysSwEntry
+	MAX-ACCESS  not-accessible
+	STATUS  current
+	DESCRIPTION 
+		"This table contains information about the different 
+		firmware versions."
+	::= { rnetSystemFlashSoftware 4 }
+
+
+rnetSysSwEntry	OBJECT-TYPE
+	SYNTAX  RnetSysSwEntry
+	MAX-ACCESS  not-accessible
+	STATUS  current
+        DESCRIPTION
+		"This object contains information about each software
+		version in the FLASH memory"
+  	INDEX   { rnetSysSwVersionType,
+		  rnetSysSwType }
+	::= { rnetSysSwTable 1 }
+
+
+RnetSysSwEntry ::= SEQUENCE {
+	rnetSysSwVersionType
+	        INTEGER,
+	rnetSysSwType
+		OBJECT IDENTIFIER,
+	rnetSysSwDescription
+	        DisplayString
+	}
+
+
+rnetSysSwVersionType	OBJECT-TYPE
+        SYNTAX  INTEGER {
+			primary(1),
+			secondary(2)
+	}
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION 
+		"Software version type (primary or secondary)."
+        ::= { rnetSysSwEntry 1 }
+
+rnetSysSwType   OBJECT-TYPE
+        SYNTAX		  OBJECT IDENTIFIER
+	MAX-ACCESS        read-write
+        STATUS		  current
+        DESCRIPTION
+                "An oid which defines the software type."
+	::= { rnetSysSwEntry 2 }
+
+rnetSysSwDescription	OBJECT-TYPE
+        SYNTAX		DisplayString
+        MAX-ACCESS		read-only
+        STATUS		current
+        DESCRIPTION 
+		"Description of the sofware version."
+        ::= { rnetSysSwEntry 3 }
+
+rnetSysSwSecondaryDnldState OBJECT-TYPE
+      SYNTAX INTEGER {
+              invalid(1),
+              erasing(2),
+              empty  (3),
+              writing(4),
+              valid  (5)
+      }
+      MAX-ACCESS  read-only
+      STATUS		current
+      DESCRIPTION
+        "The Secondary SW version download state. 
+           invalid - there is no version or the version is not valid
+           erasing - preparing a secondary version for downloading
+           empty   - the secondary version is ready for SW downloading
+           writing - TFTP in progress
+           valid   - a new version is received correctly."
+        ::= {rnetSystemFlashSoftware 5}
+
+
+-- --------------------------------------------------------------
+-- RADNET System Flash Database configuration Group
+--
+-- This table contains configuration of the Flash Database 
+-- configuration parameters
+-- --------------------------------------------------------------
+
+rnetSysCDBNumOfFreeBlocks	OBJECT-TYPE
+	SYNTAX		INTEGER (1..2147483647)
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+                "The number of free blocks in the Data Base."
+	::= { rnetSystemFlashDataBase 1 }
+
+rnetSysCDBBlockSize	OBJECT-TYPE
+	SYNTAX		INTEGER (1..2147483647)
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+                "The Data Base block size."
+	::= { rnetSystemFlashDataBase 2 }
+
+rnetSysCDBManualOperation OBJECT-TYPE 
+	SYNTAX	INTEGER {
+		start-tftp-server-read(1),
+		start-tftp-server-write(2),
+		activate-restored-cdb(3),
+		perform-cdb-defragmentation(4),
+		other(127)
+		}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"Available manual operation that can be performed on the 
+		 system versions:
+
+		 Setting this object to perform-cdb-defragmentation(1) activates
+		 the garbage collection of the Data Base
+
+		 Setting this object to start-tftp-server-read(2) 
+ 		 causes the system to start a TFTP server process in read mode
+       (for uploading the primary CDB to an external host).
+
+		 Setting this object to start-tftp-server-write(3) 
+     	 causes the system to start a TFTP server process in write mode
+       (for downloading to a temporary CDB from an external host).
+
+		 activate-restored-cdb(4)
+ 		 causes the system to activate the restored CDB.
+
+	 	 other(127) is returned when this object is read." 
+
+	::= { rnetSystemFlashDataBase 3 }
+
+rnetSysCDBPrimaryState OBJECT-TYPE
+      SYNTAX INTEGER {
+              erasing(1),
+              empty  (2),
+              writing(3),
+	           reading(4),
+              valid  (5),
+				  invalid(6)
+      }
+      MAX-ACCESS  read-only
+      STATUS		current
+      DESCRIPTION
+        "The Primary CDB state. 
+           erasing - preparing for download, erasing the cdb
+           empty   - the cdb is ready for download
+           writing - TFTP in write procress
+           valid   - the db is valid for use.
+           reading - TFTP in read process."
+    ::= { rnetSystemFlashDataBase 4 }
+
+rnetSysCDBTemporaryState OBJECT-TYPE
+      SYNTAX INTEGER {
+              erasing(1),
+              empty  (2),
+              writing(3),
+	           reading(4),
+              valid  (5),
+				  invalid(6)
+      }
+      MAX-ACCESS  read-only
+      STATUS		current
+      DESCRIPTION
+        "The Temporary CDB state. 
+           erasing - preparing for download, erasing the cdb
+           empty   - the cdb is ready for download
+           writing - TFTP in write procress
+           valid   - the cdb is valid for use.
+           reading - TFTP in read process."
+    ::= { rnetSystemFlashDataBase 5 }
+
+rnetSysCDBDescr OBJECT-TYPE
+              SYNTAX  DisplayString (SIZE (0..255))
+              MAX-ACCESS  read-write
+              STATUS  current
+              DESCRIPTION
+                      "A textual description of the CDB. This value
+                      should include the full name and version
+                      identification of the software operating-system.
+                      It is mandatory that this only contain
+                      printable ASCII characters."
+    ::= { rnetSystemFlashDataBase 6 }
+
+rnetSysCDBSWRevision OBJECT-TYPE
+              SYNTAX  INTEGER
+              MAX-ACCESS  read-only
+              STATUS  current
+              DESCRIPTION
+                      "A version revision identification number."
+::= { rnetSystemFlashDataBase 7 }
+
+
+-- --------------------------------------------------------------
+--         RADNET System Download Group
+--
+-- This table contains parameters needed for
+-- download operations with tftp
+-- --------------------------------------------------------------
+
+rnetSysFileServerClientIP  OBJECT-TYPE
+	SYNTAX  IpAddress
+	MAX-ACCESS  read-write
+	STATUS  current
+	DESCRIPTION
+		"The IP address of the server/client from/to which the 
+		 file is loaded. "
+	::= { rnetSysDownLoad 1 }
+
+rnetSysFileName  OBJECT-TYPE
+	SYNTAX  DisplayString
+	MAX-ACCESS  read-write
+	STATUS  current
+	DESCRIPTION
+		"The name of the file to be loaded. For protection, read 
+		 returns empty string. "
+	::= { rnetSysDownLoad 2 }
+
+rnetSysTFTPRetryTimeOut OBJECT-TYPE
+    	SYNTAX  Integer32
+    	MAX-ACCESS  read-write
+    	STATUS  current
+    	DESCRIPTION
+        	" General Retransmission time-out value "
+    	DEFVAL  { 15 }
+    	::= { rnetSysDownLoad 3 }
+
+rnetSysTFTPTotalTimeOut OBJECT-TYPE
+    	SYNTAX  Integer32
+    	MAX-ACCESS  read-write
+    	STATUS  current
+    	DESCRIPTION
+        	" Total Retransmission time-out value (seconds) "
+    	DEFVAL  { 60 }
+    	::= { rnetSysDownLoad 4 }
+
+
+
+END

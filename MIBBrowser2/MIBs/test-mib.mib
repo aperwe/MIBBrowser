@@ -1,0 +1,562 @@
+
+                    TEST-MIB DEFINITIONS ::= BEGIN
+
+                    IMPORTS
+                      MODULE-IDENTITY, OBJECT-TYPE, Counter32,
+--                      MODULE-IDENTITY, OBJECT-TYPE, Unsigned32,
+                      experimental, NOTIFICATION-TYPE
+--                      experimental, NOTIFICATION-TYPE, mib-2
+                           FROM SNMPv2-SMI
+--                      AutonomousType, RowPointer, TimeStamp, RowStatus
+                      AutonomousType, TimeStamp, RowStatus
+                           FROM SNMPv2-TC
+							 TEXTUAL-CONVENTION          FROM SNMPv2-TC
+--                    MODULE-COMPLIANCE, OBJECT-GROUP, NOTIFICATION-GROUP
+                      MODULE-COMPLIANCE, OBJECT-GROUP
+                           FROM SNMPv2-CONF
+							 radnetDrafts
+							 		FROM RADNET-PRIVATE-MIB
+                      OwnerString
+                           FROM IF-MIB
+                      ;
+
+                    testMIB MODULE-IDENTITY
+                         LAST-UPDATED "9706031200Z"
+                         ORGANIZATION "IETF IFMIB Working Group"
+                         CONTACT-INFO
+                            "Keith McCloghrie
+                             Postal:  Cisco Systems
+                                      170 West Tasman Drive
+                                      San Jose, CA 95134
+                                      US
+                             Tel:     +1 408 526 5260
+                             E-mail:  kzm@cisco.com
+
+                             Kaj Tesink
+                             Postal:  Bell Communications Research
+                                      331 Newman Springs Road
+                                      Red Bank, NJ 07701
+                                      US
+                             Tel:     +1 908 758 5254
+                             E-mail:  kaj@cc.bellcore.com
+
+                             Maria Greene
+                             Postal:  Ascom Nexion
+                                      289 Great Road
+
+                                      Acton, MA 01720
+                                      US
+                             Tel:     +1 508 266 4570
+                             E-mail:  greene@nexen.com"
+                         DESCRIPTION
+                            "This MIB module provides a generic test
+                             capability."
+                    -- ********  NOTE TO THE RFC EDITOR  **************
+                    -- In case this module is put on the standards track
+                    --  replace the following:
+                    -- "::= {experimental XX}" with
+                    -- "::= { mib-2 YY }"
+                         ::= { radnetDrafts 5 }
+
+-- RADNET addition
+
+RowPointer ::= TEXTUAL-CONVENTION
+    STATUS       current
+    DESCRIPTION
+            "Represents a pointer to a conceptual row.  The value is the
+            name of the instance of the first accessible columnar object
+            in the conceptual row.
+ 
+            For example, ifIndex.3 would point to the 3rd row in the
+            ifTable (note that if ifIndex were not-accessible, then
+            ifDescr.3 would be used instead)."
+    SYNTAX       OBJECT IDENTIFIER
+ 
+-- RADNET addition
+ 
+
+
+                    testMIBObjects  OBJECT IDENTIFIER ::= { testMIB 1 }
+
+                    testIndexNext  OBJECT-TYPE
+                                   SYNTAX         INTEGER (0..2147483647)
+                                   MAX-ACCESS     read-only
+                                   STATUS         current
+                                   DESCRIPTION
+                                    "This object contains an appropriate
+value to
+                                     be used for testIndex when creating
+                                     entries in the testTable.  The value
+                                     0 indicates that no unassigned entries
+are
+                                     available. To obtain the testIndex
+                                     value for a new entry, the manager
+issues a
+                                     management protocol retrieval
+operation to obtain
+                                     the current value of this object.
+After each
+                                     retrieval, the agent should modify the
+value to
+                                     the next lower unassigned index. If
+the agent is
+                                     restarted this object shall be set to
+its highest value."
+                                   ::= { testMIBObjects 1 }
+
+
+
+                    --    The Test Table
+
+                    testTable   OBJECT-TYPE
+                        SYNTAX      SEQUENCE OF TestEntry
+                        MAX-ACCESS  not-accessible
+                        STATUS      current
+                        DESCRIPTION
+                                "This table is used to initiate tests. An
+entry
+
+                                in this table corresponds to an instance of
+a test.
+                                A test is invoked by creating a row with the
+                                appropriate test attributes and using
+testRowStatus
+                                to start a test.
+                                After invoking a test,
+                                the object testResult can be read to
+determine the
+                                outcome.  If an agent can not perform the
+test,
+                                testResult is set accordingly.  The
+testCode can
+                                be used to provide further test-specific or
+entity-
+                                specific (or even enterprise-specific)
+information
+                                concerning the outcome of the test.  Only
+one test can
+                                be in progress on each entity at any one
+time.  If one
+                                test is in progress when another test is
+invoked, the
+                                second test is rejected.  Some agents may
+reject a test
+                                when a prior test is active on another entity.
+
+                                Before starting a test, a manager-station
+must first
+                                obtain 'ownership' of the entry in the
+testTable for
+                                the entity to be tested.  This is
+accomplished by
+                                retrieving the value of testIndexNext. This
+value
+                                entitles the manager to create a row in the
+testTable
+                                with the value of testIndex being equal to the
+                                retrieved value of testIndexNext.
+
+                               Once ownership is obtained, the test
+parameters can be
+                               setup, and then the test is initiated by
+activating the
+                               row through testRowStatus. The agent sets
+the value
+                               of testResult to 'inProgress'.
+                               On completion of the test, the agent sets
+testResult
+                               and testCode in accordance with the test
+results and
+                               sets the testCompletionTime.
+
+                               If testRowStatus is not set to active within an
+                               abnormally long period
+                               of time after ownership is obtained, the
+agent should
+                               time-out the manager, and reset the value of
+the
+                               testRowStatus object back to 'destroy'.  It
+is suggested
+                               that this time-out period be 5 minutes.
+
+                               In general, a management station must not
+retransmit a
+                               request to invoke a test for which it does
+not receive a
+                               response; instead, it properly inspects an
+agent's MIB
+                               to determine if the invocation was
+successful.  Only if
+                               the invocation was unsuccessful, is the
+invocation
+                               request retransmitted.
+
+
+                               Some tests may require the entity to be
+taken off- line
+                               in order to execute them, or may even
+require the agent
+                               to reboot after completion of the test.  In
+these
+                               circumstances, communication with the
+management station
+                               invoking the test may be lost until after
+completion of
+                               the test.  An agent is not required to
+support such
+                               tests.  However, if such tests are
+supported, then the
+                               agent should make every effort to transmit a
+response to
+                               the request which invoked the test prior to
+losing
+                               communication.  When the agent is restored
+to normal
+                               service, the results of the test are
+properly made
+
+that this
+                               requires that the testIndex value assigned
+to an entity
+                               must be unchanged even if the test causes a
+reboot.  An
+                               agent must reject any test for which it
+cannot, perhaps
+                               due to resource constraints, make available
+at least the
+                               minimum amount of information after that test
+                               completes."
+                      ::= { testMIBObjects 2 }
+
+                  testEntry OBJECT-TYPE
+                      SYNTAX       TestEntry
+                      MAX-ACCESS   not-accessible
+                      STATUS       current
+                      DESCRIPTION
+                              "An entry containing objects for invoking a
+test."
+                      INDEX  { testIndex }
+                      ::= { testTable 1 }
+
+                  TestEntry ::=
+                      SEQUENCE {
+--                          testIndex          Unsigned32,
+                          testIndex          INTEGER,
+                          testTarget         RowPointer,
+                          testMoreInfo       OCTET STRING,
+                          testType           AutonomousType,
+                          testCompletionTime TimeStamp,
+                          testResult         INTEGER,
+                          testCode           OBJECT IDENTIFIER,
+                          testOwner          OwnerString,
+                          testRowStatus      RowStatus }
+
+                  testIndex      OBJECT-TYPE
+--                      SYNTAX       Unsigned32
+                      SYNTAX       INTEGER
+                      MAX-ACCESS   not-accessible
+                      STATUS       current
+                      DESCRIPTION
+                              "The index of this table."
+                     ::= { testEntry 1 }
+
+
+               testTarget     OBJECT-TYPE
+                   SYNTAX       RowPointer
+                   MAX-ACCESS   read-create
+                   STATUS       current
+                   DESCRIPTION
+                           "The target of the test. An example of a test
+target is
+                           an instance of an interface, identified by the OID
+                           'ifIndex.17'."
+                   DEFVAL  { { 0 0 } }
+                  ::= { testEntry 2 }
+
+               testMoreInfo   OBJECT-TYPE
+                   SYNTAX       OCTET STRING
+                   MAX-ACCESS   read-create
+                   STATUS       current
+                   DESCRIPTION
+                           "Additional information for the test."
+                   DEFVAL  { "" }
+                  ::= { testEntry 3 }
+
+               testType       OBJECT-TYPE
+                   SYNTAX       AutonomousType
+                   MAX-ACCESS   read-create
+                   STATUS       current
+                   DESCRIPTION
+                           "The identifier that specifies the test.
+                           OBJECT IDENTIFIER values assigned to tests
+                           are defined elsewhere, in association with
+                           specific types of entity.
+                           However, this document assigns a value for a full-
+                           duplex loopback test, and defines the special
+meanings
+                           of the subject identifier:
+
+                             noTest  OBJECT IDENTIFIER ::= { 0 0 }
+
+                           When the value noTest is written to this object, no
+                           action is taken. "
+                   DEFVAL  { { 0 0 } }
+                   ::= { testEntry 4 }
+
+               testCompletionTime OBJECT-TYPE
+                   SYNTAX        TimeStamp
+                   MAX-ACCESS    read-only
+                   STATUS        current
+                   DESCRIPTION
+                           "The value of sysUpTime when the test completed."
+                   ::= { testEntry 5 }
+
+               testResult  OBJECT-TYPE
+                   SYNTAX       INTEGER {
+                                    none(1),          -- no test yet requested
+                                    success(2),
+                                    inProgress(3),
+                                    notSupported(4),
+                                    unAbleToRun(5),   -- due to state of system
+                                    aborted(6),
+                                    failed(7)
+                                }
+                   MAX-ACCESS   read-only
+                   STATUS       current
+                   DESCRIPTION
+                           "This object contains the result of the most
+recently
+                           requested test, or the value 'none(1)' if no test
+                           has been started yet."
+                   DEFVAL  { none }
+                   ::= { testEntry 6 }
+
+               testCode OBJECT-TYPE
+                   SYNTAX         OBJECT IDENTIFIER
+                   MAX-ACCESS     read-only
+                   STATUS         current
+                   DESCRIPTION
+                           "This object contains a code which contains more
+specific
+                           information on the test result, for example an
+error-code
+                           after a failed test or a result value such as
+round trip
+                           time for a 'ping' test.  Error codes and other
+values this
+                           object may take are specific to the type of
+entity and/or
+                           test.  The value may have the semantics of
+AutonomousType,
+                           InstancePointer, RowPointer or VariablePointer
+textual
+                           conventions as defined in RFC 1903.  The
+identifier:
+
+                              testCodeNone  OBJECT IDENTIFIER ::= { 0 0 }
+
+                           is defined for use if no additional result code is
+                           available."
+                   DEFVAL  { { 0 0 } }
+                   ::= { testEntry 7 }
+
+               testOwner      OBJECT-TYPE
+                   SYNTAX       OwnerString
+                   MAX-ACCESS   read-create
+                   STATUS       current
+                   DESCRIPTION
+                           "The manager which currently has the 'ownership'
+                           required to invoke a test on this entity."
+                   ::= { testEntry 8 }
+
+               testRowStatus      OBJECT-TYPE
+                   SYNTAX       RowStatus
+                   MAX-ACCESS   read-create
+                   STATUS       current
+                   DESCRIPTION
+                           "The status of the test:
+                            - When the manager activates the row the test
+                              is started.
+                            - When the test is completed the row will remain
+                              active or may be destroyed by the manager.
+                            - Details of ongoing or just completed tests are
+                              reported in testResult and testCode.
+                            - A manager may abort ongoing tests or remove
+                              completed test information by setting the
+                              row status to notInService or destroy."
+                   DEFVAL  { active }
+                   ::= { testEntry 9 }
+
+
+               -- Table size
+
+               testTableMaxSize OBJECT-TYPE
+--                   SYNTAX        Unsigned32 (10..4294967295)
+                   SYNTAX        Counter32 
+                   MAX-ACCESS    read-write
+                   STATUS        current
+                   DESCRIPTION
+                           "The maximum number entries in the testTable.
+When the
+                           table reaches this size the oldest entries will
+be discarded
+                           when new entries are added. The table is flushed
+when the
+                           agent is reset."
+                       ::= { testMIBObjects 3 }
+
+
+               -- Test Capabilities Table
+
+               testCapabilitiesTable   OBJECT-TYPE
+                   SYNTAX        SEQUENCE OF TestCapabilitiesEntry
+                   MAX-ACCESS    not-accessible
+                   STATUS        current
+                   DESCRIPTION
+                           "This table contains the test that this entity
+                            is able to invoke."
+                       ::= { testMIBObjects 4 }
+
+               testCapabilitiesEntry    OBJECT-TYPE
+                   SYNTAX         TestCapabilitiesEntry
+                   MAX-ACCESS     not-accessible
+                   STATUS         current
+                   DESCRIPTION
+                           "Each entry in this table represents a test."
+                   INDEX { testCapabilitiesIndex }
+                   ::= { testCapabilitiesTable 1 }
+
+
+               TestCapabilitiesEntry ::=
+                   SEQUENCE {
+--                       testCapabilitiesIndex            Unsigned32,
+                       testCapabilitiesIndex            INTEGER,
+                       testCapabilitiesType             AutonomousType
+                       }
+
+               testCapabilitiesIndex OBJECT-TYPE
+--                   SYNTAX        Unsigned32
+                   SYNTAX        INTEGER
+                   MAX-ACCESS    not-accessible
+                   STATUS        current
+                   DESCRIPTION
+                           "An integer index that uniquely identifies the
+entry."
+                   ::= { testCapabilitiesEntry 1 }
+
+               testCapabilitiesType OBJECT-TYPE
+                   SYNTAX        AutonomousType
+                   MAX-ACCESS    read-only
+                   STATUS        current
+                   DESCRIPTION
+                           "The type of test that can be invoked."
+                   ::= { testCapabilitiesEntry 2 }
+
+
+
+               -- Notifications
+
+               testMIBNotifications OBJECT IDENTIFIER ::= { testMIB 0 }
+
+               testComplete NOTIFICATION-TYPE
+                   OBJECTS {
+                          testIndex,
+                          testTarget,
+                          testMoreInfo,
+                          testType,
+                          testResult,
+                          testCode,
+                          testOwner   }
+                   STATUS current
+                   DESCRIPTION
+                           "A testComplete trap signifies that a test has
+completed for
+                           a particular entity. If the testCode has the
+semantics of
+                           a VariablePointer, the variable it points at
+will also be
+                           included in the objects list."
+                   ::= { testMIBNotifications 1 }
+
+
+               -- Conformance Information
+
+               testMIBConformance   OBJECT IDENTIFIER ::= { testMIB 3 }
+
+               testMIBGroups        OBJECT IDENTIFIER
+                                ::= { testMIBConformance 1 }
+
+               testMIBCompliances   OBJECT IDENTIFIER
+                                ::= { testMIBConformance 2 }
+
+
+               -- Compliance Statements
+
+               testMIBCompliance   MODULE-COMPLIANCE
+                    STATUS         current
+                    DESCRIPTION
+                      "The compliance statement for SNMP agents which
+support generic
+                      testing capabilities."
+
+                    MODULE  -- this module
+
+                    MANDATORY-GROUPS  { testMIBGroup, testNotificationGroup }
+
+                    OBJECT      testMaxSize
+                    MIN-ACCESS  read-only
+                    DESCRIPTION
+                      "Write access is not required."
+
+                       ::= { testMIBCompliances 1 }
+
+
+               -- Units of Conformance
+
+--               testMIBGroup     OBJECT-GROUP
+--                    OBJECTS {
+--                       testIndexNext,
+--                       testTarget,
+--                       testMoreInfo,
+--                       testType,
+--                       testCompletionTime,
+--                       testResult,
+--                       testCode,
+--                       testOwner,
+--                       testRowStatus,
+--                       testTableMaxSize,
+--                       testCapabilitiesType
+--                    }
+--                    STATUS    current
+--                    DESCRIPTION
+--                      "A collection of objects providing a generic
+--                       test capability."
+--                  ::= { testMIBGroups 1 }
+
+--               testNotificationGroup NOTIFICATION-GROUP
+--                   NOTIFICATIONS {
+--                       testComplete
+--                  }
+--                   STATUS      current
+--                   DESCRIPTION
+--                      "The notifications used to indicate test completion."
+--                  ::= { testMIBGroups 2 }
+
+               END
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

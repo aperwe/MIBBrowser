@@ -1,0 +1,523 @@
+//Microsoft Developer Studio generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Polish resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_PLK)
+#ifdef _WIN32
+LANGUAGE LANG_POLISH, SUBLANG_DEFAULT
+#pragma code_page(1250)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_UTILITIES_DLG DIALOG DISCARDABLE  0, 0, 291, 338
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Utilities"
+FONT 8, "MS Sans Serif"
+BEGIN
+    PUSHBUTTON      "&Get",IDC_GETONE_BTN,234,7,50,14
+    PUSHBUTTON      "Get &many",IDC_GETMANY_BTN,234,25,50,14
+    PUSHBUTTON      "Get &table",IDC_GETTABLE_BTN,234,43,50,14
+    PUSHBUTTON      "&Set",IDC_SETANY_BTN,234,61,50,14
+    PUSHBUTTON      "Clear &all",IDC_CLEARALL_BTN,234,82,50,14
+    PUSHBUTTON      "Show &output",IDC_SHOWOUTPUT_BTN,234,99,50,14
+    PUSHBUTTON      "&Close",IDCLOSE,234,117,50,14
+    GROUPBOX        "Location",IDC_STATIC,14,15,211,67,WS_GROUP
+    LTEXT           "&IP address:",IDC_STATIC,20,32,36,8
+    COMBOBOX        IDC_IP_ADDRESS_COMBOBOX,63,30,94,53,CBS_DROPDOWN | 
+                    CBS_SORT | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Element &name:",IDC_STATIC,20,47,36,18
+    EDITTEXT        IDC_ELEMENTNAME_EDIT,63,49,154,14,ES_AUTOHSCROLL
+    GROUPBOX        "Data",IDC_STATIC,14,88,211,60
+    LTEXT           "&Data type:",IDC_STATIC,20,102,25,18
+    COMBOBOX        IDC_DATATYPE_COMBOBOX,63,105,94,106,CBS_DROPDOWNLIST | 
+                    CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "&Value:",IDC_STATIC,19,129,21,8
+    EDITTEXT        IDC_DATAVALUE_EDIT,63,125,154,14,ES_AUTOHSCROLL
+    CONTROL         "",IDC_OUTPUT_EDIT,"RICHEDIT",ES_MULTILINE | 
+                    ES_AUTOVSCROLL | ES_READONLY | WS_BORDER | WS_VSCROLL | 
+                    WS_TABSTOP,14,168,270,145
+    PUSHBUTTON      "Cl&ear contents",IDC_CLEAR_CONTENS_BTN,14,317,56,14
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    IDD_UTILITIES_DLG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 284
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 331
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog Info
+//
+
+IDD_UTILITIES_DLG DLGINIT
+BEGIN
+    IDC_DATATYPE_COMBOBOX, 0x403, 13, 0
+0x6e49, 0x6574, 0x6567, 0x2072, 0x2d28, 0x2969, "\000" 
+    IDC_DATATYPE_COMBOBOX, 0x403, 11, 0
+0x634f, 0x6574, 0x2074, 0x2d28, 0x296f, "\000" 
+    IDC_DATATYPE_COMBOBOX, 0x403, 23, 0
+0x624f, 0x656a, 0x7463, 0x6920, 0x6564, 0x746e, 0x6669, 0x6569, 0x2072, 
+0x2d28, 0x2964, "\000" 
+    IDC_DATATYPE_COMBOBOX, 0x403, 16, 0
+0x5049, 0x6120, 0x6464, 0x6572, 0x7373, 0x2820, 0x612d, 0x0029, 
+    IDC_DATATYPE_COMBOBOX, 0x403, 13, 0
+0x6f43, 0x6e75, 0x6574, 0x2072, 0x2d28, 0x2963, "\000" 
+    IDC_DATATYPE_COMBOBOX, 0x403, 11, 0
+0x6147, 0x6775, 0x2065, 0x2d28, 0x2967, "\000" 
+    IDC_DATATYPE_COMBOBOX, 0x403, 16, 0
+0x6954, 0x656d, 0x7420, 0x6369, 0x736b, 0x2820, 0x742d, 0x0029, 
+    IDC_DATATYPE_COMBOBOX, 0x403, 25, 0
+0x6e55, 0x6973, 0x6e67, 0x6465, 0x6920, 0x746e, 0x6765, 0x7265, 0x3320, 
+0x2032, 0x2d28, 0x2975, "\000" 
+    IDC_DATATYPE_COMBOBOX, 0x403, 20, 0
+0x6944, 0x7073, 0x616c, 0x2079, 0x7473, 0x6972, 0x676e, 0x2820, 0x442d, 
+0x0029, 
+    IDC_DATATYPE_COMBOBOX, 0x403, 10, 0
+0x554e, 0x4c4c, 0x2820, 0x4e2d, 0x0029, 
+    0
+END
+
+#endif    // Polish resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_MAIN_DIALOG DIALOG DISCARDABLE  10, 10, 518, 358
+STYLE WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU | 
+    WS_THICKFRAME
+CAPTION "{Placeholder - title will be loaded from string table resource}"
+MENU IDR_MAIN_MENU
+FONT 8, "MS Sans Serif"
+BEGIN
+    COMBOBOX        IDC_AUTOCOMPLETE_CBX,7,6,259,102,CBS_DROPDOWN | CBS_SORT | 
+                    WS_DISABLED | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "&>>",IDC_BUTTON2,265,6,17,12,WS_DISABLED
+    CONTROL         "Tree1",IDC_MIB_TREE,"SysTreeView32",TVS_HASBUTTONS | 
+                    TVS_HASLINES | TVS_TRACKSELECT | WS_BORDER | WS_TABSTOP,
+                    7,24,275,309
+    LTEXT           "S&hort object identifier:",IDC_STATIC_SHORT_OID_TEXT,
+                    303,7,69,8
+    EDITTEXT        IDC_SHORT_OID_LABEL,303,17,208,14,ES_AUTOHSCROLL | 
+                    ES_READONLY
+    LTEXT           "Object identifier (&textual):",IDC_STATIC_OID_TEXT,303,
+                    33,78,8
+    EDITTEXT        IDC_TEXTUAL_OID_LABEL,303,44,208,14,ES_AUTOHSCROLL | 
+                    ES_READONLY
+    LTEXT           "Object identifier (&numeric):",IDC_STATIC_OID_NUM,303,
+                    61,82,8
+    EDITTEXT        IDC_NUMERIC_OID_LABEL,303,72,208,14,ES_AUTOHSCROLL | 
+                    ES_READONLY
+    LTEXT           "&Object syntax:",IDC_STATIC_SYNTAX,303,91,46,8
+    EDITTEXT        IDC_SYNTAX_LABEL,303,102,208,14,ES_AUTOHSCROLL | 
+                    ES_READONLY
+    LTEXT           "Object &access type:",IDC_STATIC_ACCESS,303,120,64,8
+    EDITTEXT        IDC_ACCESS_LABEL,303,131,208,14,ES_AUTOHSCROLL | 
+                    ES_READONLY
+    LTEXT           "Inde&x:",IDC_STATIC_INDEX,303,150,20,8
+    EDITTEXT        IDC_INDEX_LABEL,303,161,208,14,ES_AUTOHSCROLL | 
+                    ES_READONLY
+    LTEXT           "O&bject status:",IDC_STATIC_OBJECT_STATUS,303,179,44,8
+    EDITTEXT        IDC_STATUS_LABEL,303,190,208,14,ES_AUTOHSCROLL | 
+                    ES_READONLY
+    LTEXT           "Extra info (non-standard informational fields):",
+                    IDC_STATIC_EXTRA_INFO,303,207,139,8
+    CONTROL         "",IDC_EXTRAINFO_LABEL,"RICHEDIT",ES_MULTILINE | 
+                    ES_AUTOVSCROLL | ES_READONLY | WS_BORDER | WS_VSCROLL | 
+                    WS_TABSTOP,303,219,208,44
+    LTEXT           "Object description:",IDC_STATIC_DESCRIPTION,302,268,60,
+                    8
+    CONTROL         "",IDC_DESCRIPTION_LABEL,"RICHEDIT",ES_MULTILINE | 
+                    ES_AUTOVSCROLL | ES_READONLY | WS_BORDER | WS_VSCROLL | 
+                    WS_TABSTOP,303,280,208,54
+    PUSHBUTTON      "&Utilities",IDC_UTILITIES_BTN,291,337,50,14
+    PUSHBUTTON      "&Syntax",IDC_SYNTAX_BTN,348,337,50,14
+    PUSHBUTTON      "Fin&d",IDC_FIND_BTN,405,337,50,14
+    PUSHBUTTON      "&Close",IDD_CLOSE_BTN,461,337,50,14
+    PUSHBUTTON      "Clea&r status field",IDC_CLEAR_STAT_BTN,105,337,74,14,
+                    NOT WS_VISIBLE
+    LTEXT           "Status &messages:",IDC_STATIC_STATUS_MESSAGES,156,222,
+                    56,8,NOT WS_VISIBLE
+    CONTROL         "",IDC_STATUS_BOX,"RICHEDIT",ES_MULTILINE | 
+                    ES_AUTOVSCROLL | ES_READONLY | NOT WS_VISIBLE | 
+                    WS_BORDER | WS_VSCROLL | WS_TABSTOP,157,234,208,39
+END
+
+IDD_ENV_VAR_DLG DIALOG DISCARDABLE  0, 0, 156, 57
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Specify environment variable"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,99,7,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,99,24,50,14
+    LTEXT           "Environment variable name:",IDC_STATIC,7,7,88,8
+    EDITTEXT        IDC_ENV_EDIT,7,20,86,14,ES_AUTOHSCROLL
+END
+
+IDD_SPLASH DIALOG DISCARDABLE  0, 0, 251, 149
+STYLE DS_CENTER | WS_POPUP | WS_VISIBLE
+FONT 8, "Comic Sans MS"
+BEGIN
+    RTEXT           "Copyright (c) Artur Perwenis, 2001, 2002, RTS, Szczecin, Poland. All rights reserved. ",
+                    IDC_STATIC,0,135,251,12
+    LTEXT           "Version 2.0.3",IDC_STATIC,6,104,40,8
+    LTEXT           "Build date: 2002.01.30",IDC_STATIC,6,115,66,8
+    CONTROL         135,IDC_RTS_LOGO,"Static",SS_BITMAP,57,54,109,44
+    CONTROL         134,IDC_PROGRAM_NAME,"Static",SS_BITMAP,21,3,207,37
+    CONTROL         138,IDC_STATIC,"Static",SS_BITMAP,0,0,251,149
+END
+
+IDD_SYNTAX_DLG DIALOGEX 0, 0, 254, 127
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_TOOLWINDOW
+CAPTION "Element syntax"
+FONT 8, "MS Sans Serif", 0, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "Close",IDOK,7,106,50,14
+    LTEXT           "Element name:",IDC_STATIC,7,15,48,8
+    LTEXT           "<ELEMENT NAME GOES HERE>",IDC_ELEMENT_NAME,61,15,186,8
+    LTEXT           "Syntax:",IDC_STATIC,7,28,24,8
+    LTEXT           "<ELEMENT SYNTAX GOES HERE>",IDC_ELEMENT_SYNTAX,61,28,
+                    186,8
+    LTEXT           "Definition:",IDC_STATIC,7,44,32,8
+    EDITTEXT        IDC_SYNTAX_DEF,61,47,186,57,ES_MULTILINE | 
+                    ES_AUTOVSCROLL | ES_READONLY | NOT WS_BORDER | 
+                    WS_VSCROLL,WS_EX_STATICEDGE
+END
+
+IDD_FIND_DIALOG DIALOGEX 0, 0, 299, 62
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_TOOLWINDOW
+CAPTION "Find element by name"
+FONT 8, "MS Sans Serif", 0, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "Find",ID_FIND_BTN,242,7,50,14
+    DEFPUSHBUTTON   "Find next",ID_FIND_NEXT_BTN,242,24,50,14
+    PUSHBUTTON      "Close",IDCLOSE,242,41,50,14
+    LTEXT           "Type an element name (or its part) to be searched for:",
+                    IDC_STATIC,7,17,169,8
+    EDITTEXT        IDC_FIND_STRING_EDIT_BOX,7,27,215,14,ES_AUTOHSCROLL
+    CONTROL         "Case-sensitive search",IDC_CASE_SENSITIVE_CHK,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,45,85,10
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    IDD_MAIN_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 511
+        TOPMARGIN, 6
+        BOTTOMMARGIN, 351
+    END
+
+    IDD_ENV_VAR_DLG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 149
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 50
+    END
+
+    IDD_SYNTAX_DLG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 247
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 120
+    END
+
+    IDD_FIND_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 292
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 55
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog Info
+//
+
+IDD_MAIN_DIALOG DLGINIT
+BEGIN
+    IDC_AUTOCOMPLETE_CBX, 0x403, 19, 0
+0x6e55, 0x6564, 0x2072, 0x6f63, 0x736e, 0x7274, 0x6375, 0x6974, 0x6e6f, 
+"\000" 
+    0
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDB_BITMAP1             BITMAP  DISCARDABLE     "Res\\1 MIB root.bmp"
+IDB_BITMAP2             BITMAP  DISCARDABLE     "Res\\2 mgmt (root key).bmp"
+IDB_BITMAP3             BITMAP  DISCARDABLE     "Res\\3 closed folder.bmp"
+IDB_BITMAP4             BITMAP  DISCARDABLE     "Res\\4 open folder.bmp"
+IDB_BITMAP5             BITMAP  DISCARDABLE     "Res\\5 read only entry.bmp"
+IDB_BITMAP6             BITMAP  DISCARDABLE     "Res\\6 table root.bmp"
+IDB_BITMAP7             BITMAP  DISCARDABLE     "Res\\7 table item.bmp"
+IDB_BITMAP8             BITMAP  DISCARDABLE     "Res\\8 table index field.bmp"
+IDB_BITMAP9             BITMAP  DISCARDABLE     "Res\\9 read-write entry.bmp"
+IDB_BITMAP10            BITMAP  DISCARDABLE     "Res\\10 textual conventions root.bmp"
+IDB_BITMAP11            BITMAP  DISCARDABLE     "Res\\11 trap-type entry.bmp"
+IDB_BITMAP12            BITMAP  DISCARDABLE     "Res\\12 notification type entry.bmp"
+IDB_RTSLOGO             BITMAP  DISCARDABLE     "Res\\RTSLogo.bmp"
+IDB_PROGRAM_NAME        BITMAP  DISCARDABLE     "Res\\Program name.bmp"
+IDB_RTSLOGO256          BITMAP  DISCARDABLE     "Res\\RTSLogo256.bmp"
+IDB_PROGRAM_LOGO        BITMAP  DISCARDABLE     "Res\\ProgramLogo.bmp"
+IDB_BITMAP13            BITMAP  DISCARDABLE     "Res\\13 table external index field.bmp"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_MAIN_MENU MENU DISCARDABLE 
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&Load new MIB",               ID_FILE_LOAD_NEW_MIB
+        MENUITEM "&Unload selected MIB",        ID_FILE_UNLOADSELECTEDMIB
+        MENUITEM "Unload &all MIBs",            ID_FILE_UNLOADALLMIBS
+        MENUITEM "E&xit",                       ID_FILE_EXIT
+    END
+    POPUP "&Edit"
+    BEGIN
+        POPUP "Find"
+        BEGIN
+            MENUITEM "&Element by name\tCtrl+F",    ID_EDIT_FIND_ELEMENTBYNAME
+
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "&Show element syntax",        ID_EDIT_SHOWELEMENTSYNTAX
+        MENUITEM "&Utilities",                  ID_EDIT_UTILITIES
+    END
+    POPUP "&Batch"
+    BEGIN
+        MENUITEM "&Set environment variable name", 
+                                                ID_BATCH_SETENVIRONMENTVARIABLENAME
+
+        MENUITEM "&Load MIBs from the variable", 
+                                                ID_BATCH_LOADMIBSFROMTHEVARIABLE
+
+    END
+    POPUP "&Miscellaneous", GRAYED
+    BEGIN
+        MENUITEM "Show checkboxes",             ID_MISCELLANEOUS_SHOWCHECKBOXES
+        , GRAYED
+    END
+END
+
+
+#ifndef _MAC
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 2,0,0,18
+ PRODUCTVERSION 2,0,0,18
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "Comments", "MIB Browser application\0"
+            VALUE "CompanyName", "RTS, Szczecin, Poland\0"
+            VALUE "FileDescription", "MIBBrowser\0"
+            VALUE "FileVersion", "2, 0, 0, 18\0"
+            VALUE "InternalName", "MIBBrowser\0"
+            VALUE "LegalCopyright", "Copyright © 2001, 2002 Artur Perwenis\0"
+            VALUE "LegalTrademarks", "\0"
+            VALUE "OriginalFilename", "MIBBrowser.exe\0"
+            VALUE "PrivateBuild", "\0"
+            VALUE "ProductName", "MIBBrowser application for RTS, Szczecin, Poland\0"
+            VALUE "ProductVersion", "2, 0, 0, 17\0"
+            VALUE "SpecialBuild", "\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+#endif    // !_MAC
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDR_APPICON             ICON    DISCARDABLE     "Res\\mib-app icon.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Accelerator
+//
+
+IDR_ACCELERATORS ACCELERATORS DISCARDABLE 
+BEGIN
+    "F",            IDR_ACCEL_FIND,         VIRTKEY, CONTROL, NOINVERT
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_ENV_STRING          "MIB_DIR"
+    IDS_COMMENT             "The default name of the environment variable the program will use."
+    IDS_IPADDR_SECTION_NAME "IP Addresses"
+    IDS_IPADDR_SECTION_FORMAT "IP %d"
+    IDS_HIDE_OUTPUT_STR     "Hide &output"
+    IDS_SHOW_OUTPUT_STR     "Show &output"
+    IDS_TOOLSDIRNAME        "MIBTools"
+    IDS_GETTABLE_EXE_NAME   "gettab.exe"
+    IDS_SETANY_EXE_NAME     "setany.exe"
+    IDS_GETONE_EXE_NAME     "getone.exe"
+    IDS_CONSOLETITLE_PREFIX "MIBBrowser - executing external command: "
+    IDS_GETMANY_EXE_NAME    "getmany.exe"
+    IDS_MAINWINDOWTITLE     "MIB Browser v2.0.0 (c) Artur Perwenis, 2001, 2002"
+    IDS_CONSOLE_TITLE       "MIBBrowser - console window"
+    IDS_COMMENT2            "--------------------------------------------------------------"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    MSG_CREATEPROCFAILED    "Failed to launch external command. Please make sure the MIBTools directory resides in the same directory as the application program."
+    MSG_CONSOLEHANDLEINVALID 
+                            "Invalid handle to console window or the console window could not be created. Please try restarting the application or contact the program developer."
+    MSG_CONSOLEREADERROR    "Error while reading console output contents. Please report the bug details to the program developer."
+    MSG_COMMANDFAILED       "Command execution failed."
+    IDS_GETONE_HEADER       "--------- ""Get one"" results on IP: %1, element: %2:"
+    IDS_GETMANY_HEADER      "--------- ""Get many"" results on IP: %1, element: %2:"
+    IDS_GETTABLE_HEADER     "--------- ""Get table"" results on IP: %1, element: %2:"
+    IDS_SETANY_HEADER       "--------- ""Get any"" results on IP: %1, element: %2:"
+    IDS_SETANY_HEADER2      "%1, data value: %2"
+    IDS_OUTPUT_FOOTER       "--------- End of command output."
+    IDS_COMMUNITY_NAME      "public"
+    IDS_COMMUNITY_ENV_VAR   "SR_UTIL_COMMUNITY"
+    MSG_CREATEPROCFAILED_LOG "A call to CreateProcess () failed."
+    MNU_SHOW_CHECK          "Show checkboxes"
+    MNU_HIDE_CHECK          "Hide checkboxes"
+    IDS_INACTIVE_CONTROL_STRING 
+                            "This is not yet functional. IntelliSense autocomplete is under construction."
+END
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

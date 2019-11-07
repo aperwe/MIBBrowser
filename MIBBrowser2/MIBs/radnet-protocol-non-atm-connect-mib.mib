@@ -1,0 +1,235 @@
+-- @(#)rnet_non_atm_connect.mib
+-- ----------------------------------------------------------------------
+-- RADNET NON ATM CONNECTION MIB
+-- Copyright (c) 1996 RADNET Ltd.
+-- ----------------------------------------------------------------------
+--
+-- MIB Module :   RADNET-PROTOCOL-NON_ATM-CONNECT-MIB
+--
+-- Revision   :   V2.101
+--
+-- Description:   Definition of Connections between two non ATM end 
+-- 					points 
+--			 		   The connections defined in the module are:
+--		  				- LAN to LAN connection.
+--
+-- ----------------------------------------------------------------------
+RADNET-PROTOCOL-NON-ATM-CONNECT-MIB DEFINITIONS ::= BEGIN
+
+	IMPORTS
+     	OBJECT-TYPE, MODULE-IDENTITY
+		      	FROM SNMPv2-SMI
+	
+		InterfaceIndex		FROM IF-MIB
+	            
+--      AtmAddr         FROM ATM-TC-MIB
+
+		RowStatus,
+		TimeStamp
+					FROM SNMPv2-TC
+
+		rnetProtocol		
+					FROM RADNET-PROTOCOL-MIB;
+
+
+rnetProtocolNonAtmConnections MODULE-IDENTITY
+                    LAST-UPDATED "9709021300Z"
+                    ORGANIZATION "RADNET"
+                    CONTACT-INFO
+                      "          Eitan Mardiks
+                        Postal:  RADNET Ltd.
+				24 Raul Wallenberg St.
+				Tel-Aviv 69719, Israel.
+                        Tel:     +972 3 6455700
+                        Fax:     +972 3 6480582
+                        E-Mail:  eitan@gate.radnet.co.il"
+
+                    DESCRIPTION
+                    "Definition of Connection between two non ATM end 
+							points.
+					      The connection defined in the module are:
+					      - LAN to LAN connection."
+                    ::= { rnetProtocol  14 }
+
+		
+-- --------------------------------------------------------------
+-- RADNET Connections Objects
+-- --------------------------------------------------------------
+
+rnetProtocolLanCrossConnect
+		OBJECT IDENTIFIER ::= { rnetProtocolNonAtmConnections 1 }
+
+-- --------------------------------------------------------------
+-- RADNET LAN cross connect table
+-- --------------------------------------------------------------
+	
+rnetProtocolLanCrossConnectIndexNext   OBJECT-TYPE
+        SYNTAX INTEGER (1..2147483647)
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+
+               "The next available value of rnetProtocolLanCrossConnectIndex,
+		when creating entries in the rnetProtocolLanCrossConnectIndex.
+		To obtain the rnetProtocolLanCrossConnectIndex value for a new 
+		entry, the manager performs a READ operation to 
+		obtain the current value of this object. After each 
+		READ operation of this object, the agent must 
+		modify it to the next available value. "
+	::= { rnetProtocolLanCrossConnect 1 }
+   
+-- --------------------------------------------------------------
+--  RADNET LAN to LAN connection table.
+-- --------------------------------------------------------------
+
+rnetProtocolLanCrossConnectTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetProtocolLanCrossConnectEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"This table defines virtual connections between 2 LAN  
+		 interfaces." 
+	::= { rnetProtocolLanCrossConnect 2 }
+
+rnetProtocolLanCrossConnectEntry	OBJECT-TYPE
+	SYNTAX	RnetProtocolLanCrossConnectEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry defines a virtual connection between 2 LAN
+				interfaces."
+	INDEX	{ rnetProtocolLanCrossConnectIndex,
+		     rnetProtocolEthernetLowBridgeGroupIndex,
+		     rnetProtocolEthernetHighBridgeGroupIndex }
+	::= { rnetProtocolLanCrossConnectTable 1 }
+
+RnetProtocolLanCrossConnectEntry ::= SEQUENCE {
+	rnetProtocolLanCrossConnectIndex
+		INTEGER,
+	rnetProtocolEthernetLowBridgeGroupIndex
+		InterfaceIndex,
+   rnetProtocolEthernetHighBridgeGroupIndex
+		InterfaceIndex,
+	rnetProtocolLanCrossConnectAdminStatus
+		INTEGER,
+	rnetProtocolLanCrossL2HOperStatus
+		INTEGER,
+	rnetProtocolLanCrossH2LOperStatus
+		INTEGER,
+	rnetProtocolLanCrossL2HLastChange
+		TimeStamp,
+	rnetProtocolLanCrossH2LLastChange
+		TimeStamp,
+	rnetProtocolLanCrossConnectRowStatus
+		RowStatus
+}
+
+rnetProtocolLanCrossConnectIndex   OBJECT-TYPE
+        SYNTAX INTEGER (1..2147483647)
+	MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+		"The index of this table."
+	::= { rnetProtocolLanCrossConnectEntry 1 }
+
+rnetProtocolEthernetLowBridgeGroupIndex OBJECT-TYPE
+        SYNTAX InterfaceIndex
+	MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+		"The ifIndex associated to the Lowest bridge group interface
+	    related to that connection."
+	::= { rnetProtocolLanCrossConnectEntry 2 }
+
+rnetProtocolEthernetHighBridgeGroupIndex OBJECT-TYPE
+        SYNTAX InterfaceIndex
+	MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+		"The ifIndex associated to the highest bridge group interface
+		 related to that connection."
+	::= { rnetProtocolLanCrossConnectEntry 3 }
+
+rnetProtocolLanCrossConnectAdminStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+        					  up(1),
+       					  down(2)
+        }
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+                "The desired state of the LAN cross connection."
+        ::= { rnetProtocolLanCrossConnectEntry 4 }
+
+rnetProtocolLanCrossL2HOperStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+                        up(1),
+                        down(2)
+        }
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                "The current operational state of the LAN cross
+                 connection."
+        ::= { rnetProtocolLanCrossConnectEntry 5 }
+
+rnetProtocolLanCrossH2LOperStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+                        up(1),
+                        down(2)
+        }
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                "The current operational state of the LAN cross
+                 connection."
+        ::= { rnetProtocolLanCrossConnectEntry 6 }
+
+rnetProtocolLanCrossL2HLastChange   OBJECT-TYPE
+	SYNTAX TimeStamp
+	MAX-ACCESS read-only
+	STATUS current
+	DESCRIPTION
+		"The value of sysUpTime at the time the LAN to LAN
+                 connection entered its current operational state.  If 
+	         the current state was entered prior to the last 
+	         re-initialization of the local network management 
+	         subsystem, then this object contains a zero value."
+	::= { rnetProtocolLanCrossConnectEntry 7 }
+
+rnetProtocolLanCrossH2LLastChange   OBJECT-TYPE
+	SYNTAX TimeStamp
+	MAX-ACCESS read-only
+	STATUS current
+	DESCRIPTION
+		"The value of sysUpTime at the time the LAN to LAN
+                 connection entered its current operational state.  If 
+	         the current state was entered prior to the last 
+	         re-initialization of the local network management 
+	         subsystem, then this object contains a zero value."
+	::= { rnetProtocolLanCrossConnectEntry 8 }
+
+rnetProtocolLanCrossConnectRowStatus   OBJECT-TYPE
+        SYNTAX RowStatus
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+                "This object is used to create
+                 a new row or modify or delete an
+                 existing row in this table."
+        ::= { rnetProtocolLanCrossConnectEntry 9 }
+
+END
+
+
+
+
+
+
+
+
+
+
+
+
+

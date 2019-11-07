@@ -1,0 +1,1407 @@
+SLMU-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+MODULE-IDENTITY, OBJECT-TYPE, enterprises
+        		FROM SNMPv2-SMI
+    	TEXTUAL-CONVENTION, TimeInterval, TruthValue, DisplayString
+        		FROM SNMPv2-TC
+    	ifIndex	
+			FROM RFC1213-MIB
+	adslAtucIntervalNumber, adslAturIntervalNumber, adslAtucChanIntervalNumber 
+        		FROM ADSL-LINE-MIB 
+    	entPhysicalIndex
+        		FROM ENTITY-MIB;
+
+sni OBJECT IDENTIFIER ::= { enterprises 231 }
+
+siemensUnits OBJECT IDENTIFIER ::= { sni 7 }
+
+oenProductMibs OBJECT IDENTIFIER ::= { siemensUnits 1 }
+
+sn OBJECT IDENTIFIER ::= { oenProductMibs 4 }
+
+slmu MODULE-IDENTITY
+    	LAST-UPDATED "9904220000Z"
+    	ORGANIZATION "SIEMENS AG, ICN WN CS EP A14"
+    	CONTACT-INFO
+        		"   ICN WN CS EP A14
+            		Hofmannstr. 27
+            		81379 Munich, Germany
+
+            		Claudio A. Lazzarotto
+            		Tel:   +49 (0)89 722 47049
+            		Fax:   +49 (0)89 722 62211
+            		Email: ClaudioA.Lazzarotto@icn.siemens.de "
+    	DESCRIPTION
+        		"The MIB for the SLMU module.
+The SLMU MIB shall complement the ADSL MIB, so that the most of parameters to be managed in the ITU-T recommendation G997.1 are covered.
+This MIB provides objects  to enhance the port maintenance and performance monitoring."
+    ::= { sn 7 }
+
+slmuMIBObjects	OBJECT IDENTIFIER ::= { slmu  1 }
+slmuMIBTraps    	OBJECT IDENTIFIER ::= { slmu  2 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+slmuAdslAtmDataPathFailTable OBJECT-TYPE
+SYNTAX  	SEQUENCE OF SlmuAdslAtmDataPathFailEntry
+MAX-ACCESS	not-accessible
+STATUS  	current
+DESCRIPTION
+"This table provides one row for each ATUC channel. Each row 
+contains the ADSL ATM Data path failures table for that ATUC 
+channel. ADSL channel interfaces are those ifEntries where 
+ifType is equal to adslInterleave(124) or adslFast(125)."
+::= { slmuMIBObjects 1 }
+
+slmuAdslAtmDataPathFailEntry OBJECT-TYPE
+SYNTAX 	SlmuAdslAtmDataPathFailEntry
+MAX-ACCESS  not-accessible
+STATUS  	current
+DESCRIPTION
+"An entry in slmuAdslAtmDataPathFailTable."
+    	INDEX   	{ ifIndex }
+::= { slmuAdslAtmDataPathFailTable 1 }
+
+SlmuAdslAtmDataPathFailEntry ::=
+SEQUENCE {
+slmuAdslAtmDataPathFailNe 	INTEGER (0..65535),
+slmuAdslAtmDataPathFailFe 	INTEGER (0..65535)
+}
+
+slmuAdslAtmDataPathFailNe OBJECT-TYPE
+SYNTAX	INTEGER (0..65535)
+MAX-ACCESS  read-only
+STATUS	current
+DESCRIPTION
+"This variable indicates the ATM data path
+related near-end failures.
+The slmuAdslAtmDataPathFailNe is a bit map 
+represented as a sum, therefore, it can represent 
+multiple failures (alarms) simultaneously.
+NoAlarm must be set if and only if no other flag is set.
+
+The various bit positions are:
+1	noAlarm	No alarm present
+2     	ncd         	No Cell Delineation (NCD-I/NCD-F) failure
+4     	lcd         	Loss of Cell Delineation (LCD-I/ LCD-F) failure"
+::= { slmuAdslAtmDataPathFailEntry 1 }
+
+slmuAdslAtmDataPathFailFe OBJECT-TYPE
+SYNTAX	INTEGER (0..65535)
+MAX-ACCESS  read-only
+STATUS	current
+DESCRIPTION
+"This variable indicates the ATM data path
+related far-end failures.
+The slmuAdslAtmDataPathFailFe is a bit map 
+represented as a sum, therefore, it can represent 
+multiple failures (alarms) simultaneously.
+NoAlarm must be set if and only if no other flag is set.
+
+The various bit positions are:
+1	noAlarm	No alarm present
+2     	ncd         	No Cell Delineation (NCD-I/NCD-F) failure
+4     	lcd         	Loss of Cell Delineation (LCD-I/ LCD-F) failure"
+::= { slmuAdslAtmDataPathFailEntry 2 }
+
+slmuAdslAtmDataPathPerfTable OBJECT-TYPE
+SYNTAX  	SEQUENCE OF SlmuAdslAtmDataPathPerfEntry
+MAX-ACCESS	not-accessible
+STATUS  	current
+DESCRIPTION
+"This table provides one row for each ATUC channel. 
+Each row contains the ADSL ATM data path performance 
+parameters table for that ATUC channel. ADSL channel 
+interfaces are those ifEntries where ifType is equal to 
+adslInterleave(124) or adslFast(125)."
+::= { slmuMIBObjects 2 }
+
+slmuAdslAtmDataPathPerfEntry OBJECT-TYPE
+SYNTAX 	SlmuAdslAtmDataPathPerfEntry
+MAX-ACCESS  not-accessible
+STATUS  	current
+DESCRIPTION
+"An entry in slmuAdslAtmDataPathPerfTable."
+    	INDEX   	{ ifIndex }
+::= { slmuAdslAtmDataPathPerfTable 1 }
+
+SlmuAdslAtmDataPathPerfEntry ::=
+SEQUENCE {
+slmuAdslAtmDataPathPerfNeHecViolCount  			Counter32,
+slmuAdslAtmDataPathPerfFeHecViolCount     		Counter32,
+slmuAdslAtmDataPathPerfNeHecTotalCell     		Counter32,
+slmuAdslAtmDataPathPerfFeHecTotalCell     		Counter32,
+slmuAdslAtmDataPathPerfNeUserTotalCell			Counter32,
+slmuAdslAtmDataPathPerfFeUserTotalCell  			Counter32,
+slmuAdslAtmDataPathPerfCurr15MinNeHecViolCount   	Counter32,
+slmuAdslAtmDataPathPerfCurr15MinFeHecViolCount	Counter32,
+slmuAdslAtmDataPathPerfCurr15MinNeHecTotalCell    	Counter32,
+slmuAdslAtmDataPathPerfCurr15MinFeHecTotalCell	Counter32,
+slmuAdslAtmDataPathPerfCurr15MinNeUserTotalCell	Counter32,
+slmuAdslAtmDataPathPerfCurr15MinFeUserTotalCell	Counter32,
+slmuAdslAtmDataPathPerfCurr1DayNeHecViolCount	Counter32,
+slmuAdslAtmDataPathPerfCurr1DayFeHecViolCount     	Counter32,
+slmuAdslAtmDataPathPerfCurr1DayNeHecTotalCell      	Counter32,
+slmuAdslAtmDataPathPerfCurr1DayFeHecTotalCell 		Counter32,
+slmuAdslAtmDataPathPerfCurr1DayNeUserTotalCell     	Counter32,
+slmuAdslAtmDataPathPerfCurr1DayFeUserTotalCell   	Counter32,
+slmuAdslAtmDataPathPerfPrev1DayNeHecViolCount  	Counter32,
+slmuAdslAtmDataPathPerfPrev1DayFeHecViolCount  	Counter32,
+slmuAdslAtmDataPathPerfPrev1DayNeHecTotalCell  	Counter32,
+slmuAdslAtmDataPathPerfPrev1DayFeHecTotalCell  	Counter32,	
+slmuAdslAtmDataPathPerfPrev1DayNeUserTotalCell  	Counter32,	
+slmuAdslAtmDataPathPerfPrev1DayFeUserTotalCell  	Counter32	
+}
+
+slmuAdslAtmDataPathPerfNeHecViolCount OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+		"Near-end HEC violation count Interleaved/Fast: Count of 
+the number of occurrences of a near-end hec-I/hec-F anomaly 
+since agent reset."
+::= { slmuAdslAtmDataPathPerfEntry 1 }
+
+
+slmuAdslAtmDataPathPerfFeHecViolCount OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+		"Far-end HEC violation count Interleaved/Fast: Count of 
+the number of occurrences of a far-end hec-I/hec-F anomaly 
+since agent reset."
+::= { slmuAdslAtmDataPathPerfEntry 2 }
+
+slmuAdslAtmDataPathPerfNeHecTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+            		"Near-end HEC total cell count Interleaved/Fast: Count of the 
+total number of cells passed through the cell delineation process 
+operating on the interleaved/fast data while in the SYNC state 
+since agent reset."
+::= { slmuAdslAtmDataPathPerfEntry 3 }
+
+slmuAdslAtmDataPathPerfFeHecTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+            		"Far-end HEC total cell count Interleaved/Fast: Count of the 
+total number of cells passed through the cell delineation process 
+operating on the interleaved/fast data while in the SYNC state 
+since agent reset."
+::= { slmuAdslAtmDataPathPerfEntry 4 }
+
+slmuAdslAtmDataPathPerfNeUserTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+            		"Near-end User total cell count Interleaved/Fast: Count of the
+total number of cells in the interleaved/fast data path delivered 
+at the V-C (for ATU-C) ou T-R (for ATU-R) interface since agent reset."
+::= { slmuAdslAtmDataPathPerfEntry 5 }
+
+slmuAdslAtmDataPathPerfFeUserTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+            		"Far-end User total cell count Interleaved/Fast: Count of the 
+                         total number of cells in the interleaved/fast data path delivered 
+at the V-C (for ATU-C) ou T-R (for ATU-R) interface since agent reset."
+::= { slmuAdslAtmDataPathPerfEntry 6 }
+
+slmuAdslAtmDataPathPerfCurr15MinNeHecViolCount OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+		"Near-end HEC violation count on this channel within the current 15 minute interval."
+::= { slmuAdslAtmDataPathPerfEntry 7 }
+
+slmuAdslAtmDataPathPerfCurr15MinFeHecViolCount OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Far-end HEC violation count on this channel within the current 15 minute interval."
+::= { slmuAdslAtmDataPathPerfEntry 8 }
+
+slmuAdslAtmDataPathPerfCurr15MinNeHecTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Near-end HEC total cell count on this channel within the current 15 minute interval."
+::= { slmuAdslAtmDataPathPerfEntry 9 }
+
+slmuAdslAtmDataPathPerfCurr15MinFeHecTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Far-end HEC total cell count on this channel within the current 15 minute interval."
+::= { slmuAdslAtmDataPathPerfEntry 10 }
+
+slmuAdslAtmDataPathPerfCurr15MinNeUserTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Near-end User total cell count on this channel within the current 15 minute interval."
+::= { slmuAdslAtmDataPathPerfEntry 11 }
+
+slmuAdslAtmDataPathPerfCurr15MinFeUserTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+		"Far-end User total cell count on this channel within the current 15 minute interval."
+::= { slmuAdslAtmDataPathPerfEntry 12 }
+
+slmuAdslAtmDataPathPerfCurr1DayNeHecViolCount OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+		"Near-end HEC violation count on this channel 
+during the current day as measured by
+             	adslAtucChanPerfCurr1DayTimeElapsed."
+::= { slmuAdslAtmDataPathPerfEntry 13 }
+
+slmuAdslAtmDataPathPerfCurr1DayFeHecViolCount OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Far-end HEC violation count on this channel 
+during the current day as measured by
+             	adslAtucChanPerfCurr1DayTimeElapsed."
+::= { slmuAdslAtmDataPathPerfEntry 14 }
+
+slmuAdslAtmDataPathPerfCurr1DayNeHecTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Near-end HEC total cell count on this channel 
+during the current day as measured by
+             	adslAtucChanPerfCurr1DayTimeElapsed."
+::= { slmuAdslAtmDataPathPerfEntry 15 }
+
+slmuAdslAtmDataPathPerfCurr1DayFeHecTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Far-end HEC total cell count on this channel 
+during the current day as measured by
+             	adslAtucChanPerfCurr1DayTimeElapsed."
+::= { slmuAdslAtmDataPathPerfEntry 16 }
+
+slmuAdslAtmDataPathPerfCurr1DayNeUserTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Near-end User total cell count on this channel 
+during the current day as measured by
+             	adslAtucChanPerfCurr1DayTimeElapsed."
+::= { slmuAdslAtmDataPathPerfEntry 17 }
+
+slmuAdslAtmDataPathPerfCurr1DayFeUserTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+		"Far-end User total cell count on this channel 
+during the current day as measured by
+             	adslAtucChanPerfCurr1DayTimeElapsed."
+::= { slmuAdslAtmDataPathPerfEntry 18 }
+
+slmuAdslAtmDataPathPerfPrev1DayNeHecViolCount OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+		"Near-end HEC violation count on this channel 
+within the most recent previous 1 day period."
+::= { slmuAdslAtmDataPathPerfEntry 19 }
+
+slmuAdslAtmDataPathPerfPrev1DayFeHecViolCount OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Far-end HEC violation count on this channel 
+within the most recent previous 1 day period."
+::= { slmuAdslAtmDataPathPerfEntry 20 }
+
+slmuAdslAtmDataPathPerfPrev1DayNeHecTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Near-end HEC total cell count on this channel 
+within the most recent previous 1 day period."
+::= { slmuAdslAtmDataPathPerfEntry 21 }
+
+slmuAdslAtmDataPathPerfPrev1DayFeHecTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Far-end HEC total cell count on this channel 
+within the most recent previous 1 day period."
+::= { slmuAdslAtmDataPathPerfEntry 22 }
+
+slmuAdslAtmDataPathPerfPrev1DayNeUserTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Near-end User total cell count on this channel 
+within the most recent previous 1 day period."
+::= { slmuAdslAtmDataPathPerfEntry 23 }
+
+slmuAdslAtmDataPathPerfPrev1DayFeUserTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+		"Far-end User total cell count on this channel 
+within the most recent previous 1 day period."
+::= { slmuAdslAtmDataPathPerfEntry 24 }
+
+
+slmuAdslAtmDataPathPerfHistoryTable OBJECT-TYPE
+SYNTAX  	SEQUENCE OF SlmuAdslAtmDataPathPerfHistoryEntry
+MAX-ACCESS	not-accessible
+STATUS  	current
+DESCRIPTION
+"This table provides one row for each ATUC channel's
+                        	performance data collection interval. ADSL channel 
+interfaces are those ifEntries where ifType is equal to 
+adslInterleave(124) or adslFast(125)."
+::= { slmuMIBObjects 3 }
+
+slmuAdslAtmDataPathPerfHistoryEntry OBJECT-TYPE
+SYNTAX 	SlmuAdslAtmDataPathPerfHistoryEntry
+MAX-ACCESS  not-accessible
+STATUS  	current
+DESCRIPTION
+"An entry in slmuAdslAtmDataPathPerfHistoryTable."
+    	INDEX   	{ ifIndex, adslAtucChanIntervalNumber }
+::= { slmuAdslAtmDataPathPerfHistoryTable 1 }
+
+SlmuAdslAtmDataPathPerfHistoryEntry ::=
+SEQUENCE {
+slmuAdslAtmDataPathPerfHistoryNeHecViolCount	Counter32,
+slmuAdslAtmDataPathPerfHistoryFeHecViolCount	Counter32,
+slmuAdslAtmDataPathPerfHistoryNeHecTotalCell	Counter32,
+slmuAdslAtmDataPathPerfHistoryFeHecTotalCell	Counter32,
+slmuAdslAtmDataPathPerfHistoryNeUserTotalCell	Counter32,
+slmuAdslAtmDataPathPerfHistoryFeUserTotalCell	Counter32
+}
+
+slmuAdslAtmDataPathPerfHistoryNeHecViolCount OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of the number of occurrences of a near-end hec-I/hec-F
+anomaly during this interval."
+::= { slmuAdslAtmDataPathPerfHistoryEntry 1 }
+
+slmuAdslAtmDataPathPerfHistoryFeHecViolCount OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+		"Count of the number of occurrences of a far-end hec-I/hec-F 
+anomaly during this interval."
+::= { slmuAdslAtmDataPathPerfHistoryEntry 2 }
+
+
+slmuAdslAtmDataPathPerfHistoryNeHecTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+            		"Count of the total number of cells passed through the cell 
+delineation process operating on the interleaved/fast data 
+while in the SYNC state during this interval."
+::= { slmuAdslAtmDataPathPerfHistoryEntry 3 }
+
+slmuAdslAtmDataPathPerfHistoryFeHecTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+            		"Count of the total number of cells passed through the cell 
+delineation process operating on the interleaved/fast data 
+while in the SYNC state during this interval."
+::= { slmuAdslAtmDataPathPerfHistoryEntry 4 }
+
+slmuAdslAtmDataPathPerfHistoryNeUserTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+            		"Count of the total number of cells in the interleaved/fast data 
+path delivered at the V-C (for ATU-C) ou T-R (for ATU-R) interface 
+during this interval."
+::= { slmuAdslAtmDataPathPerfHistoryEntry 5 }
+
+slmuAdslAtmDataPathPerfHistoryFeUserTotalCell OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+            		"Count of the total number of cells in the interleaved/fast data 
+path delivered at the V-C (for ATU-C) ou T-R (for ATU-R) interface 
+during this interval."
+::= { slmuAdslAtmDataPathPerfHistoryEntry 6 }
+
+
+slmuChanAdslLinePerfTable OBJECT-TYPE
+SYNTAX  	SEQUENCE OF SlmuChanAdslLinePerfEntry
+MAX-ACCESS	not-accessible
+STATUS  	current
+DESCRIPTION
+"This table provides one row for each ATUC channel. 
+Each row contains the ADSL line performance parameters 
+table for that ATUC channel. ADSL channel interfaces 
+are those ifEntries where ifType is equal to adslInterleave(124) 
+or adslFast(125)."
+::= { slmuMIBObjects 4 }
+
+slmuChanAdslLinePerfEntry OBJECT-TYPE
+SYNTAX 	SlmuChanAdslLinePerfEntry
+MAX-ACCESS  not-accessible
+STATUS  	current
+DESCRIPTION
+"An entry in slmuChanAdslLinePerfTable."
+    	INDEX   	{ ifIndex }
+::= { slmuChanAdslLinePerfTable 1 }
+
+SlmuChanAdslLinePerfEntry ::=
+SEQUENCE {
+slmuChanAdslLinePerfCodeViolLineNe 		Counter32,
+slmuChanAdslLinePerfCodeViolLineFe 		Counter32,
+slmuChanAdslLinePerfCurr15MinCodeViolLineNe 	Counter32,	
+slmuChanAdslLinePerfCurr15MinCodeViolLineFe 	Counter32,	
+slmuChanAdslLinePerfCurr1DayCodeViolLineNe 	Counter32,	
+slmuChanAdslLinePerfCurr1DayCodeViolLineFe 	Counter32,	
+slmuChanAdslLinePerfPrev1DayCodeViolLineNe 	Counter32,	
+slmuChanAdslLinePerfPrev1DayCodeViolLineFe 	Counter32	
+}
+
+slmuChanAdslLinePerfCodeViolLineNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Code violation-line (CVI-L/CVF-L): Count of interleaved/fast
+data stream crc-8 anomalies since agent reset."
+::= { slmuChanAdslLinePerfEntry 1 }
+
+slmuChanAdslLinePerfCodeViolLineFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Code violation-line far-end (CVI-LFE/CVF-LFE): Count of 
+interleaved/fast data stream febe-i/febe-f anomalies since agent reset."
+::= { slmuChanAdslLinePerfEntry 2 }
+
+slmuChanAdslLinePerfCurr15MinCodeViolLineNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of interleaved/fast data stream crc-8 anomalies 
+within the current 15 minute interval."
+::= { slmuChanAdslLinePerfEntry 3 }
+
+
+slmuChanAdslLinePerfCurr15MinCodeViolLineFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of interleaved/fast data stream febe-i/febe-f anomalies 
+within the current 15 minute interval."
+::= { slmuChanAdslLinePerfEntry 4 }
+
+slmuChanAdslLinePerfCurr1DayCodeViolLineNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of interleaved/fast data stream crc-8 anomalies 
+during the current day as measured by
+             	adslAtucChanPerfCurr1DayTimeElapsed."
+::= { slmuChanAdslLinePerfEntry 5 }
+
+slmuChanAdslLinePerfCurr1DayCodeViolLineFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of interleaved/fast data stream febe-i/febe-f anomalies 
+during the current day as measured by
+             	adslAtucChanPerfCurr1DayTimeElapsed."
+::= { slmuChanAdslLinePerfEntry 6 }
+
+slmuChanAdslLinePerfPrev1DayCodeViolLineNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of interleaved/fast data stream crc-8 anomalies 
+within the most recent previous 1 day period."
+::= { slmuChanAdslLinePerfEntry 7 }
+
+slmuChanAdslLinePerfPrev1DayCodeViolLineFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of interleaved/fast data stream febe-i/febe-f anomalies 
+within the most recent previous 1 day period."
+::= { slmuChanAdslLinePerfEntry 8 }
+
+
+slmuChanAdslLinePerfHistoryTable OBJECT-TYPE
+SYNTAX  	SEQUENCE OF SlmuChanAdslLinePerfHistoryEntry
+MAX-ACCESS	not-accessible
+STATUS  	current
+DESCRIPTION
+"This table provides one row for each ATUC channel's
+                        	performance data collection interval. ADSL channel 
+interfaces are those ifEntries where ifType is equal to 
+adslInterleave(124) or adslFast(125)."
+::= { slmuMIBObjects 5 }
+
+slmuChanAdslLinePerfHistoryEntry OBJECT-TYPE
+SYNTAX 	SlmuChanAdslLinePerfHistoryEntry
+MAX-ACCESS  not-accessible
+STATUS  	current
+DESCRIPTION
+"An entry in slmuChanAdslLinePerfHistoryTable."
+    	INDEX   	{ ifIndex, adslAtucChanIntervalNumber }
+::= { slmuChanAdslLinePerfHistoryTable 1 }
+
+SlmuChanAdslLinePerfHistoryEntry ::=
+SEQUENCE {
+slmuChanAdslLinePerfHistoryCodeViolLineNe	Counter32,
+slmuChanAdslLinePerfHistoryCodeViolLineFe	Counter32
+}
+
+slmuChanAdslLinePerfHistoryCodeViolLineNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of interleaved/fast data stream crc-8 anomalies 
+during this interval."
+::= { slmuChanAdslLinePerfHistoryEntry 1 }
+
+slmuChanAdslLinePerfHistoryCodeViolLineFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of interleaved/fast data stream febe-i/febe-f anomalies 
+during this interval."
+::= { slmuChanAdslLinePerfHistoryEntry 2 }
+
+
+slmuAdslLinePerfTable OBJECT-TYPE
+SYNTAX  	SEQUENCE OF SlmuAdslLinePerfEntry
+MAX-ACCESS	not-accessible
+STATUS  	current
+DESCRIPTION
+"This table provides one row for each ATUC. ADSL physical 
+interfaces are those ifEntries where ifType is equal to adsl(94)."
+::= { slmuMIBObjects 6 }
+
+slmuAdslLinePerfEntry OBJECT-TYPE
+SYNTAX 	SlmuAdslLinePerfEntry
+MAX-ACCESS  not-accessible
+STATUS  	current
+DESCRIPTION
+"An entry in slmuAdslLinePerfTable."
+    	INDEX   	{ ifIndex }
+::= { slmuAdslLinePerfTable 1 }
+
+SlmuAdslLinePerfEntry ::=
+SEQUENCE {
+slmuAdslLinePerfFecSecLineNe 				Counter32,
+slmuAdslLinePerfFecSecLineFe 				Counter32,
+slmuAdslLinePerfSeverelyErroredSecLineNe 		Counter32,
+slmuAdslLinePerfSeverelyErroredSecLineFe 		Counter32,
+slmuAdslLinePerfUnavailableSecNe 				Counter32,
+slmuAdslLinePerfUnavailableSecFe 				Counter32,
+slmuAdslLinePerfCurr15MinFecSecLineNe 			Counter32,	
+slmuAdslLinePerfCurr15MinFecSecLineFe 			Counter32,	
+slmuAdslLinePerfCurr15MinSeverelyErroredSecLineNe 	Counter32,	
+slmuAdslLinePerfCurr15MinSeverelyErroredSecLineFe 	Counter32,	
+slmuAdslLinePerfCurr15MinUnavailableSecNe 		Counter32,	
+slmuAdslLinePerfCurr15MinUnavailableSecFe 		Counter32,	
+slmuAdslLinePerfCurr1DayFecSecLineNe 			Counter32,	
+slmuAdslLinePerfCurr1DayFecSecLineFe 			Counter32,	
+slmuAdslLinePerfCurr1DaySeverelyErroredSecLineNe 	Counter32,	
+slmuAdslLinePerfCurr1DaySeverelyErroredSecLineFe 	Counter32,	
+slmuAdslLinePerfCurr1DayUnavailableSecNe 		Counter32,	
+slmuAdslLinePerfCurr1DayUnavailableSecFe 		Counter32,	
+slmuAdslLinePerfPrev1DayFecSecLineNe 			Counter32,	
+slmuAdslLinePerfPrev1DayFecSecLineFe 			Counter32,	
+slmuAdslLinePerfPrev1DaySeverelyErroredSecLineNe 	Counter32,	
+slmuAdslLinePerfPrev1DaySeverelyErroredSecLineFe 	Counter32,	
+slmuAdslLinePerfPrev1DayUnavailableSecNe 		Counter32,	
+slmuAdslLinePerfPrev1DayUnavailableSecFe 		Counter32
+}
+
+slmuAdslLinePerfFecSecLineNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Forward Error Correction second-line (ECS-L): Count of 
+1-second intervals with one or more fec anomalies since agent reset."
+::= { slmuAdslLinePerfEntry 1 }
+
+
+
+
+
+
+
+slmuAdslLinePerfFecSecLineFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Forward Error Correction second-line far-end 
+             	(ECS-LFE): Count of 1-second intervals with 
+one or more ffec anomalies since agent reset."
+::= { slmuAdslLinePerfEntry 2 }
+
+slmuAdslLinePerfSeverelyErroredSecLineNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Severely errored second-line (SES-L): Count of 1-second 
+intervals with 18 or more crc-8 anomalies, or one or more 
+los defects, or one or more sef defects, or one or more lpr 
+defects since agent reset."
+::= { slmuAdslLinePerfEntry 3 }
+
+slmuAdslLinePerfSeverelyErroredSecLineFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Severely errored second-line far-end (SES-LFE): Count of 1-second 
+intervals with 18 or more febe, or one or more far-end los defects, 
+or one or more rdi defects, or one or more lpr-fe defects since agent reset."
+::= { slmuAdslLinePerfEntry 4 }
+
+slmuAdslLinePerfUnavailableSecNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Unavailable second (UAS-L): Count of 1-second intervals for wich 
+the ADSL line is unavailable since agent reset."
+::= { slmuAdslLinePerfEntry 5 }
+
+slmuAdslLinePerfUnavailableSecFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Unavailable seconds far-end (UAS-LFE): Count of 1-second 
+intervals for wich the far-end ADSL line is unavailable since agent reset."
+::= { slmuAdslLinePerfEntry 6 }
+
+slmuAdslLinePerfCurr15MinFecSecLineNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals with one or more fec anomalies 
+within the current 15 minute interval."
+::= { slmuAdslLinePerfEntry 7 }
+
+
+
+
+
+slmuAdslLinePerfCurr15MinFecSecLineFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals with one or more ffec anomalies 
+within the current 15 minute interval."
+::= { slmuAdslLinePerfEntry 8 }
+
+slmuAdslLinePerfCurr15MinSeverelyErroredSecLineNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals with 18 or more crc-8 anomalies, 
+or one or more los defects, or one or more sef defects, or one or 
+more lpr defects within the current 15 minute interval."
+::= { slmuAdslLinePerfEntry 9 }
+
+slmuAdslLinePerfCurr15MinSeverelyErroredSecLineFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals with 18 or more febe, or one or 
+more far-end los defects, or one or more rdi defects, or one 
+or more lpr-fe defects within the current 15 minute interval."
+::= { slmuAdslLinePerfEntry 10 }
+
+slmuAdslLinePerfCurr15MinUnavailableSecNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals for wich the ADSL line is unavailable 
+within the current 15 minute interval."
+::= { slmuAdslLinePerfEntry 11 }
+
+slmuAdslLinePerfCurr15MinUnavailableSecFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals for wich the far-end ADSL line is unavailable 
+within the current 15 minute interval."
+::= { slmuAdslLinePerfEntry 12 }
+
+slmuAdslLinePerfCurr1DayFecSecLineNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals with one or more fec anomalies 
+during the current day as measured by adslAtucChanPerfCurr1DayTimeElapsed."
+::= { slmuAdslLinePerfEntry 13 }
+
+
+
+
+
+
+
+slmuAdslLinePerfCurr1DayFecSecLineFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals with one or more ffec anomalies 
+during the current day as measured by 	adslAtucChanPerfCurr1DayTimeElapsed."
+::= { slmuAdslLinePerfEntry 14 }
+
+slmuAdslLinePerfCurr1DaySeverelyErroredSecLineNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals with 18 or more crc-8 anomalies, 
+or one or more los defects, or one or more sef defects, or one or 
+more lpr defects during the current day as measured by
+             	adslAtucChanPerfCurr1DayTimeElapsed."
+::= { slmuAdslLinePerfEntry 15 }
+
+slmuAdslLinePerfCurr1DaySeverelyErroredSecLineFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals with 18 or more febe, or one or 
+more far-end los defects, or one or more rdi defects, or one 
+or more lpr-fe defects during the current day as measured by
+             	adslAtucChanPerfCurr1DayTimeElapsed."
+::= { slmuAdslLinePerfEntry 16 }
+
+slmuAdslLinePerfCurr1DayUnavailableSecNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals for wich the ADSL line is unavailable 
+during the current day as measured by adslAtucChanPerfCurr1DayTimeElapsed."
+::= { slmuAdslLinePerfEntry 17 }
+
+slmuAdslLinePerfCurr1DayUnavailableSecFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals for wich the far-end ADSL line is unavailable 
+during the current day as measured by adslAtucChanPerfCurr1DayTimeElapsed."
+::= { slmuAdslLinePerfEntry 18 }
+
+slmuAdslLinePerfPrev1DayFecSecLineNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals with one or more fec anomalies 
+within the most recent previous 1 day period."
+::= { slmuAdslLinePerfEntry 19 }
+
+
+
+
+
+slmuAdslLinePerfPrev1DayFecSecLineFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals with one or more ffec anomalies 
+within the most recent previous 1 day period."
+::= { slmuAdslLinePerfEntry 20 }
+
+slmuAdslLinePerfPrev1DaySeverelyErroredSecLineNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals with 18 or more crc-8 anomalies, 
+or one or more los defects, or one or more sef defects, or one or 
+more lpr defects within the most recent previous 1 day period."
+::= { slmuAdslLinePerfEntry 21 }
+
+slmuAdslLinePerfPrev1DaySeverelyErroredSecLineFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals with 18 or more febe, or one or 
+more far-end los defects, or one or more rdi defects, or one 
+or more lpr-fe defects within the most recent previous 1 day period."
+::= { slmuAdslLinePerfEntry 22 }
+
+slmuAdslLinePerfPrev1DayUnavailableSecNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals for wich the ADSL line is unavailable 
+within the most recent previous 1 day period."
+::= { slmuAdslLinePerfEntry 23 }
+
+slmuAdslLinePerfPrev1DayUnavailableSecFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of 1-second intervals for wich the far-end ADSL line is unavailable 
+within the most recent previous 1 day period."
+::= { slmuAdslLinePerfEntry 24 }
+
+
+slmuAdslLinePerfHistoryTable OBJECT-TYPE
+SYNTAX  	SEQUENCE OF SlmuAdslLinePerfHistoryEntry
+MAX-ACCESS	not-accessible
+STATUS  	current
+DESCRIPTION
+"This table provides one row for each ATUC performance 
+data collection interval.  ADSL physical interfaces are
+                        	those ifEntries where ifType is equal to adsl(94)."
+::= { slmuMIBObjects 7 }
+
+slmuAdslLinePerfHistoryEntry OBJECT-TYPE
+SYNTAX 	SlmuAdslLinePerfHistoryEntry
+MAX-ACCESS  not-accessible
+STATUS  	current
+DESCRIPTION
+"An entry in slmuAdslLinePerfHistoryTable."
+    	INDEX   	{ ifIndex, adslAtucIntervalNumber }
+
+::= { slmuAdslLinePerfHistoryTable 1 }
+
+SlmuAdslLinePerfHistoryEntry ::=
+SEQUENCE {
+slmuAdslLinePerfHistoryFecSecLineNe		Counter32,
+slmuAdslLinePerfHistoryFecSecLineFe		Counter32,
+slmuAdslLinePerfHistorySeverelyErroredSecLineNe	Counter32,
+slmuAdslLinePerfHistorySeverelyErroredSecLineFe		Counter32,
+slmuAdslLinePerfHistoryUnavailableSecNe		Counter32,
+slmuAdslLinePerfHistoryUnavailableSecFe		Counter32
+}
+
+slmuAdslLinePerfHistoryFecSecLineNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Forward Error Correction second-line (ECS-L): Count of 
+1-second intervals with one or more fec anomalies 
+during this interval."
+::= { slmuAdslLinePerfHistoryEntry 1 }
+
+slmuAdslLinePerfHistoryFecSecLineFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Forward Error Correction second-line far-end 
+             	(ECS-LFE): Count of 1-second intervals with 
+one or more ffec anomalies during this interval."
+::= { slmuAdslLinePerfHistoryEntry 2 }
+
+slmuAdslLinePerfHistorySeverelyErroredSecLineNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Severely errored second-line (SES-L): Count of 1-second 
+intervals with 18 or more crc-8 anomalies, or one or more 
+los defects, or one or more sef defects, or one or more lpr 
+defects during this interval."
+::= { slmuAdslLinePerfHistoryEntry 3 }
+
+
+slmuAdslLinePerfHistorySeverelyErroredSecLineFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Severely errored second-line far-end (SES-LFE): Count of 1-second 
+intervals with 18 or more febe, or one or more far-end los defects, 
+or one or more rdi defects, or one or more lpr-fe defects during this interval."
+::= { slmuAdslLinePerfHistoryEntry 4 }
+
+slmuAdslLinePerfHistoryUnavailableSecNe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Unavailable second (UAS-L): Count of 1-second intervals for wich 
+the ADSL line is unavailable during this interval."
+::= { slmuAdslLinePerfHistoryEntry 5 }
+
+slmuAdslLinePerfHistoryUnavailableSecFe OBJECT-TYPE
+    	SYNTAX  	Counter32
+    	MAX-ACCESS  read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Unavailable seconds far-end (UAS-LFE): Count of 1-second intervals 
+for wich the far-end ADSL line is unavailable during this interval."
+::= { slmuAdslLinePerfHistoryEntry 6 }
+
+
+slmuTestDiagStatusTable OBJECT-TYPE
+SYNTAX  	SEQUENCE OF SlmuTestDiagStatusEntry
+MAX-ACCESS	not-accessible
+STATUS  	current
+DESCRIPTION
+"This table provides one row for each ATUC.
+                        	Each row contains the Test, Diagnostics and status
+parameters table for that ATUC. ADSL physical interfaces 
+are those ifEntries where ifType is equal to adsl(94)."
+::= { slmuMIBObjects 8 }
+
+slmuTestDiagStatusEntry OBJECT-TYPE
+SYNTAX 	SlmuTestDiagStatusEntry
+MAX-ACCESS  not-accessible
+STATUS  	current
+DESCRIPTION
+"An entry in slmuTestDiagStatusTable."
+    	INDEX   	{ ifIndex }
+::= { slmuTestDiagStatusTable 1 }
+
+SlmuTestDiagStatusEntry ::=
+SEQUENCE {
+slmuTestDiagStatusAtucAdslTrSysCapabilities	INTEGER (0..65535),
+slmuTestDiagStatusAturAdslTrSysCapabilities	INTEGER (0..65535),
+slmuTestDiagStatusTrSystem			INTEGER (0..65535),
+slmuTestDiagStatusLineStates			INTEGER (0..65535),
+slmuTestDiagStatusFastRetrainCount		INTEGER (0..65535),
+slmuTestDiagStatusFailedFastRetrainCount		INTEGER (0..65535),
+slmuTestDiagStatusCurr15MinFastRetrainCount 	INTEGER (0..65535),
+slmuTestDiagStatusCurr15MinFailedFastRetrainCount	INTEGER (0..65535), 
+slmuTestDiagStatusPrev15MinFastRetrainCount 		INTEGER (0..65535),
+slmuTestDiagStatusPrev15MinFailedFastRetrainCount 	INTEGER (0..65535),
+slmuTestDiagStatusCurr1DayFastRetrainCount 		INTEGER (0..65535),
+slmuTestDiagStatusCurr1DayFailedFastRetrainCount 	INTEGER (0..65535),
+slmuTestDiagStatusPrev1DayFastRetrainCount 		INTEGER (0..65535),
+slmuTestDiagStatusPrev1DayFailedFastRetrainCount 	INTEGER (0..65535)
+}
+
+slmuTestDiagStatusAtucAdslTrSysCapabilities OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-only
+    	STATUS  	current
+    	DESCRIPTION
+"ATU-C ADSL Transmission System Capabilities: This
+parameter defines the ATU-C transmission system 
+capability list of the different coding types. It is coded in 
+a bit-map representation with the bits defined in § 7.3.2 of G.997.1."
+    	::= { slmuTestDiagStatusEntry 1 }
+
+slmuTestDiagStatusAturAdslTrSysCapabilities OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-only
+    	STATUS  	current
+    	DESCRIPTION
+"ATU-R ADSL Transmission System Capabilities: This
+parameter defines the ATU-R transmission system
+capability list of the different coding types. It is coded in 
+a bit-map representation with the bits defined in § 7.3.2 of G.997.1."
+    	::= { slmuTestDiagStatusEntry 2 }
+
+
+slmuTestDiagStatusTrSystem OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-only
+    	STATUS  	current
+    	DESCRIPTION
+"ADSL Transmission System: The actual ADSL transmission
+            		system in use. It is coded as an integer with the value
+            		correlated to the bit-map representation with the bits
+            		defined in § 7.3.2 of G.997.1."
+    	::= { slmuTestDiagStatusEntry 3 }
+
+slmuTestDiagStatusLineStates OBJECT-TYPE
+SYNTAX  INTEGER 	{
+                      				l0 (1),
+                      				l3 (2),
+                       				l1 (3)
+                   			}
+	MAX-ACCESS 	read-only
+    	STATUS  	current
+    	DESCRIPTION
+            		"The ADSL line has three line states: 
+l0 - Synchronized - This Line state (l0) is when the ADSL has
+full transmission (i.e. showtime). The on/off hook conditions in 
+Recommendation G.992.2 is regarded as the l0 state.
+		l3 - No-power - This Line state (l3) is when there is No Power 
+		transmitted on the line at all.
+		l1 - Power Down Data transmission - This line state (l1) is when 
+		there is transmission on the line but the net data rate is reduced. 
+		(E.g. only for oam and higher layer connection and session control)."
+DEFVAL { l3 }
+    	::= { slmuTestDiagStatusEntry 4 }
+
+slmuTestDiagStatusFastRetrainCount OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-only
+    	STATUS  	current
+    	DESCRIPTION
+"The Fast-Retrain-Count performance parameter is 
+a count of the total number of fast retrains since agent reset.
+Parameter procedures shall be as defined in § 7.2.3 of G.997.1."
+    	::= { slmuTestDiagStatusEntry 5 }
+
+slmuTestDiagStatusFailedFastRetrainCount OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-only
+    	STATUS  	current
+    	DESCRIPTION
+"The Failed-Fast-Retrain-Count performance parameter is 
+a count of the total number of failed fast retrains since agent reset.
+A failed fast retrain is either when:
+_ A crc error is detected
+_ A time-out occur
+_ A profile is unknown
+Parameter procedures shall be as defined in § 7.2.3 of G.997.1."
+    	::= { slmuTestDiagStatusEntry 6 }
+
+
+
+
+
+
+
+slmuTestDiagStatusCurr15MinFastRetrainCount OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of the total number of fast retrains 
+within the current 15 minute interval."
+	::= { slmuTestDiagStatusEntry 7 }
+
+slmuTestDiagStatusCurr15MinFailedFastRetrainCount OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of the total number of failed fast retrains 
+within the current 15 minute interval."
+	::= { slmuTestDiagStatusEntry 8 }
+
+slmuTestDiagStatusPrev15MinFastRetrainCount OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of the total number of fast retrains 
+within the most recent previous 15 minute interval."
+	::= { slmuTestDiagStatusEntry 9 }
+
+slmuTestDiagStatusPrev15MinFailedFastRetrainCount OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of the total number of failed fast retrains 
+within the most recent previous 15 minute interval."
+	::= { slmuTestDiagStatusEntry 10 }
+
+slmuTestDiagStatusCurr1DayFastRetrainCount OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of the total number of fast retrains 
+during the current day as measured by
+             	adslAtucChanPerfCurr1DayTimeElapsed."
+	::= { slmuTestDiagStatusEntry 11 }
+
+slmuTestDiagStatusCurr1DayFailedFastRetrainCount OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of the total number of failed fast retrains 
+during the current day as measured by
+             	adslAtucChanPerfCurr1DayTimeElapsed."
+	::= { slmuTestDiagStatusEntry 12 }
+
+
+
+
+
+
+
+slmuTestDiagStatusPrev1DayFastRetrainCount OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of the total number of fast retrains 
+within the most recent previous 1 day period."
+	::= { slmuTestDiagStatusEntry 13 }
+
+slmuTestDiagStatusPrev1DayFailedFastRetrainCount OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-only
+    	STATUS  	current
+    	DESCRIPTION
+"Count of the total number of failed fast retrains 
+within the most recent previous 1 day period."
+	::= { slmuTestDiagStatusEntry 14 }
+
+
+slmuConfTable OBJECT-TYPE
+    	SYNTAX  	SEQUENCE OF SlmuConfEntry 
+    	MAX-ACCESS 	not-accessible
+    	STATUS  	current
+    	DESCRIPTION
+"This table contains information on the ADSL line
+                        	configuration."
+    	::= { slmuMIBObjects 9 }
+
+slmuConfEntry OBJECT-TYPE
+    	SYNTAX 	SlmuConfEntry 
+    	MAX-ACCESS 	not-accessible
+    	STATUS  	current
+    	DESCRIPTION
+            		"An entry in slmuConfTable."
+    	INDEX   { ifIndex }
+    	::= { slmuConfTable 1 }
+
+SlmuConfEntry ::=
+    	SEQUENCE {
+ 		slmuConfAdslTrSysEnaAtuc 	INTEGER (0..65535)
+}
+
+slmuConfAdslTrSysEnaAtuc OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-write
+    	STATUS  	current
+    	DESCRIPTION
+            		"ATU-C ADSL Transmission System Enabling: This parameter defines the ATU-C 
+ADSL transmission system coding types allowed on this line. It is coded in a bit-map 
+representation with following definition:
+
+             	Bit 1 Regional standards
+             	Bit 2 Regional standards
+             	Bit 3 G.992.1 operation over POTS non-overlapped spectrum (Annex A of G.992.1)
+             	Bit 4 G.992.1 operation over POTS overlapped spectrum (Annex A of G.992.1)
+             	Bit 5 G.992.1 operation over ISDN non-overlapped spectrum (Annex B of G.992.1)
+             	Bit 6 G.992.1 operation over ISDN overlapped spectrum (Annex B of G.992.1)
+Bit 7 G.992.1 operation in conjunction with TCM-ISDN non-overlapped spectrum                
+(Annex C of G.992.1)
+             	Bit 8 G.992.1 operation in conjunction with TCM-ISDN overlapped spectrum 
+(Annex C of G.992.1)
+             	Bit 9 G.992.2 operation over POTS non-overlapped spectrum (Annex A of G.992.2)
+             	Bit 10 G.992.2 operation over POTS overlapped spectrum (Annex B of G.992.2)
+             	Bit 11 G.992.2 operation in conjunction with TCM-ISDN non-overlapped spectrum 
+(Annex C of G.992.2)
+             	Bit 12 G.992.2 operation in conjunction with TCM-ISDN overlapped spectrum 
+(Annex C of G.992.2)
+
+             	This parameter only applies to the Q-interface."
+    ::= { slmuConfEntry 1 }
+
+
+slmuAlarmConfTable OBJECT-TYPE
+    	SYNTAX  	SEQUENCE OF SlmuAlarmConfEntry 
+    	MAX-ACCESS 	not-accessible
+    	STATUS  	current
+    	DESCRIPTION
+"This table contains information on the ADSL line configuration."
+	::= { slmuMIBObjects 10 }
+
+slmuAlarmConfEntry OBJECT-TYPE
+    	SYNTAX 	SlmuAlarmConfEntry 
+    	MAX-ACCESS 	not-accessible
+    	STATUS  	current
+    	DESCRIPTION
+            		"An entry in slmuAlarmConfTable."
+    	INDEX   { ifIndex }
+    	::= { slmuAlarmConfTable 1 }
+
+SlmuAlarmConfEntry ::=
+    	SEQUENCE {
+ 		slmuThreshSeverelyErroredSecLineNe	INTEGER (0..65535),
+		slmuThreshSeverelyErroredSecLineFe	INTEGER (0..65535),
+		slmuThreshUnavailableSecNe	INTEGER (0..65535),
+		slmuThreshUnavailableSecFe	INTEGER (0..65535)
+}
+
+slmuThreshSeverelyErroredSecLineNe OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-write
+    	STATUS  	current
+    	DESCRIPTION
+"The number of Severely errored seconds,
+                        	encountered by an ADSL interface within any given 15
+                       	minutes performance data collection period, which causes
+                        	the SNMP agent to send an slmuSeverelyErroredSecLineNeThreshTrap.
+                        	Limit of one trap will be sent for any one interval.
+                        	A value of '0' will disable the trap."
+	::= { slmuAlarmConfEntry 1 }
+
+slmuThreshSeverelyErroredSecLineFe OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-write
+    	STATUS  	current
+    	DESCRIPTION
+"The number of Severely errored seconds far-end,
+                        	encountered by an ADSL interface within any given 15
+                       	minutes performance data collection period, which causes
+                        	the SNMP agent to send an slmuSeverelyErroredSecLineFeThreshTrap.
+                        	Limit of one trap will be sent for any one interval.
+                        	A value of '0' will disable the trap."
+	::= { slmuAlarmConfEntry 2 }
+
+
+
+
+
+
+
+
+
+
+
+slmuThreshUnavailableSecNe OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-write
+    	STATUS  	current
+    	DESCRIPTION
+"The number of Unavailable seconds,
+                        	encountered by an ADSL interface within any given 15
+                       	minutes performance data collection period, which causes
+                        	the SNMP agent to send an slmuUnavailableSecNeThreshTrap.
+                        	Limit of one trap will be sent for any one interval.
+                        	A value of '0' will disable the trap."
+	::= { slmuAlarmConfEntry 3 }
+
+slmuThreshUnavailableSecFe OBJECT-TYPE
+    	SYNTAX  	INTEGER (0..65535)
+    	MAX-ACCESS 	read-write
+    	STATUS  	current
+    	DESCRIPTION
+"The number of Unavailable seconds far-end,
+                        	encountered by an ADSL interface within any given 15
+                       	minutes performance data collection period, which causes
+                        	the SNMP agent to send an slmuUnavailableSecFeThreshTrap.
+                        	Limit of one trap will be sent for any one interval.
+                        	A value of '0' will disable the trap."
+	::= { slmuAlarmConfEntry 4 }
+
+
+-- SLMU MIB Notifications types
+
+slmuSeverelyErroredSecLineNeThreshTrap NOTIFICATION-TYPE
+    	OBJECTS     	{ ifIndex, slmuThreshSeverelyErroredSecLineNe }
+    	STATUS          	current
+    	DESCRIPTION
+"Severely errored second-line 
+15-minute interval threshold exceeded"
+	::= { slmuMIBTraps 1 }
+
+slmuSeverelyErroredSecLineFeThreshTrap NOTIFICATION-TYPE
+    	OBJECTS     	{ ifIndex, slmuThreshSeverelyErroredSecLineFe }
+    	STATUS          	current
+    	DESCRIPTION
+"Severely errored second-line far-end
+15-minute interval threshold exceeded"
+    	::= { slmuMIBTraps 2 }
+
+slmuUnavailableSecNeThreshTrap NOTIFICATION-TYPE
+    	OBJECTS     	{ ifIndex, slmuThreshUnavailableSecNe }
+    	STATUS          	current
+    	DESCRIPTION
+"Unavailable second
+15-minute interval threshold exceeded"
+    	::= { slmuMIBTraps 3 }
+
+slmuUnavailableSecFeThreshTrap NOTIFICATION-TYPE
+    	OBJECTS     	{ ifIndex, slmuThreshUnavailableSecFe }
+    	STATUS          	current
+    	DESCRIPTION
+"Unavailable seconds far-end
+15-minute interval threshold exceeded"
+    	::= { slmuMIBTraps 4 }
+
+
+
+END

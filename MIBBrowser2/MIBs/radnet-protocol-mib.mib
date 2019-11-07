@@ -1,0 +1,1045 @@
+-- @(#)rnet_protocol.mib
+-- ----------------------------------------------------------------------
+-- RADNET specific protocol MIB
+-- Copyright (c) 1996 RADNET Ltd.
+-- ----------------------------------------------------------------------
+--
+-- MIB Module :   RADNET-PROTOCOL-MIB
+--
+-- Revision   :   V2.202
+--
+-- Description:   Definition of all the protocols in the device.
+--                The definition includes the following details:
+--		      - If required, specific information about each
+--			protocol type. For each protocol type, 
+--			most of the information contained in its
+--			associated standard mib. If more objects
+--			have to be defined for a particular protocol,
+--			the objects will be defined in this file.
+--		      - Information about connection between two end 
+--		        points of the same interface type. This type of 
+--			information is also defined in the standard
+--			MIBs, and this file defines extended information
+--			for the standard RFC's.
+--		      - Information about connection between two end 
+--		        points of different interface types.
+--
+--		  Protocols that contain a large number of 
+--		  objects are defined in a separate module.
+--		  Currently, the following protocol modules are
+--		  defined:
+--  		  RADNET-PROTOCOL-ATM-MIB - for RADNet ATM mib objects	
+--  		  RADNET-PROTOCOL-FR-MIB  - for RADNet FR mib objects	
+--  		  RADNET-PROTOCOL-CES-MIB - for RADNet CES mib objects	
+--  		  RADNET-PROTOCOL-MIXED-CONNECT-MIB - for groups that define
+--			connection between two interfaces of 
+--		  	different types.	
+--
+--		  In order to avoid as much as possible the need of 
+--		  Logical to Logical mapping, the interfaces are always
+--		  referred through their standard mib ifIndex index.
+--
+--
+--
+--
+-- ----------------------------------------------------------------------
+RADNET-PROTOCOL-MIB DEFINITIONS ::= BEGIN
+
+	IMPORTS
+       		OBJECT-TYPE, 
+		Counter32,IpAddress, MODULE-IDENTITY
+				  	FROM SNMPv2-SMI
+
+		RowStatus		FROM SNMPv2-TC
+			
+		rnetGen		FROM RADNET-PRIVATE-MIB
+
+		ifIndex FROM RFC1213-MIB
+
+		Gauge	FROM RFC1155-SMI
+
+		InterfaceIndex		FROM IF-MIB
+			
+--		dsx1ConfigEntry         FROM RFC1406-MIB
+		dsx1ConfigEntry         FROM DS1-MIB
+
+		dsx3CurrentEntry, 
+		dsx3IntervalEntry,
+		dsx3TotalEntry		FROM RFC1407-MIB
+
+		sonetMediumEntry	FROM SONET-MIB;
+		
+
+rnetProtocol MODULE-IDENTITY
+                    LAST-UPDATED "9709021300Z"
+                    ORGANIZATION "RADNET"
+                    CONTACT-INFO
+                      "          Eitan Mardiks
+                        Postal:  RADNET Ltd.
+				24 Raul Wallenberg St.
+				Tel-Aviv 69719, Israel.
+                        Tel:     +972 3 6455700
+                        Fax:     +972 3 6480582
+                        E-Mail:  eitan@gate.radnet.co.il"
+
+                    DESCRIPTION
+                    "Definition of all the protocols in the device.
+					      The definition includes the following details:
+				          - If required, specific information about each
+					       protocol type. For each protocol type,
+					       most of the information contained in its
+					       associated standard mib. If more objects
+					       have to be defined for a particular protocol,
+					       the objects will be defined in this file.
+				          - Information about connection between two end
+				            points of the same interface type. This type of
+					       information is also defined in the standard
+					       MIBs, and this file defines extended information
+					       for the standard RFC's.
+				          - Information about connection between two end
+				            points of different interface types.
+
+					      Protocols that contain a large number of
+					      objects are defined in a separate module.
+					      Currently, the following protocol modules are
+					      defined:
+ 					         RADNET-PROTOCOL-ATM-MIB - for RADNet ATM mib objects
+					         RADNET-PROTOCOL-FR-MIB  - for RADNet FR mib objects
+					         RADNET-PROTOCOL-CES-MIB - for RADNet CES mib objects
+					         RADNET-PROTOCOL-MIXED-CONNECT-MIB - for groups that define
+ 					      connection between two interfaces of
+   					    different types.
+
+  						    In order to avoid as much as possible the need of
+ 						    Logical to Logical mapping, the interfaces are always
+   						 referred through their standard mib ifIndex index."
+                    ::= { rnetGen 4 }
+
+
+
+-- ------------------------------------------------------------
+--              Textual Conventions
+-- -------------------------------------------------------------
+--RnetConnectType ::= INTEGER {
+--		            none(1),
+--		            atm-atm-vp(2),
+--		            atm-atm-vc(3),
+--		            fr-fr(4),
+--		            fr-atm(5),
+--                atm-mngmnt-inband(6),
+--                ces-atm(7),
+--                smds-atm(8),
+--						lan-atm(9),
+--		            ip-channel(50),
+--                other(127)
+--			   }
+
+RnetConnectType ::= TEXTUAL-CONVENTION
+       STATUS       current
+       DESCRIPTION
+          " t.b.d. "
+       SYNTAX  INTEGER {
+                  none(1),
+                  atm-atm-vp(2),
+                  atm-atm-vc(3),
+                  fr-fr(4),
+                  fr-atm(5),
+                  atm-mngmnt-inband(6),
+                  ces-atm(7),
+                  smds-atm(8),
+						lan-atm(9),
+                  ip-channel(50),
+                  other(127)
+            }
+
+-- **************************************************************
+-- RADNET Specific protocol types
+-- **************************************************************
+
+rnetProtocolEthernet	OBJECT IDENTIFIER ::= { rnetProtocol 1 }
+rnetProtocolRs232		OBJECT IDENTIFIER ::= { rnetProtocol 2 }
+rnetProtocolDSX1		OBJECT IDENTIFIER ::= { rnetProtocol 3 }
+rnetProtocolDSX3		OBJECT IDENTIFIER ::= { rnetProtocol 4 }
+-- 	rnetProtocolMixedConnections	OBJECT IDENTIFIER ::= { rnetProtocol 5 }
+--		rnetProtocolAtm			OBJECT IDENTIFIER ::= { rnetProtocol 6 }
+--		rnetProtocolFrameRelay		OBJECT IDENTIFIER ::= { rnetProtocol 7 }
+--		rnetProtocolCes			OBJECT IDENTIFIER ::= { rnetProtocol 8 }
+rnetProtocolSonet		OBJECT IDENTIFIER ::= { rnetProtocol 9 }
+rnetProtocolIp			OBJECT IDENTIFIER ::= { rnetProtocol 10 }
+rnetProtocolBundle			OBJECT IDENTIFIER ::= { rnetProtocol 11 }
+--		rnetProtocolSmds				OBJECT IDENTIFIER ::= { rnetProtocol 12 }
+rnetProtocolV35X21 OBJECT IDENTIFIER ::= { rnetProtocol 13 }
+--		rnetProtocolNonAtmConnections OBJECT IDENTIFIER ::= { rnetProtocol 14 }
+rnetProtocolBridge 	OBJECT IDENTIFIER ::= { rnetProtocol 15 }
+
+-- --------------------------------------------------------------
+-- RADNET Ethernet group 
+-- --------------------------------------------------------------
+
+-- --------------------------------------------------------------
+--  RADNET private Ethernet current table. 
+-- --------------------------------------------------------------
+
+rnetProtocolEthernetConfigTable OBJECT-TYPE
+             SYNTAX  SEQUENCE OF RnetProtocolEthernetConfigEntry
+             MAX-ACCESS  not-accessible
+             STATUS  current
+             DESCRIPTION
+                "The Ethernet Configuration table."
+            ::= { rnetProtocolEthernet 1 }
+
+
+rnetProtocolEthernetConfigEntry OBJECT-TYPE
+             SYNTAX  RnetProtocolEthernetConfigEntry
+             MAX-ACCESS  not-accessible
+             STATUS  current
+             DESCRIPTION
+                "An entry in the Ethernet Configuration table."
+             INDEX  { ifIndex }
+             ::= { rnetProtocolEthernetConfigTable 1 }
+
+RnetProtocolEthernetConfigEntry ::= SEQUENCE {
+			rnetProtocolEthernetSpeed
+			 Gauge,
+			rnetProtocolEthernetSpeedOperStatus
+			 Gauge,
+			rnetProtocolEthernetDuplex
+			 INTEGER,
+			rnetProtocolEthernetDuplexOperStatus
+			 INTEGER,
+			rnetProtocolEthernetAutoNegotiation
+			 INTEGER,
+			rnetProtocolEthernetRemoteStatus
+			 INTEGER,
+			rnetProtocolEthernetBridgeGroupIndex
+		         InterfaceIndex
+         }
+
+rnetProtocolEthernetSpeed OBJECT-TYPE
+         SYNTAX  Gauge
+         MAX-ACCESS  read-write
+         STATUS  current
+         DESCRIPTION
+               "An estimation of the interface's current bandwidth
+                in bits per second. For interfaces which do not
+                vary in bandwidth or for those where no accurate
+                estimation can be made, this object should contain
+                the nominal bandwidth." 
+        ::= { rnetProtocolEthernetConfigEntry 1 }
+
+rnetProtocolEthernetSpeedOperStatus OBJECT-TYPE
+        SYNTAX  Gauge
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+              "The current actual speed of the Ethernet interface physical layer"
+	::= { rnetProtocolEthernetConfigEntry 2 }
+
+rnetProtocolEthernetDuplex OBJECT-TYPE
+        SYNTAX  INTEGER {
+		   	full(0),
+				half(1)
+		  }
+	MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+              "The possibility to transmit and receive bi-directional or 
+					only in one direction"
+	::= { rnetProtocolEthernetConfigEntry 3 }
+
+
+rnetProtocolEthernetDuplexOperStatus OBJECT-TYPE
+        SYNTAX  INTEGER {
+		   	full(0),
+			half(1)
+		  }
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+              "The current status of duplex operational mode"
+	::= { rnetProtocolEthernetConfigEntry 4 }
+
+rnetProtocolEthernetAutoNegotiation OBJECT-TYPE
+        SYNTAX  INTEGER {
+		   	enable(0),
+			disable(1)
+		  }
+	MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+              "The inclusion of auto-negotiation ensures that the highest 
+					performance will be selected based on the technology 
+					ability of the link partner"
+	::= { rnetProtocolEthernetConfigEntry 5 }
+
+rnetProtocolEthernetRemoteStatus	OBJECT-TYPE
+        SYNTAX  INTEGER {
+			up(1),
+		   	down(2)
+		  }
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+              "The current statuse of the remote ethernet peer node"
+	::= { rnetProtocolEthernetConfigEntry 6 }
+
+rnetProtocolEthernetBridgeGroupIndex OBJECT-TYPE
+        SYNTAX  InterfaceIndex
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+              "The interface index of the associated Bridge Group. 
+					The Bridge Group incorporates several LAN ports. "
+	::= { rnetProtocolEthernetConfigEntry 7 }
+
+-- --------------------------------------------------------------
+-- RADNET DSX1 group 
+-- --------------------------------------------------------------
+
+-- --------------------------------------------------------------
+--  RADNET private DSX1 current table. This table adds more columns to
+--  the RFC1406 dsx1ConfigTable.
+-- --------------------------------------------------------------
+
+rnetProtocolDSX1ConfigTable OBJECT-TYPE
+             SYNTAX  SEQUENCE OF RnetProtocolDSX1ConfigEntry
+             MAX-ACCESS  not-accessible
+             STATUS  current
+             DESCRIPTION
+                "The DSX1 Configuration table."
+            ::= { rnetProtocolDSX1 1 }
+
+
+rnetProtocolDSX1ConfigEntry OBJECT-TYPE
+             SYNTAX  RnetProtocolDSX1ConfigEntry
+             MAX-ACCESS  not-accessible
+             STATUS  current
+             DESCRIPTION
+                "An entry in the DSX1 Configuration table."
+             AUGMENTS   { dsx1ConfigEntry }
+             ::= { rnetProtocolDSX1ConfigTable 1 }
+
+RnetProtocolDSX1ConfigEntry ::= SEQUENCE {
+   rnetProtocolDSX1TimeSlotMask
+      OCTET STRING (SIZE (6)),
+   rnetProtocolDSX1ClockMode               
+		INTEGER,
+	rnetProtocolDSX1LineTermination
+      INTEGER,
+	rnetProtocolDSX1LineLength
+		INTEGER,
+	rnetProtocolDSX1CSULineLength
+		INTEGER
+         }
+
+rnetProtocolDSX1TimeSlotMask   OBJECT-TYPE
+        SYNTAX OCTET STRING (SIZE (6))
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+               "The timeslots which are used by the applications 
+					 connected above this bundle interface. 
+					 The length of string should be (4), 
+					 using the first characters."
+	::= { rnetProtocolDSX1ConfigEntry 1 }
+
+rnetProtocolDSX1ClockMode     OBJECT-TYPE
+    SYNTAX        INTEGER {
+                      synchronous(1),
+                      srts(2),
+                      adaptive(3)
+                      }
+    MAX-ACCESS    read-create
+    STATUS        current
+    DESCRIPTION
+        "Define if DSx/Ex service clocking mode. This maps into
+         transmit clock source of CBR interface.
+
+         For structured modes this value, if present, must be set to
+         synchronous(1)."
+    DEFVAL { synchronous } 
+    ::= { rnetProtocolDSX1ConfigEntry 2 }
+
+rnetProtocolDSX1LineTermination     OBJECT-TYPE
+    SYNTAX        INTEGER {
+								notApplicable(0),
+                        dsx1    (1),
+                        csu     (2)
+    }
+    MAX-ACCESS    read-create
+    STATUS        current
+    DESCRIPTION
+        "Defines the range for work mode.
+			CDU - long hault 
+			DSX1 - short hault"
+    DEFVAL { csu }
+    ::= { rnetProtocolDSX1ConfigEntry 3 }
+
+rnetProtocolDSX1LineLength     OBJECT-TYPE
+    SYNTAX        INTEGER {
+								notApplicable(0),
+								ft0-133(1),
+								ft133-266(2),
+								ft266-399(3),
+								ft399-533(4),
+								ft533-655(5)
+    }
+    MAX-ACCESS    read-create
+    STATUS        current
+    DESCRIPTION
+        "Presents the line length. 
+			Applicable only when the Line Termination is DSX1"
+    DEFVAL { ft0-133 }
+    ::= { rnetProtocolDSX1ConfigEntry 4 }
+
+rnetProtocolDSX1CSULineLength     OBJECT-TYPE
+    SYNTAX        INTEGER {
+								notApplicable(0),
+								dB0(1),
+								dB-7p5(2),
+								dB-15(3),
+								dB-22p5(4)
+    }
+    MAX-ACCESS    read-create
+    STATUS        current
+    DESCRIPTION
+        "Presents the line length. 
+			Applicable only when the Line Termination is CSU"
+    DEFVAL { dB-15 }
+    ::= { rnetProtocolDSX1ConfigEntry 5 }
+
+-- --------------------------------------------------------------
+-- RADNET Bundle group
+-- --------------------------------------------------------------
+
+-- --------------------------------------------------------------
+--  RADNET private Bundle Config table. 
+-- --------------------------------------------------------------
+
+rnetProtocolBundleConfigTable OBJECT-TYPE
+             SYNTAX  SEQUENCE OF RnetProtocolBundleConfigEntry
+             MAX-ACCESS  not-accessible
+             STATUS  current
+             DESCRIPTION
+                "The Bundle Configuration table."
+            ::= { rnetProtocolBundle 1 }
+
+
+rnetProtocolBundleConfigEntry OBJECT-TYPE
+             SYNTAX  RnetProtocolBundleConfigEntry
+             MAX-ACCESS  not-accessible
+             STATUS  current
+             DESCRIPTION
+                "An entry in the Bundle Configuration table."
+             INDEX  { ifIndex }
+             ::= { rnetProtocolBundleConfigTable 1 }
+
+RnetProtocolBundleConfigEntry ::= SEQUENCE {
+         rnetProtocolBundleTimeSlotMask
+                 OCTET STRING (SIZE (6)),
+			rnetProtocolBundleConnectIdentifier
+                 INTEGER,
+         rnetProtocolBundleConnectType
+                 RnetConnectType                       
+
+         }
+
+rnetProtocolBundleTimeSlotMask   OBJECT-TYPE
+        SYNTAX OCTET STRING (SIZE (6))
+	MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+               "The timeslots which are used by the applications connected above this bundle interface. The length of string should be (4) when a BUG in NMS application will be fixed."
+	::= { rnetProtocolBundleConfigEntry 1 }
+
+rnetProtocolBundleConnectIdentifier     OBJECT-TYPE
+                        SYNTAX  INTEGER
+                        MAX-ACCESS      read-only
+                   STATUS current
+         DESCRIPTION
+                                "This object is implemented only for a bundle
+                        which is cross-connected to VCL and represents id 
+                        of connection to which the bundle belongs."
+        ::= { rnetProtocolBundleConfigEntry 2 }
+
+rnetProtocolBundleConnectType OBJECT-TYPE
+        SYNTAX  RnetConnectType
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+             "This object describes the type of the connection
+              to which the bundle belongs. This object, together
+              with rnetProtocolBundleConnectIdentifier, determines
+              the connection to which the bundle belongs.
+              If the bundle is not connected, the value of
+              this object has no meaning."
+        ::= { rnetProtocolBundleConfigEntry 3 }
+
+
+-- --------------------------------------------------------------
+-- RADNET DSX3 group
+-- --------------------------------------------------------------
+
+-- --------------------------------------------------------------
+--  RADNET private DSX3 Interval table. This table adds more columns to
+--  the RFC1407 dsx3IntervalTable.
+-- --------------------------------------------------------------
+
+
+rnetProtocolDSX3IntervalTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetProtocolDSX3IntervalEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+               "A list of DSX3 interface entries.  This table
+                contains additional objects for the standard
+	        dsx3IntervalTable."
+	::= { rnetProtocolDSX3 2 }
+
+
+rnetProtocolDSX3IntervalEntry	OBJECT-TYPE
+	SYNTAX	RnetProtocolDSX3IntervalEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+               "An entry containing additional management information
+                applicable to a particular DSX3 interface."
+	AUGMENTS	{ dsx3IntervalEntry }
+	::= { rnetProtocolDSX3IntervalTable 1 }
+
+RnetProtocolDSX3IntervalEntry ::= SEQUENCE {
+	
+	rnetProtocolDSX3IntervalESs
+		Counter32,
+	rnetProtocolDSX3IntervalSESs
+		Counter32,
+	rnetProtocolDSX3IntervalERSs
+		Counter32,
+	rnetProtocolDSX3IntervalSERSs
+		Counter32
+	}
+
+rnetProtocolDSX3IntervalESs   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                     "."
+	::= { rnetProtocolDSX3IntervalEntry 1 }
+
+rnetProtocolDSX3IntervalSESs   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+               "."
+	::= { rnetProtocolDSX3IntervalEntry 2 }
+
+rnetProtocolDSX3IntervalERSs   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+               "."
+	::= { rnetProtocolDSX3IntervalEntry 3 }
+
+rnetProtocolDSX3IntervalSERSs   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+               "."
+	::= { rnetProtocolDSX3IntervalEntry 4 }
+
+
+
+-- --------------------------------------------------------------
+--  RADNET private DSX3 Total table. This table adds more columns to
+--  the RFC1407 dsx3TotalTable.
+-- --------------------------------------------------------------
+
+
+rnetProtocolDSX3TotalTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetProtocolDSX3TotalEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+               "A list of DSX3 interface entries.  This table
+                contains additional objects for the standard
+	        dsx3TotalTable."
+	::= { rnetProtocolDSX3 3 }
+
+
+rnetProtocolDSX3TotalEntry	OBJECT-TYPE
+	SYNTAX	RnetProtocolDSX3TotalEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+               "An entry containing additional management information
+                applicable to a particular DSX3 interface."
+	AUGMENTS	{ dsx3TotalEntry }
+	::= { rnetProtocolDSX3TotalTable 1 }
+
+RnetProtocolDSX3TotalEntry ::= SEQUENCE {
+	
+	rnetProtocolDSX3TotalESs
+		Counter32,
+	rnetProtocolDSX3TotalSESs
+		Counter32,
+	rnetProtocolDSX3TotalERSs
+		Counter32,
+	rnetProtocolDSX3TotalSERSs
+		Counter32
+	}
+
+rnetProtocolDSX3TotalESs   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                     "."
+	::= { rnetProtocolDSX3TotalEntry 1 }
+
+rnetProtocolDSX3TotalSESs   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+               "."
+	::= { rnetProtocolDSX3TotalEntry 2 }
+
+rnetProtocolDSX3TotalERSs   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+               "."
+	::= { rnetProtocolDSX3TotalEntry 3 }
+
+rnetProtocolDSX3TotalSERSs   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+               "."
+	::= { rnetProtocolDSX3TotalEntry 4 }
+
+
+
+-- --------------------------------------------------------------
+-- RADNET SONET group
+-- --------------------------------------------------------------
+
+-- --------------------------------------------------------------
+--  RADNET private SONET current table. This table adds more columns to
+--  the RFC 1595 sonetMediumTable.
+-- --------------------------------------------------------------
+
+rnetProtocolSonetMediumTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetProtocolSonetMediumEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+               "A list of SONET interface entries.  This table
+                contains additional objects for the standard
+	        sonetMediumTable."
+	::= { rnetProtocolSonet 1 }
+
+
+rnetProtocolSonetMediumEntry	OBJECT-TYPE
+	SYNTAX	RnetProtocolSonetMediumEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+               "An entry containing additional management information
+                applicable to a particular SONET interface."
+	AUGMENTS	{ sonetMediumEntry }
+	::= { rnetProtocolSonetMediumTable 1 }
+
+RnetProtocolSonetMediumEntry ::= SEQUENCE {
+	rnetProtocolSonetMediumLaserRestartMode
+		INTEGER,
+	rnetProtocolSonetMediumLaserManualOperation
+		INTEGER,
+	rnetProtocolSonetMediumLaserARDelayTime
+		INTEGER,
+	rnetProtocolSonetMediumClockSource
+		INTEGER
+	}
+
+rnetProtocolSonetMediumLaserRestartMode   OBJECT-TYPE
+        SYNTAX INTEGER {
+			automatic(1),
+			manual(2)
+	}
+	MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+		"The restart mode of the laser."
+	::= { rnetProtocolSonetMediumEntry 1 }
+
+rnetProtocolSonetMediumLaserManualOperation   OBJECT-TYPE
+        SYNTAX INTEGER {
+			laser-restart(1),
+			laser-for-test-restart(2),
+			laser-shutdown(3),
+			other(127)
+	}
+	MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+		"Manual operation on the laser."
+	::= { rnetProtocolSonetMediumEntry 2 }
+
+rnetProtocolSonetMediumLaserARDelayTime   OBJECT-TYPE
+        SYNTAX	   INTEGER (60..300)
+	MAX-ACCESS read-write
+        STATUS	   current
+        DESCRIPTION
+		"The delay time for the Automatic Laser Restart
+		 in seconds."
+	::= { rnetProtocolSonetMediumEntry 3 }
+
+rnetProtocolSonetMediumClockSource OBJECT-TYPE
+	SYNTAX  INTEGER {
+                         loopTiming (1),
+                         localTiming (2),
+                         throughTiming (3)
+                        }
+        MAX-ACCESS  read-write
+        STATUS  current
+	DESCRIPTION
+                "The source of Tranmit Clock.
+                 'loopTiming' indicates that the recovered  re-
+                ceive clock is used as the transmit clock.
+
+                 'localTiming' indicates  that  a  local  clock
+                source is used.
+
+                 'throughTiming' indicates that  recovered  re-
+                ceive  clock  from another interface is used as
+                the transmit clock."
+            ::= { rnetProtocolSonetMediumEntry 4}
+
+
+
+-- **************************************************************
+-- RADNET IP protocol enhancements
+-- **************************************************************
+
+-- --------------------------------------------------------------
+-- RADNet IP address table
+
+-- The IP address table contains this entity's IP addressing
+-- information.
+-- --------------------------------------------------------------
+
+rnetProtocolIpAddrTable OBJECT-TYPE
+    SYNTAX  SEQUENCE OF RnetProtocolIpAddrEntry
+    MAX-ACCESS  not-accessible
+    STATUS  current
+    DESCRIPTION
+            "The table of addressing information relevant to
+            this entity's IP addresses."
+    ::= { rnetProtocolIp 1 }
+
+rnetProtocolIpAddrEntry OBJECT-TYPE
+    SYNTAX  RnetProtocolIpAddrEntry
+    MAX-ACCESS  not-accessible
+    STATUS  current
+    DESCRIPTION
+            "The addressing information for one of this
+            entity's IP addresses."
+    INDEX   { rnetProtocolIpAddrAddress }
+    ::= { rnetProtocolIpAddrTable 1 }
+
+RnetProtocolIpAddrEntry ::=
+    SEQUENCE {
+        rnetProtocolIpAddrAddress
+            IpAddress,
+        rnetProtocolIpAddrIfIndex
+            INTEGER,
+        rnetProtocolIpAddrNetMask
+            IpAddress,
+        rnetProtocolIpAddrBcastAddr
+            INTEGER,
+        rnetProtocolIpAddrReasmMaxSize
+            INTEGER (0..65535),
+        rnetProtocolIpAddrType
+            INTEGER 
+    }
+
+rnetProtocolIpAddrAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-only
+    STATUS	current
+    DESCRIPTION
+            "The IP address to which this entry's addressing
+            information pertains."
+    ::= { rnetProtocolIpAddrEntry 1 }
+
+
+rnetProtocolIpAddrIfIndex OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    MAX-ACCESS  read-create
+    STATUS	current
+    DESCRIPTION
+            "The index value which uniquely identifies the
+            interface to which this entry is applicable.  The
+            interface identified by a particular value of this
+            index is the same interface as identified by the
+            same value of ifIndex."
+    ::= { rnetProtocolIpAddrEntry 2 }
+
+rnetProtocolIpAddrNetMask OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-create
+    STATUS	current
+    DESCRIPTION
+            "The subnet mask associated with the IP address of
+            this entry.  The value of the mask is an IP
+            address with all the network bits set to 1 and all
+            the hosts bits set to 0."
+    ::= { rnetProtocolIpAddrEntry 3 }
+
+rnetProtocolIpAddrBcastAddr OBJECT-TYPE
+    SYNTAX	INTEGER (1..2147483647)
+    MAX-ACCESS  read-create
+    STATUS	current
+    DESCRIPTION
+            "The value of the least-significant bit in the IP
+            broadcast address used for sending datagrams on
+            the (logical) interface associated with the IP
+            address of this entry.  For example, when the
+            Internet standard all-ones broadcast address is
+            used, the value will be 1.  This value applies to
+            both the subnet and network broadcasts addresses
+            used by the entity on this (logical) interface."
+    ::= { rnetProtocolIpAddrEntry 4 }
+
+rnetProtocolIpAddrReasmMaxSize OBJECT-TYPE
+    SYNTAX	INTEGER (0..65535)
+    MAX-ACCESS  read-create
+    STATUS	current
+    DESCRIPTION
+            "The size of the largest IP datagram which this
+            entity can re-assemble from incoming IP fragmented
+            datagrams received on this interface."
+    ::= { rnetProtocolIpAddrEntry 5 }
+
+rnetProtocolIpAddrType OBJECT-TYPE
+    SYNTAX	INTEGER {
+			in-band(1),
+			out-of-band(2),
+			other(127)
+			}
+    MAX-ACCESS  read-create
+    STATUS	current
+    DESCRIPTION
+            "The type of the IP interface. If the type
+	     is not in-band(1) or out-of-band(2), the value should
+	     be other(127)"
+    ::= { rnetProtocolIpAddrEntry 6 }
+
+-- --------------------------------------------------------------
+-- RADNet ATM ARP table
+
+-- The ATM ARP table contains objects that map an IP address
+-- to an IP channel
+-- --------------------------------------------------------------
+rnetProtocolAtmArpTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetProtocolAtmArpEntry
+	MAX-ACCESS not-accessible
+	STATUS	   current
+	DESCRIPTION
+		"The table contains information about ATM ARP mappings."
+	::= { rnetProtocolIp 2 }
+
+rnetProtocolAtmArpEntry	OBJECT-TYPE
+	SYNTAX	RnetProtocolAtmArpEntry
+	MAX-ACCESS not-accessible
+	STATUS	   current
+	DESCRIPTION
+		"An entry that adds columns to the ATM ARP Table"
+	INDEX	{ rnetProtocolAtmArpDestIpAddress }
+	::= {	rnetProtocolAtmArpTable 1 }
+
+RnetProtocolAtmArpEntry ::= SEQUENCE {
+	rnetProtocolAtmArpDestIpAddress	
+		IpAddress,
+	rnetProtocolAtmArpChannelId
+		INTEGER,
+	rnetProtocolAtmArpType
+		INTEGER,
+	rnetProtocolAtmArpRowStatus
+		RowStatus
+}
+			
+rnetProtocolAtmArpDestIpAddress	OBJECT-TYPE
+	SYNTAX	   IpAddress
+	MAX-ACCESS not-accessible
+	STATUS	   current
+	DESCRIPTION
+		"The IP address that needs to be resolved."
+	::= { rnetProtocolAtmArpEntry 1 }
+
+rnetProtocolAtmArpChannelId	OBJECT-TYPE
+	SYNTAX	    INTEGER	(1..80)
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		"The value of this object is equal to the value of 
+		 rnetAtmIpChannelIfIndex of the management channel row, 
+		 in rnetAtmIpChannelTable , the IP address is mapped to."
+	::= { rnetProtocolAtmArpEntry 2 }
+
+rnetProtocolAtmArpType	OBJECT-TYPE
+	SYNTAX	INTEGER	{
+			static (1),
+			dynamic (2)
+		}
+	MAX-ACCESS  read-only
+	STATUS	    current
+	DESCRIPTION
+		"The value of this object indicates whether this row was 
+		 created as a result of configuration (static), or as a 
+		 result of the investigation of data packets (dynamic)."
+	::= { rnetProtocolAtmArpEntry 3 }
+
+rnetProtocolAtmArpRowStatus	OBJECT-TYPE
+	SYNTAX	    RowStatus
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		"The status of this entry in the rnetProtocolAtmArpTable. 
+		 This object is used to create an ATM ARP mapping., or to 
+		 change or delete an existing mapping. This object must be 
+		 initially set to 'createAndWait' or 'createAndGo'."
+	::= { rnetProtocolAtmArpEntry  4 }
+
+rnetProtocolV35X21ConfigTable OBJECT-TYPE
+             SYNTAX  SEQUENCE OF RnetProtocolV35X21ConfigEntry
+             MAX-ACCESS  not-accessible
+             STATUS  current
+             DESCRIPTION
+                "The V35 and X21 interfaces Configuration table."
+            ::= { rnetProtocolV35X21 1 }
+ 
+ 
+rnetProtocolV35X21ConfigEntry OBJECT-TYPE
+             SYNTAX  RnetProtocolV35X21ConfigEntry
+             MAX-ACCESS  not-accessible
+             STATUS  current
+             DESCRIPTION
+                "An entry in the V35 and X21 interfaces Configuration table."
+        INDEX  { ifIndex }
+             ::= { rnetProtocolV35X21ConfigTable 1 }
+ 
+RnetProtocolV35X21ConfigEntry ::= SEQUENCE {
+   rnetProtocolV35X21RLSDBit
+      INTEGER
+         }
+ 
+rnetProtocolV35X21RLSDBit   OBJECT-TYPE
+        SYNTAX INTEGER {
+      up(1),
+      down(2)
+   }
+      MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+               " RLSD Bit - Receive Line Signal Detection. With this bit DCE
+          informs DTE that DCE receives DTE transmission."
+   DEFVAL {down}
+   ::= { rnetProtocolV35X21ConfigEntry 1 }
+ 
+-- --------------------------------------------------------------
+-- RADNET Bridge group 
+-- --------------------------------------------------------------
+
+-- --------------------------------------------------------------
+--  RADNET private  Bridge current table. 
+-- --------------------------------------------------------------
+
+rnetProtocolBridgeConfigTable OBJECT-TYPE
+             SYNTAX  SEQUENCE OF RnetProtocolBridgeConfigEntry
+             MAX-ACCESS  not-accessible
+             STATUS  current
+             DESCRIPTION
+                "The Bridge Configuration table."
+            ::= { rnetProtocolBridge 1 }
+
+
+rnetProtocolBridgeConfigEntry OBJECT-TYPE
+             SYNTAX  RnetProtocolBridgeConfigEntry
+             MAX-ACCESS  not-accessible
+             STATUS  current
+             DESCRIPTION
+                "An entry in the Bridge Configuration table."
+             INDEX  { ifIndex }
+             ::= { rnetProtocolBridgeConfigTable 1 }
+
+RnetProtocolBridgeConfigEntry ::= SEQUENCE {
+			rnetProtocolBridgeModeOfOperation
+			 INTEGER,
+			rnetProtocolBridgeAgeingTime
+			 INTEGER,
+			rnetProtocolBridgePriority
+			 INTEGER,
+			rnetProtocolBridgeAddress
+			 OCTET STRING (SIZE(6))
+}
+
+rnetProtocolBridgeModeOfOperation OBJECT-TYPE
+         SYNTAX INTEGER {
+						full-mesh(0),
+						multiple-port(1)
+					 } 
+         MAX-ACCESS  read-write
+         STATUS  current
+         DESCRIPTION
+               "The possibility to operate in a Full Mesh where all VCs are 
+					 treated as one LAN segment (Without the Spanning Tree 
+					 implementation), or in Multiple Port where each VC is treated 
+					 as a separate LAN segment (With the Spanning Tree 
+					 implementation)." 
+        ::= { rnetProtocolBridgeConfigEntry  1 }
+
+rnetProtocolBridgeAgeingTime OBJECT-TYPE
+        SYNTAX INTEGER 
+		  MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+              "Ageing Time for the Bridge Entity, in seconds."
+		  DEFVAL { 300 }
+	::= { rnetProtocolBridgeConfigEntry 2 }
+
+rnetProtocolBridgePriority OBJECT-TYPE
+        SYNTAX  INTEGER (0..65535)
+		  MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+              "The value of the write-able portion of the Bridge ID, i.e., the
+					first two octets of the (8 octet long) Bridge ID. The other 
+					(last) 6 octets of the Bridge ID are given by the value of 
+					rnetProtocolBridgeAddress."
+	::= { rnetProtocolBridgeConfigEntry 3 }
+
+
+rnetProtocolBridgeAddress OBJECT-TYPE
+        SYNTAX OCTET STRING (SIZE (6))
+		  MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+              "The MAC address used by this bridge when it must be referred to
+					in a unique fashion. It is recommended that this be the 
+					numerically smallest MAC address of all ports that belong to 
+					this bridge. However it is only required to be unique. When 
+					concatenated with the rnetProtocolBridgePriority, a unique 
+					BridgeIdentifier is formed which is used in the Spanning Tree 
+					Protocol"
+	::= { rnetProtocolBridgeConfigEntry 4 }
+ 
+
+END
+

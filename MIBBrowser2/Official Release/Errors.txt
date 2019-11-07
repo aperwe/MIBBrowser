@@ -1,0 +1,15 @@
+2001-10-21: Attempting to load etherlike-mib.mib file causes application error:
+            "Memory cannot be "read"." 
+            Status: Resolved.
+2001-10-23: Doesn't load pmvgw-mib.mib.
+            Status: Resolved.
+2001-10-23: host-resources.mib - loads correctly (167 elements), but shows only 
+			a couple of elements in the list. Investigate.
+            Status: Not resolved.
+2001-11-07: Krzysztof Paizert has sent a report that some index fields 
+            are not displayed in the tables.
+            Status: Resolved.
+2002-01-21: Bolek Malecki has reported that the newest mib file xldv20-mib.mib
+            doesn't parse correctly. This was due to the new object status value
+            introduced in the file (status: "optional").
+            Status: Resolved.

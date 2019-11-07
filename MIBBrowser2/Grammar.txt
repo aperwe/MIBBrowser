@@ -1,0 +1,632 @@
+/*
+	Grammar definition for MIB database files.
+
+	Creation date: 2001-10-11
+	Created by: Artur Perwenis
+
+	Last modification date: 2001-10-20
+	Last modified by: Artur Perwenis
+
+	Modification history (most recent first):
+------	
+	Version: 013
+	Version date: 2001-10-23
+	Version description:
+		Added handling to the following fields:
+			UNITS,
+			OBJECTS.
+		Enhanced rule RULE_OT_EQUAL to handle "NOTIFICATION-TYPE" object types.
+
+
+	Version: 012
+	Version date: 2001-10-20
+	Version description:
+		Modified rule RULE_OT_FIELDS and added rules:
+			RULE_OT_ENTERPRISE,
+			RULE_OT_VARIABLES,
+			RULE_OT_VARIABLES_2,
+		to handle TRAP-TYPE elements.
+
+	Version: 011
+	Version date: 2001-10-18
+	Version description:
+		Updated rule 022. to include "TEXTUAL-CONVENTION" literal and
+		textual conventions handling.
+
+	Version: 010
+	Version date: 2001-10-18
+	Version description:
+		Rewritten rule 026. since it has been discovered that
+		fields (like "DESCRIPTION", "SYNTAX") can appear in any order.
+		Also this rule modification should simplify and speed up parsing.
+
+	Version: 009
+	Version date: 2001-10-18
+	Version description:
+		Upgraded rule 026. to handle new fields, like
+		LAST-UPDATED "update time"
+		ORGANIZATION "org name"
+		CONTACT-INFO "contact information"
+		in object definition.
+		Added rules 066. to 077.
+
+	Version: 008
+	Version date: 2001-10-17
+	Version description:
+		Rewritten rule 031. and 032. in order to incorporate enumerated
+		as well as range elements (the pre 008 version handles
+		only enumerated elements).
+		Added rule 032a. to handle range elements.
+		Obsoleted rule 033. due to changes in rules 031. and 032.
+		Obsoleted rule 034. due to changes in rules 031. and 032.
+		Obsoleted rule 035. due to changes in rules 031. and 032.
+
+	Version: 007
+	Version date: 2001-10-16
+	Version description:
+		Finished rule 018. and changed its description to contain
+		dispatch criteria (keywords).
+
+	Version: 006
+	Version date: 2001-10-15
+	Version description:
+		Removed rule 024. (RULE_OID_3) as it has been incorporated
+		into rule 023. (RULE_OID_2).
+
+	Version: 005
+	Version date: 2001-10-15
+	Version description:
+		Extended rule 015. and added rule 015a. to accomodate
+		for creating additional import lists.
+
+	Version: 004
+	Version date: 2001-10-15
+	Version description:
+		Rule 006. modification retracted due to algorithm change.
+		Now the previous (more convenient) version is
+		possible for implementation.
+
+	Version: 003
+	Version date: 2001-10-15
+	Version description:
+		Modified rule 006. to conform to gramar rule-dispatch convention.
+
+	Version: 002
+	Version date: 2001-10-14
+	Version description:
+		Added rule 016a. and modified 016 rule to include multiple 
+		object definitions. Without it the grammar could allow
+		up to only 1 object definition per file.
+
+	Version: 001
+	Version date: 2001-10-11
+	Version description:
+		First version. Consists of 65 rules. To be verified and implemented.
+		Created based on the RFC1213-mib.mib file.
+------
+*/
+
+Whitespaces are ignored and not shown in this grammar outline.
+Comments (recognized as lines whose first two non-whitespace characters are '--') 
+are ignored and not shown in this grammar outline.
+
+Grammar file for a generic MIB file.
+--------------------------------------------------
+<TEXT>      - TEXT is a placeholder for ANY string. 
+              Thus, it is a descriptive name of a literal 
+		      that should be found in the place where {TEXT} is found.
+
+"LITERAL"   - LITERAL is an actual string found in file. 
+              This is the exact form that must be found in this place.
+			  These all ought probably to be KEYWORDS.
+
+RULE_X      - Name of a rule that may apply in this place.
+RULE_A | RULE_B
+            - Here is a dispatch point. either RULEA or RULEB may apply here.
+[OPTIONAL]	- This item is optional
+[OPTION1 | OPTION2]
+            - A choice between the two or more items. One of these must occur.
+
+{ITEM1 ITEM2}
+            - These items MUST go together. That means - if the first is present,
+			  the second (third, etc.) is to be expected following it.
+
+{0}         - Marks the end of the rule dispatches.
+
+?           - Unresolved rule behavior. Means: I haven't discovered the generic 
+              behavior for the rule that should apply here. IT IS TO BE RESOLVED.
+--------------------------------------------------
+KEYWORDS
+Keywords are the well-known items that are used across MIBs.
+
+chrStr
+lcName
+
+--------------------------------------------------
+//The file.
+[RULE_MIB]
+--------------------------------------------------
+001. RULE_MIB -> <MIB-NAME> RULE_MIB_2
+
+002. RULE_MIB_2 -> "DEFINITIONS" RULE_MIB_3
+
+003. RULE_MIB_3 -> "::=" RULE_MIB_4
+
+004. RULE_MIB_4 -> "BEGIN" RULE_BODY "END"
+
+
+005. RULE_BODY -> RULE_IMPORT RULE_BODY_2
+
+//Modification
+006. RULE_IMPORT -> [RULE_IMPORT_2 | {0}]						//Version 004 update
+//006. RULE_IMPORT -> [ { "IMPORTS" RULE_IMPORT_3 } | {0}]		//Version 003 update
+
+007. RULE_IMPORT_2 -> "IMPORTS" RULE_IMPORT_3
+
+
+008. RULE_IMPORT_3 -> <IMPORT-NAME> RULE_IMPORT_4
+
+//Here we expect either ',' or 'FROM' literal.
+009. RULE_IMPORT_4 -> [RULE_IMPORT_5 | RULE_IMPORT_6]
+
+010. RULE_IMPORT_5 -> "," RULE_IMPORT_3                   //RECURRING ITEM (IMPORT)
+
+011. RULE_IMPORT_6 -> "FROM" RULE_IMPORT_7
+
+012. RULE_IMPORT_7 -> <MIB-MODULE-NAME> RULE_IMPORT_8     //Imported MIB module name
+
+//Here we expect either ";" or new element name
+013. RULE_IMPORT_8 -> [RULE_IMPORT_9 | RULE_IMPORT_10]    //EITHER ; OR ANOTHER IMPORTS
+
+014. RULE_IMPORT_9 -> ";" {0}
+
+015. RULE_IMPORT_10 -> RULE_IMPORT_11 RULE_IMPORT_3		  //another imports
+
+//Here we create new imported element list in the same way
+//as it is done in rule 2. This is a bogus rule created
+//solely for this purpose
+015a. RULE_IMPORT_11 -> {0}										//Version 005 update
+
+
+// Object definitions rules begin here
+
+//Modification - the first version seems improper.
+//016. RULE_BODY_2 -> [RULE_OBJECT | RULE_BODY_3]			//FINISH HERE
+016. RULE_BODY_2 -> RULE_OBJECT RULE_BODY_3
+
+//Objects may repeat indefinitely
+016a. RULE_BODY_3 -> [RULE_BODY_2 | {0}]
+
+//There are four formats of specifying OIDs
+
+
+//OidValue is the name of an object. This will be visible in the ListTreeView
+017. RULE_OBJECT -> <OidValue> [RULE_OBJECT_2]
+
+
+//Recognized keywords here are:
+//1. "OBJECT" "IDENTIFIER"
+//2. "::="
+//3. <OBJECT-TYPE-NAME>
+//OBJECT TYPE NAME is the name of any either imported or
+//or defined earlier in the MIB object names (types).
+018. RULE_OBJECT_2 -> [RULE_OID | RULE_TYPEDEF | RULE_OBJECT_TYPE ]
+
+
+//OBJECT IDENTIFIER will represent a tree branch (folder).
+//EXAMPLE: 
+//mib-2      OBJECT IDENTIFIER ::= { mgmt 1 }
+//
+019. RULE_OID -> {"OBJECT" "IDENTIFIER"} RULE_OID_2              //FINISH HERE
+
+//This goes straight to "Textual conventions" branch directly below MIB-MODULE name.
+//EXAMPLE:
+//DisplayString ::= OCTET STRING
+//
+020. RULE_TYPEDEF -> "::=" RULE_TYPEDEF_2 {0}           //this must be an end of such a definition
+
+021. RULE_TYPEDEF_2 -> RULE_WELL_KNOWN_NAME                       //FINISH HERE
+
+
+//Version 011 update
+022. RULE_WELL_KNOWN_NAME -> [ {"OCTET" "STRING"} | RULE_SEQUENCE | RULE_TEXTUAL_CONVENTION_DEF | other types here]
+
+//Continued from 019
+//023. RULE_OID_2 -> "::="  RULE_OID_3					//Version 006 update
+023. RULE_OID_2 -> "::="  "{"  RULE_OID_4  "}"
+
+//This rule has been removed: Version 006 update
+//024. RULE_OID_3 -> "{" RULE_OID_4 "}"
+
+//Here, PARENT-OID-NAME is either an ISO defined well-known name
+//(see "IETF OID Assignments for SNMP" chapter on page 23 for actual values),
+//or a parent OID that is defined withing the MIB file being parsed.
+//
+025. RULE_OID_4 -> <PARENT-OID-NAME> <PARENT-OID-VALUE>
+
+
+
+027. RULE_OT_2 -> RULE_OT_SYNTAX  RULE_OT_3                               //FINISH HERE
+
+028. RULE_OT_SYNTAX -> [RULE_OT_SYNTAX_2 | {0}]      //Optional?
+
+//SYNTAX-DEFINITON will be displayed to the user.
+//Syntax is either an object type name (one token) after which if:
+//there is no "{" then the definition goes to the end of line.
+//if there is a "{" then it is a table.
+//else, if the first keyword is "SEQUENCE" "OF" <ObjectID> then it is a table.
+029. RULE_OT_SYNTAX_2 -> "SYNTAX" RULE_SYNTAX_DEFINITION
+
+//EXAMPLE:
+//
+//ipRouteProto OBJECT-TYPE
+//    SYNTAX  INTEGER {
+//                other(1),       -- none of the following
+//
+//                                -- non-protocol information,
+//                                -- e.g., manually configured
+//                local(2),       -- entries
+//
+//                                -- set via a network
+//                netmgmt(3),     -- management protocol
+//
+//                                -- obtained via ICMP,
+//                icmp(4),        -- e.g., Redirect
+//
+//                                -- the remaining values are
+//                                -- all gateway routing
+//                                -- protocols
+//                egp(5),
+//                ggp(6),
+//                hello(7),
+//                rip(8),
+//                is-is(9),
+//                es-is(10),
+//                ciscoIgrp(11),
+//                bbnSpfIgp(12),
+//                ospf(13),
+//                bgp(14)
+//            }
+//    ACCESS  read-only
+//    STATUS  mandatory
+//    DESCRIPTION
+//            "The routing mechanism via which this route was
+//            learned.  Inclusion of values for gateway routing
+//            protocols is not intended to imply that hosts
+//            should support those protocols."
+//    ::= { ipRouteEntry 9 }
+
+//<SYNTAX-TYPE> will be displayed to the user
+//
+030. RULE_SYNTAX_DEFINITION -> [ RULE_SYNTAX_SEQUENCE | RULE_SYNTAX_DEFINITION_2 ]
+
+030a. RULE_SYNTAX_DEFINITION_2 -> <SYNTAX-TYPE> RULE_SD_MORE
+
+//Version 008 update
+//If "{" is found after the first syntax type name, it indicates an ENUM TYPE.
+//This whole ENUM definition (up to the closing curly bracket "}" should be 
+//displayed to the user.
+//If "(" is found after the first syntax type name, it indicates a range element.
+//The whole range definition (up to the closing round bracket ")" should be
+//displayed to the user. Remember to watch out for the number of opening/closing
+//round brackets, since the range definition may contain its own "(" and ")" brackets.
+//031. RULE_SD_MORE -> [RULE_SD_MORE_2 | {0}]
+031. RULE_SD_MORE -> [RULE_SD_MORE_2 | RULE_SD_MORE_3 | {0}]
+
+//Version 008 update
+//032. RULE_SD_MORE_2 -> "{" RULE_SD_ENUM_DEF
+032. RULE_SD_MORE_2 -> "{" RULE_SD_ENUM_DEF  "}"
+
+//Example: SYNTAX  DisplayString (SIZE (0..255))
+//Remember: watch out for opening/closing brackets
+032a. RULE_SD_MORE_3 -> "(" RULE_SD_RANGE ")"
+
+//Obsoleted by Version 008 update
+//033. RULE_SD_ENUM_DEF -> RULE_SD_ANY_TOKENS {0}
+
+//Obsoleted by Version 008 update
+//034. RULE_SD_ANY_TOKENS -> [RULE_SD_CLOSING_BRACKET | RULE_SD_ANY_TOKEN_BUT_CLOSING_BRACKET]
+
+//Obsoleted by Version 008 update
+//035. RULE_SD_CLOSING_BRACKET -> "}" {0}
+
+//ANY-TOKEN will be displayed to the user as a part of SYNTAX field.
+//remember to handle properly (ignore) any comments that may be stumbled across there.
+//Obsoleted by Version 008 update
+//036. RULE_SD_ANY_TOKEN_BUT_CLOSING_BRACKET -> <ANY-TOKEN> RULE_SD_ANY_TOKENS
+
+//Here syntax field is already analysed. Proceed with "STATUS" literal.
+
+//Continued from 027
+037. RULE_OT_3 -> RULE_OT_ACCESS  RULE_OT_4                 //FINISH HERE
+
+
+038. RULE_OT_ACCESS -> [RULE_OT_ACCESS_2 | {0}]      //OPTIONAL?
+
+039. RULE_OT_ACCESS_2 -> "ACCESS"  RULE_OT_ACCESS_DEFINITION
+
+040. RULE_OT_ACCESS_DEFINITION -> RULE_OT_ACCESS_VALID_KEYWORDS {0}
+
+041. RULE_OT_ACCESS_VALID_KEYWORDS -> ["read-only" | "read-write" | "not-accessible"]
+
+
+//Continued from 037
+042. RULE_OT_4 -> RULE_OT_STATUS  RULE_OT_5                   //FINISH HERE
+
+
+043. RULE_OT_STATUS -> [RULE_OT_STATUS_2 | {0}]        //OPTIONAL?
+
+043. RULE_OT_STATUS_2 -> "STATUS" RULE_OT_STATUS_DEFINITION
+
+044. RULE_OT_STATUS_DEFINITION -> RULE_OT_STATUS_VALID_KEYWORDS {0}
+
+045. RULE_OT_STATUS_VALID_KEYWORDS -> ["mandatory" | "deprecated"]
+
+
+//Continued from 042
+046. RULE_OT_5 -> RULE_OT_DESCRIPTION  RULE_OT_6               //FINISH HERE
+
+
+047. RULE_OT_DESCRIPTION -> [RULE_OT_DESCRIPTION_2 | {0}]
+
+048. RULE_OT_DESCRIPTION_2 -> "DESCRIPTION"  RULE_OT_DESCRIPTION_DEFINITION
+
+049. RULE_OT_DESCRIPTION_DEFINITION -> """  <RULE-OT-DESCRIPTION-TEXT> {0}
+
+
+//We simplify rule expansion here. We assume, that RULE_ANYSTRING evolves to any string
+//finished with a quote (") mark, without the (") itself.
+050. RULE_OT_DESCRIPTION_TEXT -> """  RULE_ANYSTRING  """ {0}
+
+
+//INDEX is optional.
+051. RULE_OT_6 -> RULE_OT_INDEX  RULE_OID_2         //RULE_OID_2 is defined above (023). This stands for "::= {parent parentVal}" sentence.
+
+//Recognized keywords here are:
+//1. "INDEX"
+//2. "::="
+052. RULE_OT_INDEX -> [RULE_OT_INDEX_2 | {0}]          //OPTIONAL
+
+053. RULE_OT_INDEX_2 -> "INDEX"  RULE_OT_INDEX_DEFINITION
+
+054. RULE_OT_INDEX_DEFINITION -> "{" RULE_OT_INDEX_FIELDS "}"
+
+
+//NOTE: Field names may also include round parentheses "(" and ")".
+//      The Field name should end at first whitespace character (or ",")
+055. RULE_OT_INDEX_FIELDS -> <INDEX-FIELD-NAME>  RULE_OT_INDEX_FIELDS_MORE
+
+056. RULE_OT_INDEX_FIELDS_MORE -> [ RULE_OT_INDEX_FIELDS_2 | {0} ]
+
+057. RULE_OT_INDEX_FIELDS_2 -> ","  RULE_OT_INDEX_FIELDS
+
+
+//Continued from 022
+//EXAMPLE:
+//
+//IpAddrEntry ::=
+//    SEQUENCE {
+//        ipAdEntAddr
+//            IpAddress,
+//        ipAdEntIfIndex
+//            INTEGER,
+//        ipAdEntNetMask
+//            IpAddress,
+//        ipAdEntBcastAddr
+//            INTEGER,
+//        ipAdEntReasmMaxSize
+//            INTEGER (0..65535),
+//        ipRouteInfo
+//            OBJECT IDENTIFIER
+//    }
+058. RULE_SEQUENCE -> "SEQUENCE"  RULE_SEQUENCE_2
+
+059. RULE_SEQUENCE_2 -> "{" RULE_SEQUENCE_3 "}"
+
+060. RULE_SEQUENCE_3 -> <SEQUENCE-FIELD-NAME>  RULE_SEQUENCE_MORE
+
+061. RULE_SEQUENCE_MORE -> <SEQUENCE-FIELD-TYPE> RULE_SEQUENCE_MORE_2
+
+062. RULE_SEQUENCE_MORE_2 -> [ RULE_SEQUENCE_MORE_3 | {0} ]
+
+063. RULE_SEQUENCE_MORE_3 -> "," RULE_SEQUENCE_3
+
+
+//Continued from 030
+//EXAMPLE: (example of SYNTAX SEQUENCE OF)
+//ipAddrTable OBJECT-TYPE
+//    SYNTAX  SEQUENCE OF IpAddrEntry
+//    ACCESS  not-accessible
+//    STATUS  mandatory
+//    DESCRIPTION
+//            "The table of addressing information relevant to
+//            this entity's IP addresses."
+//    ::= { ip 20 }
+064. RULE_SYNTAX_SEQUENCE -> {"SEQUENCE" "OF"} RULE_SYNTAX_SEQUENCE_2
+
+065. RULE_SYNTAX_SEQUENCE_2 -> <TABLE-OBJECT-IDENTIFIER> {0}
+
+
+
+
+
+
+//Version 009 udate. Rules 066. to 077. added to handle correctly custom fields, like
+//		LAST-UPDATED "update time"
+//		ORGANIZATION "org name"
+//		CONTACT-INFO "contact information"
+//		in object definition.
+//Note: RULE_OID_CUSTOM is optional.
+066. RULE_OID_CUSTOM  ->  RULE_OID_LAST_UPDATED   RULE_OID_CUSTOM_2
+
+//Version 009 update.
+//Recognized keywords here are:
+//1. "LAST-UPDATED"
+//2. <ANY-OTHER-IDENTIFIER>
+067. RULE_OID_LAST_UPDATED  ->  [ RULE_OID_LAST_UPDATED_2 | {0} ]
+
+068. RULE_OID_LAST_UPDATED_2  -> "LAST-UPDATED"  RULE_OT_LAST_UPDATED_DEFINITION
+
+//This string is displayed nowhere, hece it will be ignored.
+069. RULE_OT_LAST_UPDATED_DEFINITION -> """  <RULE-OT-LAST-UPDATED-TEXT> {0}
+
+
+070. RULE_OID_CUSTOM_2  ->  RULE_OID_ORGANIZATION   RULE_OID_CUSTOM_3
+
+//Recognized keywords here are:
+//1. "ORGANIZATION"
+//2. <ANY-OTHER-IDENTIFIER>
+071. RULE_OID_ORGANIZATION  ->  [ RULE_OID_ORGANIZATION_2 | {0} ]
+
+072. RULE_OID_ORGANIZATION_2 -> "ORGANIZATION" RULE_OT_ORGANIZATION_DEFINITION
+
+//This string is displayed nowhere, hece it will be ignored.
+073. RULE_OT_ORGANIZATION_DEFINITION -> """  <RULE-OT-ORGANIZATION-TEXT> {0}
+
+
+074. RULE_OT_CUSTOM_3 -> RULE_OID_CONTACT_INFO     //TO DO if any other keywords may be used, place rules for them here (e.g. RULE_OID_CUSTOM_4).
+
+//Recognized keywords here are:
+//1. "CONTACT-INFO"
+//2. <ANY-OTHER-IDENTIFIER>
+075. RULE_OID_CONTACT_INFO ->  [ RULE_OID_CONTACT_INFO_2 | {0} ]
+
+076. RULE_OID_CONTACT_INFO_2 -> "CONTACT-INFO" RULE_OT_CONTACT_INFO_DEFINITION
+
+077. RULE_OT_CONTACT_INFO_DEFINITION -> """ <RULE-OT-CONTACT-INFO-TEXT> {0}
+
+----------------------------------------------------------------------------------
+
+//Changes and updates as of Version 010 and up.
+
+
+
+
+
+//Continued from 018
+//EXAMPLE:
+//
+//sysDescr OBJECT-TYPE
+//    SYNTAX  DisplayString (SIZE (0..255))
+//    ACCESS  read-only
+//    STATUS  mandatory
+//    DESCRIPTION
+//            "A textual description of the entity.  This value
+//            should include the full name and version
+//            identification of the system's hardware type,
+//            software operating-system, and networking
+//            software.  It is mandatory that this only contain
+//            printable ASCII characters."
+//    ::= { system 1 }
+//
+// OBJECT-TYPE here is the name of an element
+// that is being imported from RFC-1212
+//
+//Version 009 update.
+//Rule 026. upgraded to handle correctly custom fields, like
+//		LAST-UPDATED "update time"
+//		ORGANIZATION "org name"
+//		CONTACT-INFO "contact information"
+//		in object definition.
+//Note: RULE_OID_CUSTOM is optional.
+//
+//026. RULE_OBJECT_TYPE -> RULE_OBJECT_TYPE_ID   RULE_OT_2
+//026. RULE_OBJECT_TYPE -> RULE_OBJECT_TYPE_ID   RULE_OID_CUSTOM   RULE_OT_2
+//Modification as of Version 010.
+026. RULE_OBJECT_TYPE -> RULE_OBJECT_TYPE ID   RULE_OID_FIELDS
+
+
+//Version 007 update
+//Use this rule to mark that the object is of <ANY-OBJECT-TYPE> type.
+//This doesn't affect element handling in any way.
+026a. RULE_OBJECT_TYPE_ID -> <ANY-OBJECT-TYPE>
+
+
+
+//Recognized keywords here are:
+//1.  SYNTAX
+//2.  ACCESS
+//3.  STATUS
+//4.  DESCRIPTION
+//5.  INDEX
+//6.  LAST-UPDATED
+//7.  ORGANIZATION
+//8.  CONTACT-INFO
+//9.  MAX-ACCESS
+//10. DISPLAY-HINT
+//11. ::=
+//12. REFERENCE
+//13. DEFVAL
+//14. REVISION
+//15. AUGMENTS
+//16. <ANY-OBJECT-NAME-BEING-DEFINED>		//this means: {0}; the end of rule
+078. RULE_OID_FIELDS -> [RULE_OT_SYNTAX  |
+						 RULE_OT_ACCESS  |
+						 RULE_OT_STATUS  |
+						 RULE_OT_DESCRIPTION  |
+						 RULE_OT_INDEX  |
+						 RULE_OT_LAST_UPDATED  |
+						 RULE_OT_ORGANIZATION  |
+						 RULE_OT_CONTACT_INFO  |
+						 RULE_OT_MAX_ACCESS  |
+						 RULE_OT_DISPLAY_HINT  |
+						 RULE_OT_EQUAL  |					//this is a "::=" token
+						 RULE_OT_REFERENCE  |
+						 RULE_OT_DEFVAL  |					//this is a "DEFVAL { <value> }"
+						 RULE_OT_REVISION  |
+						 RULE_OT_AUGMENTS                  //this is "AUGMENTS { <parentOid> }"
+						 ]
+						 [RULE_OID_FIELDS | {0} ]
+
+
+
+079. RULE_OT_MAX_ACCESS -> [RULE_OT_MAX_ACCESS_2 | {0}]      //OPTIONAL?
+
+080. RULE_OT_MAX_ACCESS_2 -> "MAX-ACCESS"  RULE_OT_MAX_ACCESS_DEFINITION
+
+081. RULE_OT_MAX_ACCESS_DEFINITION -> RULE_OT_MAX_ACCESS_VALID_KEYWORDS {0}
+
+082. RULE_OT_MAX_ACCESS_VALID_KEYWORDS -> ["read-only" | "read-write" | "not-accessible"]
+
+
+
+
+//Use this rule to mark the object as belonging to "TEXTUAL CONVENTIONS" parent
+083. RULE_TEXTUAL_CONVENTION_DEF -> "TEXTUAL-CONVENTION" RULE_TEXTUAL_CONVENTION_DEF_2
+
+084. RULE_TEXTUAL_CONVENTION_DEF_2 -> RULE_OID_FIELDS
+
+
+
+085. RULE_OT_LAST_UPDATED -> [RULE_OT_LAST_UPDATED_2 | {0}]
+
+086. RULE_OT_LAST_UPDATED_2 -> "LAST-UPDATED"  RULE_OT_LAST_UPDATED_DEFINITION
+
+087. RULE_OT_LAST_UPDATED_DEFINITION -> """  RULE_OT_LAST_UPDATED_TEXT {0}
+
+088. RULE_OT_LAST_UPDATED_TEXT -> """  RULE_ANYSTRING  """ {0}
+
+
+089. RULE_OT_ORGANIZATION -> [RULE_OT_ORGANIZATION_2 | {0}]
+
+090. RULE_OT_ORGANIZATION_2 -> "ORGANIZATION"  RULE_OT_ORGANIZATION_DEFINITION
+
+091. RULE_OT_ORGANIZATION_DEFINITION -> """  RULE_OT_ORGANIZATION_TEXT {0}
+
+092. RULE_OT_ORGANIZATION_TEXT -> """  RULE_ANYSTRING  """ {0}
+
+
+----------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+

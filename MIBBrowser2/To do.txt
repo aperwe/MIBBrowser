@@ -1,0 +1,18 @@
+Importance 1 - Max; Importance 9 - Min.
+---------------------------------------
+
+2001-11-07: Importance 6: Implement "Lookup name" feature to permit users 
+			to perform searches for element names across the tree.
+			Status: Done.
+2001-11-07: Importance 2: Expand information on object syntax. When an element is 
+			of a certain type, and this type is known to be another element defined
+			(element defined withing this MIB file (to find the element type, use 
+			FindElement ())), display its syntax in in Extra info label.
+			Status: Done.
+2001-11-13: Importance 4: Cezary Jasinski's suggestion: add case-sensitivity
+			switch for element name search feature.
+			Status: Done.
+2001-11-13: Importance 9: Some optimizations to the parsing algorithm. Slightly
+            reduced code size.
+			Status: Done.
+2002-01-23: What is it: util_dest in InitializeIO ().

@@ -1,0 +1,2365 @@
+SDSL-MIB DEFINITIONS ::= BEGIN
+
+--  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+IMPORTS
+    MODULE-IDENTITY, OBJECT-TYPE, enterprises
+        FROM SNMPv2-SMI
+    entPhysicalIndex
+        FROM ENTITY-MIB
+    ifIndex
+        FROM RFC1213-MIB
+    DisplayString, TruthValue, DateAndTime
+        FROM SNMPv2-TC
+    sysName
+        FROM SNMPv2-MIB
+    atmVclEntry
+        FROM ATM-MIB;
+
+
+--  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+sni            OBJECT IDENTIFIER ::= { enterprises 231 }
+siemensUnits   OBJECT IDENTIFIER ::= { sni 7 }
+oenProductMibs OBJECT IDENTIFIER ::= { siemensUnits 1 }
+sn             OBJECT IDENTIFIER ::= { oenProductMibs 4 }
+
+--  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+sdsl MODULE-IDENTITY
+    LAST-UPDATED "990308120000Z"
+    ORGANIZATION "SIEMENS AG, ICN WN CS EP B14"
+    CONTACT-INFO
+        "   ICN WN CS EP B14
+            Hofmannstr. 51
+            81359 Munich, Germany
+
+            Petra Koester
+            Tel:   +49 (0)89 722-25547
+            Fax:   +49 (0)89 722-21825
+            Email: petra.koester@icn.siemens.de "
+    DESCRIPTION
+        "The MIB for Symmetrical Digital Subscriber Line
+         (SDSL):
+         - objects describing the SLMI:SDSL (module and ports)
+         - objects describing the SLMI:SDSL interface (layer 1
+           and frame relay)"
+    ::= { sn 4 }
+
+--  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+sdslMIBObjects     OBJECT IDENTIFIER ::= { sdsl 1 }
+sdslMIBTraps       OBJECT IDENTIFIER ::= { sdsl 2 }
+
+--  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+--  MIB Objects consist of following groups
+sdslLc             OBJECT IDENTIFIER ::= { sdslMIBObjects 1 }
+sdslLcPort         OBJECT IDENTIFIER ::= { sdslMIBObjects 2 }
+sdslIfAtm          OBJECT IDENTIFIER ::= { sdslMIBObjects 3 }
+sdslIfL1           OBJECT IDENTIFIER ::= { sdslMIBObjects 4 }
+sdslIfFrameRelay   OBJECT IDENTIFIER ::= { sdslMIBObjects 5 }
+
+
+--  sdslLc group  - - - - - - - - - - - - - - - - - - - - - - - - - -
+--  contains following subgroups
+sdslLcVersion           OBJECT IDENTIFIER ::= { sdslLc 1 }
+sdslLcModule            OBJECT IDENTIFIER ::= { sdslLc 2 }
+sdslLcNtCompatibility   OBJECT IDENTIFIER ::= { sdslLc 3 }
+
+
+--  sdslLcVersion subgroup
+
+sdslLcVersionTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF SdslLcVersionEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table includes attributes describing the
+         SLMI:SDSL linecard version."
+    ::= { sdslLcVersion 1 }
+
+sdslLcVersionEntry OBJECT-TYPE
+    SYNTAX         SdslLcVersionEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per physical entity of type module (compare
+         ENTITY-MIB)."
+    INDEX          { entPhysicalIndex }
+    ::= { sdslLcVersionTable 1 }
+
+SdslLcVersionEntry ::= SEQUENCE {
+    sdslLcVersionMibLevel    Integer32
+}
+
+sdslLcVersionMibLevel OBJECT-TYPE
+    SYNTAX         Integer32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Identifies the implemented revision level of the MIB.
+         The initial revision has the value 1. For each
+         functional enhancement the MIB level is incremented
+         by 1."
+    ::= { sdslLcVersionEntry 1 }
+
+
+--  sdslLcModule subgroup
+
+sdslLcModuleTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF SdslLcModuleEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table includes attributes describing the
+         SLMI:SDSL linecard module."
+    ::= { sdslLcModule 1 }
+
+sdslLcModuleEntry OBJECT-TYPE
+    SYNTAX         SdslLcModuleEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per physical entity of type module (compare
+         ENTITY-MIB)."
+    INDEX          { entPhysicalIndex }
+    ::= { sdslLcModuleTable 1 }
+
+SdslLcModuleEntry ::= SEQUENCE {
+    sdslLcModuleCoding            INTEGER,
+    sdslLcModuleAttainableRate    Unsigned32,
+    sdslLcModuleType              BITS
+}
+
+sdslLcModuleCoding OBJECT-TYPE
+    SYNTAX         INTEGER { other(1),
+                             scPam(2)
+                           }
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Specifies the coding type used on the lines of the
+         SLMI:SDSL.
+         Other types may be added in the future.
+         scPam - simply coded pulse amplitude modulation"
+    ::= { sdslLcModuleEntry 1 }
+
+sdslLcModuleAttainableRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The value of this object multiplied with 64 kbit/s,
+         then added to 160 kbit/s (basic transmission rate)
+         is the maximum physical data rate theoretically
+         attainable by the SLMI:SDSL linecard. This value
+         may be higher than the actual physical data rate.
+         It may also differ from the configured (by EWSD)
+         physical data rate and from the physical data rate
+         attainable by the SDSL-NT."
+    ::= { sdslLcModuleEntry 2 }
+
+sdslLcModuleType OBJECT-TYPE
+    SYNTAX         BITS { noService(0),
+                          isdnBa(1),
+                          ab(2),
+                          s2m(3),
+                          ethernet(4),
+                          other(5)
+                        }
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Defines the SDSL-NT interfaces that are supported
+         by the SLMI:SDSL linecard.
+         This is a bitmap of possible services. Bit
+         'noService(0) may be set only if all other bits are
+         not set."
+    ::= { sdslLcModuleEntry 3 }
+
+
+--  sdslLcNtCompatibility subgroup
+
+sdslLcNtCompTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF SdslLcNtCompEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Table of compatible SDSL-NTs."
+    ::= { sdslLcNtCompatibility 1 }
+
+sdslLcNtCompEntry OBJECT-TYPE
+    SYNTAX         SdslLcNtCompEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One or more entries per physical entity of type
+         module (compare ENTITY-MIB)."
+    INDEX          { entPhysicalIndex, sdslLcNtCompIndex}
+    ::= { sdslLcNtCompTable 1 }
+
+SdslLcNtCompEntry ::= SEQUENCE {
+    sdslLcNtCompIndex        Integer32,
+    sdslLcNtCompVendorId     DisplayString,
+    sdslLcNtCompHwVersion    DisplayString,
+    sdslLcNtCompFwVersion    DisplayString,
+    sdslLcNtCompSwVersion    DisplayString,
+    sdslLcNtCompRowStatus    RowStatus
+}
+
+sdslLcNtCompIndex OBJECT-TYPE
+    SYNTAX         Integer32(1..20)
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Table index of compatible SDSL-NT."
+::= { sdslLcNtCompEntry 1 }
+
+sdslLcNtCompVendorId OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-create
+    STATUS         current
+    DESCRIPTION
+        "Vendor name of compatible SDSL-NT."
+::= { sdslLcNtCompEntry 2 }
+
+sdslLcNtCompHwVersion OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-create
+    STATUS         current
+    DESCRIPTION
+        "Hardware version of compatible SDSL-NT."
+::= { sdslLcNtCompEntry 3 }
+
+sdslLcNtCompFwVersion OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-create
+    STATUS         current
+    DESCRIPTION
+        "Firmware version of compatible SDSL-NT."
+::= { sdslLcNtCompEntry 4 }
+
+sdslLcNtCompSwVersion OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-create
+    STATUS         current
+    DESCRIPTION
+        "Software version of compatible SDSL-NT."
+::= { sdslLcNtCompEntry 5 }
+
+sdslLcNtCompRowStatus OBJECT-TYPE
+    SYNTAX         RowStatus
+    MAX-ACCESS     read-create
+    STATUS         current
+    DESCRIPTION
+        "Status of the row."
+::= { sdslLcNtCompEntry 6 }
+
+
+--  sdslLcPort group
+--  contains following subgroups
+sdslLcPortEwsdConf      OBJECT IDENTIFIER ::= { sdslLcPort 1 }
+sdslLcPortState         OBJECT IDENTIFIER ::= { sdslLcPort 2 }
+sdslLcPortNt            OBJECT IDENTIFIER ::= { sdslLcPort 3 }
+
+
+--  sdslLcPortEwsdConf subgroup
+
+sdslLcPortEwsdConfTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF SdslLcPortEwsdConfEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Table contains information about EWSD port
+         configuration."
+    ::= { sdslLcPortEwsdConf 1 }
+
+sdslLcPortEwsdConfEntry OBJECT-TYPE
+    SYNTAX         SdslLcPortEwsdConfEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per SLMI:SDSL port."
+    INDEX          { entPhysicalIndex }
+    ::= { sdslLcPortEwsdConfTable 1 }
+
+SdslLcPortEwsdConfEntry ::= SEQUENCE {
+    sdslLcPortEwsdConfNominalTxRate         Unsigned32,
+    sdslLcPortEwsdConfMinTxRate             Unsigned32,
+    sdslLcPortEwsdConfSESsThresh            Unsigned32,
+    sdslLcPortEwsdConfSucceedingSESsThresh  Unsigned32,
+    sdslLcPortEwsdConfLbrType               INTEGER,
+    sdslLcPortEwsdConfLbrOst                INTEGER,
+    sdslLcPortEwsdConfHbrType               INTEGER,
+    sdslLcPortEwsdConfHbrOst                INTEGER,
+    sdslLcPortEwsdConfHbrBChannelNumber     Unsigned32
+}
+
+sdslLcPortEwsdConfNominalTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The value of this object multiplied with 64 kbit/s,
+         then added to 160 kbit/s (basic transmission rate)
+         is the configured nominal physical transmission
+         rate on the line.
+         This value is given by EWSD.
+         The value 127 (0x7F) indicates that the
+         configuration value is not availabe."
+::= { sdslLcPortEwsdConfEntry 1 }
+
+sdslLcPortEwsdConfMinTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The value of this object multiplied with 64 kbit/s,
+         then added to 160 kbit/s (basic transmission rate)
+         is the configured minimal physical transmission
+         rate on the line.
+         This value is given by EWSD.
+         The value 127 (0x7F) indicates that the
+         configuration value is not availabe."
+    ::= { sdslLcPortEwsdConfEntry 2 }
+
+sdslLcPortEwsdConfSESsThresh OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "If the bit errors during one second exceed the
+         value of this object, the second is classified as
+         Severely Errored Second (SES).
+         This value is given by EWSD."
+    ::= { sdslLcPortEwsdConfEntry 3 }
+
+sdslLcPortEwsdConfSucceedingSESsThresh OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of succeeding Severely Errored Seconds
+         (SES), that defines an SES fault.
+         This value is given by EWSD."
+    ::= { sdslLcPortEwsdConfEntry 4 }
+
+sdslLcPortEwsdConfLbrType OBJECT-TYPE
+    SYNTAX         INTEGER { unknown(1),
+                             unused(2),
+                             pots(3),
+                             isdnBa(4)
+                           }
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "EWSD configured type of low bitrate (LBR) port."
+    ::= { sdslLcPortEwsdConfEntry 5 }
+
+sdslLcPortEwsdConfLbrOst OBJECT-TYPE
+    SYNTAX         INTEGER { pla(1),
+                             mbl(2),
+                             cbl(3),
+                             act(4),
+                             una(5),
+                             unu(6)
+                           }
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Low bitrate (LBR) port operational state (OST)
+         resulting from the overlapping of EWSD configured
+         module and port OST. 'unu'(sed) is used if the port
+         type is unknown."
+    ::= { sdslLcPortEwsdConfEntry 6 }
+
+sdslLcPortEwsdConfHbrType OBJECT-TYPE
+    SYNTAX         INTEGER { unknown(1),
+                             unused(2),
+                             ethernet(3),
+                             s2m(4)
+                           }
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "EWSD configured type of high bitrate (HBR) port."
+    ::= { sdslLcPortEwsdConfEntry 7 }
+
+sdslLcPortEwsdConfHbrOst OBJECT-TYPE
+    SYNTAX         INTEGER { pla(1),
+                             mbl(2),
+                             cbl(3),
+                             act(4),
+                             una(5),
+                             unu(6)
+                           }
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "High bitrate (HBR) port operational state (OST)
+         resulting from the overlapping of EWSD configured
+         module and port OST. 'unu'(sed) is used if the port
+         type is unknown."
+    ::= { sdslLcPortEwsdConfEntry 8 }
+
+sdslLcPortEwsdConfHbrBChannelNumber OBJECT-TYPE
+    SYNTAX         Unsigned32(0..32)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of B-channels to be used by high bitrate
+         (HBR) port. This value is given by EWSD."
+    ::= { sdslLcPortEwsdConfEntry 9 }
+
+
+--  sdslLcPortState subgroup
+
+sdslLcPortStateTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF SdslLcPortStateEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Table contains SLMI:SDSL specific port state
+         information."
+    ::= { sdslLcPortState 1 }
+
+sdslLcPortStateEntry OBJECT-TYPE
+    SYNTAX         SdslLcPortStateEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per SLMI:SDSL port."
+    INDEX          { entPhysicalIndex }
+    ::= { sdslLcPortStateTable 1 }
+
+SdslLcPortStateEntry ::= SEQUENCE {
+    sdslLcPortStateL1                       INTEGER,
+    sdslLcPortStateCurrTxRate               Unsigned32,
+    sdslLcPortStateCurrHbrBChannelNumber    Unsigned32,
+    sdslLcPortStateDetails                  BITS
+}
+
+sdslLcPortStateL1 OBJECT-TYPE
+    SYNTAX         INTEGER { unknown(1),
+                             active(2),
+                             inActive(3),
+                             failure(4)
+                           }
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Information if SDSL layer 1 is currently active."
+    ::= { sdslLcPortStateEntry 1 }
+
+sdslLcPortStateCurrTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The value of this object multiplied with 64 kbit/s,
+         then added to 160 kbit/s (basic transmission rate)
+         is the actual physical transmission rate on the line.
+         If the minimal transmission rate (configured by EWSD)
+         can not be reached, the object reflects the highest
+         possible transmission rate taking into account the
+         actual linecard, SDSL-NT and the line.
+         The value 127 (0x7F) indicates that the transmission
+         rate is currently not available (in case of
+         activation process, transmission interrupting errors,
+         layer 1 affecting tests or if the line is not
+         available due to EWSD OST (operational state)
+         configuration).
+         The actual physical data rate on the line may differ
+         from the physical data rate attainable by the
+         SLMI:SDSL and the SDSL-NT and from that configured
+         by EWSD."
+::= { sdslLcPortStateEntry 2 }
+
+sdslLcPortStateCurrHbrBChannelNumber OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Actual number of B-channels used by high bitrate
+         (HBR) port.
+         This value may differ from the number of B-channels
+         configured by EWSD if the physical data rate or the
+         SDSL-NT doesn't allow the configured one."
+    ::= { sdslLcPortStateEntry 3 }
+
+sdslLcPortStateDetails OBJECT-TYPE
+    SYNTAX         BITS { lossOfSync(0),
+                          sesPortfailure(1),
+                          lineFeedingOverload(2),
+                          noPortAccess(3),
+                          hbrSlcFault(4),
+                          permanentActL2BreakDown(5),
+                          l1ActivationTested(6),
+                          l1ActivationFault(7),
+                          slcTested(8),
+                          slcFault(9),
+                          sdslNtTested(10),
+                          sdslNtFault(11),
+                          sdslNtVersionTested(12),
+                          sdslNtVersionFault(13),
+                          sdslNtLbrInterfaceMismatchTested(14),
+                          sdslNtLbrInterfaceMismatch(15),
+                          sdslNtHbrInterfaceMismatchTested(16),
+                          sdslNtHbrInterfaceMismatch(17),
+                          sdslNtLbrInterfaceTested(18),
+                          sdslNtLbrInterfaceFailure(19),
+                          sdslNtHbrInterfaceTested(20),
+                          sdslNtHbrInterfaceFailure(21),
+                          sdslNtEmergencyServiceTested(22),
+                          sdslNtEmergencyService(23)
+                        }
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Information about possible port error as detailed
+         as it can be determined by the SLMI:SDSL:
+         - The first six bits (lossOfSync, sesPortfailure,
+           lineFeedingOverload, noPortAccess, hbrSlcFault
+           and permanentActL2BreakDown) are set if a
+           corresponding error is detected.
+         - The remaining bits are used in pairs: Always two
+           bits belong together. The first bit shows if the
+           test result shown by the second bit is valid. If
+           the first bit is not set, this means, that the
+           linecard can not make a statement if there is an
+           error or not. If it is set, the statement of the
+           second bit (errror if set, no error if not set)
+           is ok.
+         The information, indicated by this object, can be
+         grouped according its impact on the operation of
+         the two logical ports of the SLMI:SDSL:
+         - concerning low and high bitrate interface:
+           lossOfSync, sesPortfailure, lineFeedingOverload,
+           noPortAccess, l1ActivationFault, slcFault,
+           sdslNtFault, sdslNtVersionFault
+         - concerning only high bitrate interface:
+           hbrSlcFault, sdslHbrInterfaceMismatch,
+           sdslNtHbrInterfaceFailure, sdslNtEmergencyService
+           (emergency service is the equivalent of life line
+           service)
+         - concerning only low bitrate interface:
+           sdslLbrInterfaceMismatch, sdslNtLbrInterfaceFailure,
+           permanentActL2BreakDown"
+    ::= { sdslLcPortStateEntry 4 }
+
+
+--  sdslLcPortNt subgroup
+
+sdslLcPortNtTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF SdslLcPortNtEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Contains HW/FW version information for SDSL-NT."
+    ::= { sdslLcPortNt 1 }
+
+sdslLcPortNtEntry OBJECT-TYPE
+    SYNTAX         SdslLcPortNtEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per SLMI:SDSL port."
+    INDEX          { entPhysicalIndex }
+    ::= { sdslLcPortNtTable 1 }
+
+SdslLcPortNtEntry ::= SEQUENCE {
+    sdslLcPortNtSerialNo          DisplayString,
+    sdslLcPortNtVendorId          DisplayString,
+    sdslLcPortNtHwVersion         DisplayString,
+    sdslLcPortNtFwVersion         DisplayString,
+    sdslLcPortNtSwVersion         DisplayString,
+    sdslLcPortNtSubscriberService BITS,
+    sdslLcPortNtAttainableRate    Unsigned32,
+    sdslLcPortNtCompatibility     BITS
+}
+
+sdslLcPortNtSerialNo OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The serial number of the SDSL-NT. Empty if a serial
+         number is not available."
+    ::= { sdslLcPortNtEntry 1 }
+
+sdslLcPortNtVendorId OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Name of vendor of the SDSL-NT."
+    ::= { sdslLcPortNtEntry 2 }
+
+sdslLcPortNtHwVersion OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Unambiguous indication of the SDSL-NT hardware
+         version."
+    ::= { sdslLcPortNtEntry 3 }
+
+sdslLcPortNtFwVersion OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Unambiguous indication of the SDSL-NT firmware
+         (bootloader and basic software) version."
+    ::= { sdslLcPortNtEntry 4 }
+
+sdslLcPortNtSwVersion OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Unambiguous indication of the SDSL-nT software
+         (downloadable) version."
+    ::= { sdslLcPortNtEntry 5 }
+
+sdslLcPortNtSubscriberService OBJECT-TYPE
+    SYNTAX         BITS { other(0),
+                          swSupportIsdnBa(1),
+                          hwSupportIsdnBa(2),
+                          swSupportPots(3),
+                          hwSupportPots(4),
+                          swSupportEthernet(5),
+                          hwSupportEthernet(6),
+                          swSupportS2m(7),
+                          hwSupportS2m(8)
+                        }
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Defines the services which are supported by the
+         SDSL-NT hardware and software.
+         This is a bitmap of possible services."
+    ::= { sdslLcPortNtEntry 6 }
+
+sdslLcPortNtAttainableRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The value of this object multiplied with 64 kbit/s,
+         then added to 160 kbit/s (basic transmission rate)
+         is the maximum physical data rate theoretically
+         attainable by the SDSL-NT. This value may be higher
+         than the actual physical data rate. It also may
+         differ from the configured (by EWSD) physical data
+         rate and from the physical data rate attainable by
+         the SLMI:SDSL.
+         The value 127 (0x7F) indicates that no SDSL-NT is
+         available."
+    ::= { sdslLcPortNtEntry 7 }
+
+sdslLcPortNtCompatibility OBJECT-TYPE
+    SYNTAX         BITS { vendorCompatible(0),
+                          hwCompatible(1),
+                          fwCompatible(2),
+                          swCompatible(3)
+                        }
+    MAX-ACCESS     accessible-for-notify
+    STATUS         current
+    DESCRIPTION
+        "Provides information about the compatibility
+         between SLMI:SDSL linecard and SDSL-NT:
+         vendorCompatible - the vendor name of the current
+                            SDSL-NT is available in the
+                            sdslLcNtCompTable
+         hwCompatible - only set in case of vendor
+                        compatibility if the hardware
+                        version of the current SDSL-NT is
+                        available in the sdslLcNtCompTable
+         fwCompatible - only set in case of vendor and
+                        hardware compatibility if the
+                        firmware version of the current
+                        SDSL-NT is available in the
+                        sdslLcNtCompTable
+         swCompatible - only set in case of vendor, hardware
+                        and firmware compatibility if the
+                        software version of the current
+                        SDSL-NT is available in the
+                        sdslLcNtCompTable"
+    ::= { sdslLcPortNtEntry 8 }
+
+
+--  sdslIfAtm group   - - - - - - - - - - - - - - - - - - - - - - - -
+--  contains following subgroups
+sdslIfAtmVclExt           OBJECT IDENTIFIER ::= { sdslIfAtm 1 }
+
+
+sdslIfAtmVclExtTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF SdslIfAtmVclExtEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Table with SDSL-specific extensions to the
+         atmVclTable of the ATM-MIB (RFC1695)."
+    ::= { sdslIfAtmVclExt 1 }
+
+sdslIfAtmVclExtEntry OBJECT-TYPE
+    SYNTAX         SdslIfAtmVclExtEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per entry in atmVclTable of the ATM-MIB
+         (RFC1695)."
+    AUGMENTS       { atmVclEntry }
+    ::= { sdslIfAtmVclExtTable 1 }
+
+
+SdslIfAtmVclExtEntry ::= SEQUENCE {
+    sdslIfAtmVclIspName DisplayString,
+    sdslIfAtmVclState   INTEGER
+}
+
+sdslIfAtmVclIspName OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-create
+    STATUS         current
+    DESCRIPTION
+        "Name of Internet service provider (ISP) virtually
+         connected to this VPI/VCI. A string length of
+         maximum 20 characters is supported."
+    ::= { sdslIfAtmVclExtEntry 1 }
+
+sdslIfAtmVclState OBJECT-TYPE
+    SYNTAX         INTEGER { ntConfigPending(1),
+                             ntConfigRejected(2),
+                             idle(3),
+                             active(4),
+                             congested(5),
+                             linecardAis(6),
+                             linecardRdi(7),
+                             peerRdi(8)
+                           }
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "State of the connection:
+         - ntConfigPending: SDSL-NT is not configured to
+                            use this connection yet
+         - ntConfigRejected: SDSL-NT rejects the
+                             configuration of this connection
+         - idle: SDSL-NT accepted configuration of connection;
+                 connection can be used for Internet access,
+                 but is currently not in use
+         - active: SDSL-NT accepted configuration of
+                   connection; connection is in use for
+                   Internet access
+         - congested: SDSL-NT accepted configuration of
+                      connection; congestion situation
+                      while connection is in use
+         - linecardAis: SDSL-NT accepted configuration of
+                        connection; F5 alarm indication
+                        is sent by SLMI:SDSL
+         - linecardRdi: SDSL-NT accepted configuration of
+                        connection; F5 alarm indication
+                        is received by SLMI:SDSL
+         - peerRdi: SDSL-NT accepted configuration of
+                    connection; F5 remote defect indicator
+                    is received by SLMI:SDSL"
+    ::= { sdslIfAtmVclExtEntry 2 }
+
+
+--  sdslIfL1 group  - - - - - - - - - - - - - - - - - - - - - - - - -
+--  contains following subgroups
+sdslIfL1PerfData          OBJECT IDENTIFIER ::= { sdslIfL1 1 }
+sdslIfL1PerfThresh        OBJECT IDENTIFIER ::= { sdslIfL1 2 }
+
+--  sdslIfL1PerfData subgroup
+
+sdslIfL1PerfDataTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF SdslIfL1PerfDataEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table includes performance measurement data
+         describing the quality of the SDSL line."
+    ::= { sdslIfL1PerfData 1 }
+
+sdslIfL1PerfDataEntry OBJECT-TYPE
+    SYNTAX         SdslIfL1PerfDataEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per SLMI:SDSL interface."
+    INDEX          { ifIndex }
+    ::= { sdslIfL1PerfDataTable 1 }
+
+SdslIfL1PerfDataEntry ::= SEQUENCE {
+    sdslIfL1PerfValidIntervals              Unsigned32,
+    sdslIfL1PerfCurr15MinTimeElapsed        Unsigned32,
+    sdslIfL1PerfCurr15MinErrFreeSecs        Unsigned32,
+    sdslIfL1PerfCurr15MinErrSecs            Unsigned32,
+    sdslIfL1PerfCurr15MinSeverelyErrSecs    Unsigned32,
+    sdslIfL1PerfCurr15MinInactiveSecs       Unsigned32,
+    sdslIfL1PerfCurr15MinUnavailableSecs    Unsigned32,
+    sdslIfL1PerfCurr15MinTxRate             Unsigned32,
+    sdslIfL1PerfCurr1DayTimeElapsed         Unsigned32,
+    sdslIfL1PerfCurr1DayErrFreeSecs         Unsigned32,
+    sdslIfL1PerfCurr1DayErrSecs             Unsigned32,
+    sdslIfL1PerfCurr1DaySeverelyErrSecs     Unsigned32,
+    sdslIfL1PerfCurr1DayInactiveSecs        Unsigned32,
+    sdslIfL1PerfCurr1DayUnavailableSecs     Unsigned32,
+    sdslIfL1PerfCurr1DayTxRate              Unsigned32,
+    sdslIfL1PerfPrev1DayMoniSecs            Unsigned32,
+    sdslIfL1PerfPrev1DayErrFreeSecs         Unsigned32,
+    sdslIfL1PerfPrev1DayErrSecs             Unsigned32,
+    sdslIfL1PerfPrev1DaySeverelyErrSecs     Unsigned32,
+    sdslIfL1PerfPrev1DayInactiveSecs        Unsigned32,
+    sdslIfL1PerfPrev1DayUnavailableSecs     Unsigned32,
+    sdslIfL1PerfPrev1DayTxRate              Unsigned32
+}
+
+sdslIfL1PerfValidIntervals OBJECT-TYPE
+    SYNTAX         Unsigned32(0..96)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of previous 15-minute intervals in the
+         'sdslIfL1PerfIntervalTable' for which valid data has
+         been stored. This value will be equal to the maximum
+         number of intervals that are kept (n) unless the
+         device was brought online within the last (n*15)
+         minutes."
+    ::= { sdslIfL1PerfDataEntry 1 }
+
+sdslIfL1PerfCurr15MinTimeElapsed OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Total elapsed seconds in this interval. A normal
+         interval is 900 seconds."
+    ::= { sdslIfL1PerfDataEntry 2 }
+
+sdslIfL1PerfCurr15MinErrFreeSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of seconds in the current 15- minute
+         interval with errorfree SDSL layer 1."
+    ::= { sdslIfL1PerfDataEntry 3 }
+
+sdslIfL1PerfCurr15MinErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Errored Seconds in the current 15-minute interval.
+         The errored second parameter is a count of one-
+         second intervals containing one or more FEBE/NEBE
+         failures."
+    ::= { sdslIfL1PerfDataEntry 4 }
+
+sdslIfL1PerfCurr15MinSeverelyErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Severely Errored Seconds in the current 15-minute
+         interval. The severely errored seconds parameter is
+         a count of one-second intervals containing a higher
+         number of FEBE/NEBE failures than a configured (by
+         EWSD) threshold value."
+    ::= { sdslIfL1PerfDataEntry 5 }
+
+sdslIfL1PerfCurr15MinInactiveSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of seconds in the current 15-minute interval
+         with inactive (warmstart possible) SDSL layer 1."
+    ::= { sdslIfL1PerfDataEntry 6 }
+
+sdslIfL1PerfCurr15MinUnavailableSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of seconds with layer 1 unavailable in the
+         current 15-minute interval. Layer 1 is unavailable
+         due to test activation, layer 1 affecting tests or
+         layer 1 affecting portfailures."
+    ::= { sdslIfL1PerfDataEntry 7 }
+
+sdslIfL1PerfCurr15MinTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Physical transmission rate in kbit/s available
+         during the current 15-minute interval. If neither
+         the HBR nor the LBR port has been configured
+         act/cbl (by EWSD) or if the physical transmission
+         rate has changed within the current 15-minute
+         interval at least once, the value is 0."
+    ::= { sdslIfL1PerfDataEntry 8 }
+
+sdslIfL1PerfCurr1DayTimeElapsed OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Seconds that have elapsed since the beginning of
+         the current 1-day interval."
+    ::= { sdslIfL1PerfDataEntry 9 }
+
+sdslIfL1PerfCurr1DayErrFreeSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of seconds during the current day as
+         measured by 'sdslIfL1PerfCurr1DayTimeElapsed' with
+         errorfree SDSL layer 1."
+    ::= { sdslIfL1PerfDataEntry 10 }
+
+sdslIfL1PerfCurr1DayErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Errored Seconds during the current day as measured
+         by 'sdslIfL1PerfCurr1DayTimeElapsed'. The errored
+         second parameter is a count of one-second intervals
+         containing one or more FEBE/NEBE failures."
+    ::= { sdslIfL1PerfDataEntry 11 }
+
+sdslIfL1PerfCurr1DaySeverelyErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Severely Errored Seconds during the current day as
+         measured by 'sdslIfL1PerfCurr1DayTimeElapsed'. The
+         severely errored seconds parameter is a count of
+         one-second intervals containing a higher number of
+         FEBE/NEBE failures than a configured (by EWSD)
+         threshold value."
+    ::= { sdslIfL1PerfDataEntry 12 }
+
+sdslIfL1PerfCurr1DayInactiveSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Seconds with inactive (warmstart possible) SDSL
+         layer 1 during the current day as measured by
+         'sdslIfL1PerfCurr1DayTimeElapsed'."
+    ::= { sdslIfL1PerfDataEntry 13 }
+
+sdslIfL1PerfCurr1DayUnavailableSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of seconds with layer 1 unavailable during
+         the current day as measured by
+         'sdslIfL1PerfCurr1DayTimeElapsed'. Layer 1 is
+         unavailable due to test activation, layer 1
+         affecting tests or layer 1 affecting portfailures."
+    ::= { sdslIfL1PerfDataEntry 14 }
+
+sdslIfL1PerfCurr1DayTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Physical transmission rate in kbit/s available
+         during the current day as measured by
+         'sdslIfL1PerfCurr1DayTimeElapsed'. If neither the
+         HBR nor the LBR port has been configured act/cbl
+         (by EWSD) or if the physical transmission rate has
+         changed within the current day at least once, the
+         value is 0."
+    ::= { sdslIfL1PerfDataEntry 15 }
+
+sdslIfL1PerfPrev1DayMoniSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Time in the previous 1-day interval over which the
+         performance monitoring information is actually
+         counted. This value will normally be the same as the
+         total interval duration except in a situation where
+         performance monitoring data can not be collected for
+         any reason. Typically elapsed 1-day time will be
+         copied into Monitored Seconds when the 1-day roll-
+         over occurs."
+    ::= { sdslIfL1PerfDataEntry 16 }
+
+sdslIfL1PerfPrev1DayErrFreeSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of seconds within the most recent previous
+         1-day period with errorfree SDSL layer 1."
+    ::= { sdslIfL1PerfDataEntry 17 }
+
+sdslIfL1PerfPrev1DayErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Errored Seconds within the most recent previous
+         1-day period. The errored second parameter is a
+         count of one-second intervals containing one or
+         more FEBE/NEBE failures."
+    ::= { sdslIfL1PerfDataEntry 18 }
+
+sdslIfL1PerfPrev1DaySeverelyErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Severely Errored Seconds within the most recent
+         previous 1-day period. The severely errored seconds
+         parameter is a count of one-second intervals
+         containing a higher number of FEBE/NEBE
+         failures than a configured (by EWSD) threshold value."
+    ::= { sdslIfL1PerfDataEntry 19 }
+
+sdslIfL1PerfPrev1DayInactiveSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Seconds with inactive (warmstart possible) SDSL
+         layer 1 within the most recent previous 1-day
+         period."
+    ::= { sdslIfL1PerfDataEntry 20 }
+
+sdslIfL1PerfPrev1DayUnavailableSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of seconds with layer 1 unavailable within
+         the most recent previous 1-day period. Layer 1 is
+         unavailable due to test activation, layer 1
+         affecting tests or layer 1 affecting portfailures."
+    ::= { sdslIfL1PerfDataEntry 21 }
+
+sdslIfL1PerfPrev1DayTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Physical transmission rate in kbit/s available
+         within the most recent previous 1-day period. If
+         neither the HBR nor the LBR port was configured
+         act/cbl (by EWSD) or if the physical transmission
+         rate changed on the previous day at least once, the
+         value is 0."
+    ::= { sdslIfL1PerfDataEntry 22 }
+
+sdslIfL1PerfIntervalTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF SdslIfL1PerfIntervalEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table provides 15-minute intervals of
+         performance data measured at the subscriber line
+         for the last 24 hours."
+    ::= { sdslIfL1PerfData 2 }
+
+sdslIfL1PerfIntervalEntry OBJECT-TYPE
+    SYNTAX         SdslIfL1PerfIntervalEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per interval and per each SDSL line."
+    INDEX          { ifIndex, sdslIfL1PerfIntervalNumber }
+    ::= { sdslIfL1PerfIntervalTable 1 }
+
+SdslIfL1PerfIntervalEntry ::= SEQUENCE {
+    sdslIfL1PerfIntervalNumber              Integer32,
+    sdslIfL1PerfIntervalErrFreeSecs         Unsigned32,
+    sdslIfL1PerfIntervalErrSecs             Unsigned32,
+    sdslIfL1PerfIntervalSeverelyErrSecs     Unsigned32,
+    sdslIfL1PerfIntervalInactiveSecs        Unsigned32,
+    sdslIfL1PerfIntervalUnavailableSecs     Unsigned32,
+    sdslIfL1PerfIntervalTxRate              Unsigned32,
+    sdslIfL1PerfIntervalValidData           TruthValue
+}
+
+sdslIfL1PerfIntervalNumber OBJECT-TYPE
+    SYNTAX         Integer32(1..96)
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Performance data interval number. 1 is the most
+         recent interval; interval 96 is 24 hours ago."
+    ::= { sdslIfL1PerfIntervalEntry 1 }
+
+sdslIfL1PerfIntervalErrFreeSecs OBJECT-TYPE
+    SYNTAX         Unsigned32(0..900)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Seconds in the interval with errorfree SDSL layer 1."
+    ::= { sdslIfL1PerfIntervalEntry 2 }
+
+sdslIfL1PerfIntervalErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32(0..900)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Errored Seconds in the interval. The errored second
+         parameter is a count of one-second intervals
+         containing one or more FEBE/NEBE failures."
+    ::= { sdslIfL1PerfIntervalEntry 3 }
+
+sdslIfL1PerfIntervalSeverelyErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32(0..900)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Severely Errored Seconds in the interval. The
+         severely errored seconds parameter is a count of
+         one-second intervals containing a higher number of
+         FEBE/NEBE failures than a configured (by EWSD)
+         threshold value."
+    ::= { sdslIfL1PerfIntervalEntry 4 }
+
+sdslIfL1PerfIntervalInactiveSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Seconds in the interval with inactive (warmstart
+         possible) SDSL layer 1."
+    ::= { sdslIfL1PerfIntervalEntry 5 }
+
+sdslIfL1PerfIntervalUnavailableSecs OBJECT-TYPE
+    SYNTAX         Unsigned32(0..900)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Seconds with layer 1 unavailable in the
+         interval. Layer 1 is unavailable due to test
+         activation, layer 1 affecting tests or layer 1
+         affecting portfailures."
+    ::= { sdslIfL1PerfIntervalEntry 6 }
+
+sdslIfL1PerfIntervalTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Physical transmission rate in kbit/s available in
+         the interval. If neither the HBR nor the LBR port
+         was configured act/cbl (by EWSD) or if the physical
+         transmission rate changed during the interval at
+         least once, the value is 0."
+    ::= { sdslIfL1PerfIntervalEntry 7 }
+
+sdslIfL1PerfIntervalValidData OBJECT-TYPE
+    SYNTAX         TruthValue
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "This variable indicates if there is valid data for
+         this interval."
+    ::= { sdslIfL1PerfIntervalEntry 8 }
+
+
+--  sdslIfL1PerfThresh subgroup
+
+sdslIfL1PerfThreshTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF SdslIfL1PerfThreshEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table contains thresholds for performance
+         traps."
+    ::= { sdslIfL1PerfThresh 1 }
+
+sdslIfL1PerfThreshEntry OBJECT-TYPE
+    SYNTAX         SdslIfL1PerfThreshEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per SLMI:SDSL interface."
+    INDEX          { ifIndex }
+    ::= { sdslIfL1PerfThreshTable 1 }
+
+SdslIfL1PerfThreshEntry ::= SEQUENCE {
+    sdslIfL1PerfThresh15MinErrSecs          Unsigned32,
+    sdslIfL1PerfThresh15MinSeverelyErrSecs  Unsigned32
+}
+
+sdslIfL1PerfThresh15MinErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32(0..900)
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "The number of Errored Seconds within any given 15-
+         minute performance data collection period, which
+         causes the SNMP agent to send a
+         'sdslIfL1PerfThresh15MinErrSecsTrap'.
+         Limit of one trap will be sent for any one interval.
+         A value of '0' will disable the trap."
+    ::= { sdslIfL1PerfThreshEntry 1 }
+
+sdslIfL1PerfThresh15MinSeverelyErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32(0..900)
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "The number of Severely Errored Seconds within any
+         given 15-minute performance data collection period,
+         which causes the SNMP agent to send a
+         'sdslIfL1PerfThresh15MinSeverelyErrSecsTrap'.
+         Limit of one trap will be sent for any one interval.
+         A value of '0' will disable the trap."
+    ::= { sdslIfL1PerfThreshEntry 2 }
+
+
+--  sdslIfFrameRelay group  - - - - - - - - - - - - - - - - - - - - -
+--  contains following subgroups
+sdslIfFrPerfData   OBJECT IDENTIFIER ::= { sdslIfFrameRelay 1 }
+sdslIfFrPerfThresh OBJECT IDENTIFIER ::= { sdslIfFrameRelay 2 }
+
+
+--  sdslIfFrPerfData subgroup
+
+sdslIfFrPerfDataTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF SdslIfFrPerfDataEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table includes performance measurement data
+         describing the quality of frame relay transmission
+         of the SDSL line."
+    ::= { sdslIfFrPerfData 1 }
+
+sdslIfFrPerfDataEntry OBJECT-TYPE
+    SYNTAX         SdslIfFrPerfDataEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per SLMI:SDSL interface."
+    INDEX          { ifIndex }
+    ::= { sdslIfFrPerfDataTable 1 }
+
+SdslIfFrPerfDataEntry ::= SEQUENCE {
+    sdslIfFrPerfValidIntervals              Unsigned32,
+    sdslIfFrPerfCurr15MinTimeElapsed        Unsigned32,
+    sdslIfFrPerfCurr15MinNeSentFrames       Gauge32,
+    sdslIfFrPerfCurr15MinNeSentOctets       Gauge32,
+    sdslIfFrPerfCurr15MinNeReceivedFrames   Gauge32,
+    sdslIfFrPerfCurr15MinNeReceivedOctets   Gauge32,
+    sdslIfFrPerfCurr15MinNeDiscards         Gauge32,
+    sdslIfFrPerfCurr15MinNeSentFECNs        Gauge32,
+    sdslIfFrPerfCurr15MinNeReceivedFECNs    Gauge32,
+    sdslIfFrPerfCurr15MinNeSentBECNs        Gauge32,
+    sdslIfFrPerfCurr15MinNeReceivedBECNs    Gauge32,
+    sdslIfFrPerfCurr15MinNeSentDEs          Gauge32,
+    sdslIfFrPerfCurr15MinNeReceivedDEs      Gauge32,
+    sdslIfFrPerfCurr15MinFeSentFrames       Gauge32,
+    sdslIfFrPerfCurr15MinFeSentOctets       Gauge32,
+    sdslIfFrPerfCurr15MinFeReceivedFrames   Gauge32,
+    sdslIfFrPerfCurr15MinFeReceivedOctets   Gauge32,
+    sdslIfFrPerfCurr15MinFeDiscards         Gauge32,
+    sdslIfFrPerfCurr1DayTimeElapsed         Unsigned32,
+    sdslIfFrPerfCurr1DayNeSentFrames        Gauge32,
+    sdslIfFrPerfCurr1DayNeSentOctets        Gauge32,
+    sdslIfFrPerfCurr1DayNeReceivedFrames    Gauge32,
+    sdslIfFrPerfCurr1DayNeReceivedOctets    Gauge32,
+    sdslIfFrPerfCurr1DayNeDiscards          Gauge32,
+    sdslIfFrPerfCurr1DayNeSentFECNs         Gauge32,
+    sdslIfFrPerfCurr1DayNeReceivedFECNs     Gauge32,
+    sdslIfFrPerfCurr1DayNeSentBECNs         Gauge32,
+    sdslIfFrPerfCurr1DayNeReceivedBECNs     Gauge32,
+    sdslIfFrPerfCurr1DayNeSentDEs           Gauge32,
+    sdslIfFrPerfCurr1DayNeReceivedDEs       Gauge32,
+    sdslIfFrPerfCurr1DayFeSentFrames        Gauge32,
+    sdslIfFrPerfCurr1DayFeSentOctets        Gauge32,
+    sdslIfFrPerfCurr1DayFeReceivedFrames    Gauge32,
+    sdslIfFrPerfCurr1DayFeReceivedOctets    Gauge32,
+    sdslIfFrPerfCurr1DayFeDiscards          Gauge32,
+    sdslIfFrPerfPrev1DayMoniSecs            Unsigned32,
+    sdslIfFrPerfPrev1DayNeSentFrames        Gauge32,
+    sdslIfFrPerfPrev1DayNeSentOctets        Gauge32,
+    sdslIfFrPerfPrev1DayNeReceivedFrames    Gauge32,
+    sdslIfFrPerfPrev1DayNeReceivedOctets    Gauge32,
+    sdslIfFrPerfPrev1DayNeDiscards          Gauge32,
+    sdslIfFrPerfPrev1DayNeSentFECNs         Gauge32,
+    sdslIfFrPerfPrev1DayNeReceivedFECNs     Gauge32,
+    sdslIfFrPerfPrev1DayNeSentBECNs         Gauge32,
+    sdslIfFrPerfPrev1DayNeReceivedBECNs     Gauge32,
+    sdslIfFrPerfPrev1DayNeSentDEs           Gauge32,
+    sdslIfFrPerfPrev1DayNeReceivedDEs       Gauge32,
+    sdslIfFrPerfPrev1DayFeSentFrames        Gauge32,
+    sdslIfFrPerfPrev1DayFeSentOctets        Gauge32,
+    sdslIfFrPerfPrev1DayFeReceivedFrames    Gauge32,
+    sdslIfFrPerfPrev1DayFeReceivedOctets    Gauge32,
+    sdslIfFrPerfPrev1DayFeDiscards          Gauge32
+}
+
+sdslIfFrPerfValidIntervals OBJECT-TYPE
+    SYNTAX         Unsigned32(0..96)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of previous 15-minute intervals in the
+         'sdslIfFrPerfIntervalTable' for which valid data has
+         been stored. This value will be equal to the maximum
+         number of intervals that are kept (n) unless the
+         device was brought online within the last (n*15)
+         minutes."
+    ::= { sdslIfFrPerfDataEntry 1 }
+
+sdslIfFrPerfCurr15MinTimeElapsed OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Total elapsed seconds in this interval. A normal
+         interval is 900 seconds."
+    ::= { sdslIfFrPerfDataEntry 2 }
+
+sdslIfFrPerfCurr15MinNeSentFrames OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of frames sent by the SLMI:SDSL in the
+         current 15-minute interval."
+    ::= { sdslIfFrPerfDataEntry 3 }
+
+sdslIfFrPerfCurr15MinNeSentOctets OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of octets sent by the SLMI:SDSL in the
+         current 15-minute interval. Octets counted are the
+         full frame relay header and the payload, but do not
+         include the flag characters or CRC."
+    ::= { sdslIfFrPerfDataEntry 4 }
+
+sdslIfFrPerfCurr15MinNeReceivedFrames OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL in the
+         current 15-minute interval."
+    ::= { sdslIfFrPerfDataEntry 5 }
+
+sdslIfFrPerfCurr15MinNeReceivedOctets OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of octets received by the SLMI:SDSL in the
+         current 15-minute interval. Octets counted include
+         the full frame relay header, but do not include the
+         flag characters or the CRC."
+    ::= { sdslIfFrPerfDataEntry 6 }
+
+sdslIfFrPerfCurr15MinNeDiscards OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of frames dropped by the SLMI:SDSL
+         because of format errors in the current 15-minute
+         interval."
+    ::= { sdslIfFrPerfDataEntry 7 }
+
+sdslIfFrPerfCurr15MinNeSentFECNs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames sent by the SLMI:SDSL indicating
+         forward congestion in the current 15-minute
+         interval. This occurs when the SLMI:SDSL sets the
+         FECN flag."
+    ::= { sdslIfFrPerfDataEntry 8 }
+
+sdslIfFrPerfCurr15MinNeReceivedFECNs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL
+         indicating forward congestion in the current
+         15-minute interval. This occurs when the SDSL-NT
+         sets the FECN flag."
+    ::= { sdslIfFrPerfDataEntry 9 }
+
+sdslIfFrPerfCurr15MinNeSentBECNs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames sent by the SLMI:SDSL indicating
+         backward congestion in the current 15-minute
+         interval. This occurs when the SLMI:SDSL sets the
+         BECN flag."
+    ::= { sdslIfFrPerfDataEntry 10 }
+
+sdslIfFrPerfCurr15MinNeReceivedBECNs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL
+         indicating backward congestion in the current
+         15-minute interval. This occurs when the SDSL-NT
+         sets the BECN flag."
+    ::= { sdslIfFrPerfDataEntry 11 }
+
+sdslIfFrPerfCurr15MinNeSentDEs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames sent to the SDSL-NT indicating
+         that they were eligible for discard in the current
+         15-minute interval. This occurs when the SLMI:SDSL
+         sets the DE flag, indicating that during Network
+         congestion situations those frames should be
+         discarded in preference of other frames sent without
+         the DE bit set."
+    ::= { sdslIfFrPerfDataEntry 12 }
+
+sdslIfFrPerfCurr15MinNeReceivedDEs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL
+         indicating that they were eligible for discard in
+         the current 15-minute interval. This occurs when
+         the SDSL-NT sets the DE flag."
+    ::= { sdslIfFrPerfDataEntry 13 }
+
+sdslIfFrPerfCurr15MinFeSentFrames OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of frames sent by the SDSL-NT in the
+         current 15-minute interval."
+    ::= { sdslIfFrPerfDataEntry 14 }
+
+sdslIfFrPerfCurr15MinFeSentOctets OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of octets sent by the SDSL-NT in the
+         current 15-minute interval. Octets counted are the
+         full frame relay header and the payload, but do not
+         include the flag characters or CRC."
+    ::= { sdslIfFrPerfDataEntry 15 }
+
+sdslIfFrPerfCurr15MinFeReceivedFrames OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SDSL-NT in the
+         current 15-minute interval."
+    ::= { sdslIfFrPerfDataEntry 16 }
+
+sdslIfFrPerfCurr15MinFeReceivedOctets OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of octets received by the SDSL-NT in the
+         current 15-minute interval. Octets counted include
+         the full frame relay header, but do not include the
+         flag characters or the CRC."
+    ::= { sdslIfFrPerfDataEntry 17 }
+
+sdslIfFrPerfCurr15MinFeDiscards OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of frames dropped by the SDSL-NT because
+         of format errors in the current 15-minute interval."
+    ::= { sdslIfFrPerfDataEntry 18 }
+
+sdslIfFrPerfCurr1DayTimeElapsed OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of seconds that have elapsed since the
+         beginning of the current 1-day interval."
+    ::= { sdslIfFrPerfDataEntry 19 }
+
+sdslIfFrPerfCurr1DayNeSentFrames OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of frames sent by the SLMI:SDSL during
+         the current day as measured by
+         'sdslIfFrPerfCurr1DayTimeElapsed'."
+    ::= { sdslIfFrPerfDataEntry 20 }
+
+sdslIfFrPerfCurr1DayNeSentOctets OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of octets sent by the SLMI:SDSL during
+         the current day as measured by
+         'sdslIfFrPerfCurr1DayTimeElapsed'. Octets counted
+         are the full frame relay header and the payload, but
+         do not include the flag characters or CRC."
+    ::= { sdslIfFrPerfDataEntry 21 }
+
+sdslIfFrPerfCurr1DayNeReceivedFrames OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL during
+         the current day as measured by
+         'sdslIfFrPerfCurr1DayTimeElapsed'."
+    ::= { sdslIfFrPerfDataEntry 22 }
+
+sdslIfFrPerfCurr1DayNeReceivedOctets OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of octets received by the SLMI:SDSL during
+         the current day as measured by
+         'sdslIfFrPerfCurr1DayTimeElapsed'. Octets counted
+         include the full frame relay header, but do not
+         include the flag characters or the CRC."
+    ::= { sdslIfFrPerfDataEntry 23 }
+
+sdslIfFrPerfCurr1DayNeDiscards OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of frames dropped by the SLMI:SDSL
+         because of format errors during the current day as
+         measured by 'sdslIfFrPerfCurr1DayTimeElapsed'."
+    ::= { sdslIfFrPerfDataEntry 24 }
+
+sdslIfFrPerfCurr1DayNeSentFECNs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames sent by the SLMI:SDSL indicating
+         forward congestion during the current day as
+         measured by 'sdslIfFrPerfCurr1DayTimeElapsed'.
+         This occurs when the SLMI:SDSL sets the FECN flag."
+    ::= { sdslIfFrPerfDataEntry 25 }
+
+sdslIfFrPerfCurr1DayNeReceivedFECNs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL
+         indicating forward congestion during the current
+         day as measured by
+         'sdslIfFrPerfCurr1DayTimeElapsed'. This occurs
+         when the SDSL-NT sets the FECN flag."
+    ::= { sdslIfFrPerfDataEntry 26 }
+
+sdslIfFrPerfCurr1DayNeSentBECNs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames sent by the SLMI:SDSL indicating
+         backward congestion during the current day as
+         measured by 'sdslIfFrPerfCurr1DayTimeElapsed'.
+         This occurs when the SLMI:SDSL sets the BECN flag."
+    ::= { sdslIfFrPerfDataEntry 27 }
+
+sdslIfFrPerfCurr1DayNeReceivedBECNs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL
+         indicating backward congestion during the current
+         day as measured by
+         'sdslIfFrPerfCurr1DayTimeElapsed'. This occurs
+         when the SDSL-NT sets the BECN flag."
+    ::= { sdslIfFrPerfDataEntry 28 }
+
+sdslIfFrPerfCurr1DayNeSentDEs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames sent to the SDSL-NT indicating
+         that they were eligible for discard during the
+         current day as measured by
+         'sdslIfFrPerfCurr1DayTimeElapsed'.
+         This occurs when the SLMI:SDSL sets the DE flag,
+         indicating that during Network congestion situations
+         those frames should be discarded in preference of
+         other frames sent without the DE bit set."
+    ::= { sdslIfFrPerfDataEntry 29 }
+
+sdslIfFrPerfCurr1DayNeReceivedDEs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL
+         indicating that they were eligible for discard
+         during the current day as measured by
+         'sdslIfFrPerfCurr1DayTimeElapsed'. This occurs when
+         the SDSL-NT sets the DE flag."
+    ::= { sdslIfFrPerfDataEntry 30 }
+
+sdslIfFrPerfCurr1DayFeSentFrames OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of frames sent by the SDSL-NT during the
+         current day as measured by
+         'sdslIfFrPerfCurr1DayTimeElapsed'."
+    ::= { sdslIfFrPerfDataEntry 31 }
+
+sdslIfFrPerfCurr1DayFeSentOctets OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of octets sent by the SDSL-NT during the
+         current day as measured by
+         'sdslIfFrPerfCurr1DayTimeElapsed'. Octets counted
+         are the full frame relay header and the payload, but
+         do not include the flag characters or CRC."
+    ::= { sdslIfFrPerfDataEntry 32 }
+
+sdslIfFrPerfCurr1DayFeReceivedFrames OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SDSL-NT during the
+         current day as measured by
+         'sdslIfFrPerfCurr1DayTimeElapsed'."
+    ::= { sdslIfFrPerfDataEntry 33 }
+
+sdslIfFrPerfCurr1DayFeReceivedOctets OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of octets received by the SDSL-NT during the
+         current day as measured by
+         'sdslIfFrPerfCurr1DayTimeElapsed'. Octets counted
+         include the full frame relay header, but do not
+         include the flag characters or the CRC."
+    ::= { sdslIfFrPerfDataEntry 34 }
+
+sdslIfFrPerfCurr1DayFeDiscards OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of frames dropped by the SDSL-NT because
+         of format errors during the current day as measured
+         by 'sdslIfFrPerfCurr1DayTimeElapsed'."
+    ::= { sdslIfFrPerfDataEntry 35 }
+
+sdslIfFrPerfPrev1DayMoniSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The time in the previous 1-day interval over which
+         the frame relay performance monitoring information
+         is actually counted. This value will normally be the
+         same as the total interval duration except in a
+         situation where performance monitoring data can not
+         be collected for any reason. Typically elapsed 1-day
+         time will be copied into Monitored Seconds when the
+         1-day roll-over occurs."
+    ::= { sdslIfFrPerfDataEntry 36 }
+
+sdslIfFrPerfPrev1DayNeSentFrames OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of frames sent by the SLMI:SDSL within
+         the most recent previous 1-day period."
+    ::= { sdslIfFrPerfDataEntry 37 }
+
+sdslIfFrPerfPrev1DayNeSentOctets OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of octets sent by the SLMI:SDSL within
+         the most recent previous 1-day period. Octets
+         counted are the full frame relay header and the
+         payload, but do not include the flag characters or
+         CRC."
+    ::= { sdslIfFrPerfDataEntry 38 }
+
+sdslIfFrPerfPrev1DayNeReceivedFrames OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL within
+         the most recent previous 1-day period."
+    ::= { sdslIfFrPerfDataEntry 39 }
+
+sdslIfFrPerfPrev1DayNeReceivedOctets OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of octets received by the SLMI:SDSL within
+         the most recent previous 1-day period. Octets
+         counted include the full frame relay header, but
+         do not include the flag characters or the CRC."
+    ::= { sdslIfFrPerfDataEntry 40 }
+
+sdslIfFrPerfPrev1DayNeDiscards OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of frames dropped by the SLMI:SDSL
+         because of format errors within the most recent
+         previous 1-day period."
+    ::= { sdslIfFrPerfDataEntry 41 }
+
+sdslIfFrPerfPrev1DayNeSentFECNs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames sent by the SLMI:SDSL indicating
+         forward congestion within the most recent previous
+         1-day period. This occurs when the SLMI:SDSL sets
+         the FECN flag."
+    ::= { sdslIfFrPerfDataEntry 42 }
+
+sdslIfFrPerfPrev1DayNeReceivedFECNs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL
+         indicating forward congestion within the most
+         recent previous 1-day period. This occurs when the
+         SDSL-NT sets the FECN flag."
+    ::= { sdslIfFrPerfDataEntry 43 }
+
+sdslIfFrPerfPrev1DayNeSentBECNs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames sent by the SLMI:SDSL indicating
+         backward congestion within the most recent
+         previous 1-day period. This occurs when the
+         SLMI:SDSL sets the BECN flag."
+    ::= { sdslIfFrPerfDataEntry 44 }
+
+sdslIfFrPerfPrev1DayNeReceivedBECNs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL
+         indicating backward congestion within the most
+         recent previous 1-day period. This occurs when the
+         SDSL-NT sets the BECN flag."
+    ::= { sdslIfFrPerfDataEntry 45 }
+
+sdslIfFrPerfPrev1DayNeSentDEs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames sent to the SDSL-NT indicating
+         that they were eligible for discard within the most
+         recent previous 1-day period. This occurs when the
+         SLMI:SDSL sets the DE flag, indicating that during
+         Network congestion situations those frames should
+         be discarded in preference of other frames sent
+         without the DE bit set."
+    ::= { sdslIfFrPerfDataEntry 46 }
+
+sdslIfFrPerfPrev1DayNeReceivedDEs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL
+         indicating that they were eligible for discard
+         within the most recent previous 1-day period. This
+         occurs when the SDSL-NT sets the DE flag."
+    ::= { sdslIfFrPerfDataEntry 47 }
+
+sdslIfFrPerfPrev1DayFeSentFrames OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of frames sent by the SDSL-NT within the
+         most recent previous 1-day period."
+    ::= { sdslIfFrPerfDataEntry 48 }
+
+sdslIfFrPerfPrev1DayFeSentOctets OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of octets sent by the SDSL-NT within the
+         most recent previous 1-day period. Octets counted
+         are the full frame relay header and the payload, but
+         do not include the flag characters or CRC."
+    ::= { sdslIfFrPerfDataEntry 49 }
+
+sdslIfFrPerfPrev1DayFeReceivedFrames OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SDSL-NT within the
+         most recent previous 1-day period."
+    ::= { sdslIfFrPerfDataEntry 50 }
+
+sdslIfFrPerfPrev1DayFeReceivedOctets OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of octets received by the SDSL-NT within the
+         most recent previous 1-day period. Octets counted
+         include the full frame relay header, but do not
+         include the flag characters or the CRC."
+    ::= { sdslIfFrPerfDataEntry 51 }
+
+sdslIfFrPerfPrev1DayFeDiscards OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of frames dropped by the SDSL-NT because
+         of format errors within the most recent previous
+         1-day period."
+    ::= { sdslIfFrPerfDataEntry 52 }
+sdslIfFrPerfIntervalTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF SdslIfFrPerfIntervalEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table provides 15-minute intervals of frame
+         relay performance data for the last 24 hours."
+    ::= { sdslIfFrPerfData 2 }
+
+sdslIfFrPerfIntervalEntry OBJECT-TYPE
+    SYNTAX         SdslIfFrPerfIntervalEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per interval and per SLMI:SDSL interface."
+    INDEX          { ifIndex, sdslIfFrPerfIntervalNumber }
+    ::= { sdslIfFrPerfIntervalTable 1 }
+
+SdslIfFrPerfIntervalEntry ::= SEQUENCE {
+    sdslIfFrPerfIntervalNumber              Integer32,
+    sdslIfFrPerfIntervalNeSentFrames        Gauge32,
+    sdslIfFrPerfIntervalNeSentOctets        Gauge32,
+    sdslIfFrPerfIntervalNeReceivedFrames    Gauge32,
+    sdslIfFrPerfIntervalNeReceivedOctets    Gauge32,
+    sdslIfFrPerfIntervalNeDiscards          Gauge32,
+    sdslIfFrPerfIntervalNeSentFECNs         Gauge32,
+    sdslIfFrPerfIntervalNeReceivedFECNs     Gauge32,
+    sdslIfFrPerfIntervalNeSentBECNs         Gauge32,
+    sdslIfFrPerfIntervalNeReceivedBECNs     Gauge32,
+    sdslIfFrPerfIntervalNeSentDEs           Gauge32,
+    sdslIfFrPerfIntervalNeReceivedDEs       Gauge32,
+    sdslIfFrPerfIntervalFeSentFrames        Gauge32,
+    sdslIfFrPerfIntervalFeSentOctets        Gauge32,
+    sdslIfFrPerfIntervalFeReceivedFrames    Gauge32,
+    sdslIfFrPerfIntervalFeReceivedOctets    Gauge32,
+    sdslIfFrPerfIntervalFeDiscards          Gauge32,
+    sdslIfFrPerfIntervalValidData           TruthValue
+}
+
+sdslIfFrPerfIntervalNumber OBJECT-TYPE
+    SYNTAX         Integer32(1..96)
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Frame Relay performance data interval number.
+         1 is the most recent interval; interval 96 is 24
+         hours ago."
+    ::= { sdslIfFrPerfIntervalEntry 1 }
+
+sdslIfFrPerfIntervalNeSentFrames OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of frames sent by the SLMI:SDSL in the
+         interval."
+    ::= { sdslIfFrPerfIntervalEntry 2 }
+
+sdslIfFrPerfIntervalNeSentOctets OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of octets sent by the SLMI:SDSL in the
+         interval. Octets counted are the full frame relay
+         header and the payload, but do not include the
+         flag characters or CRC."
+    ::= { sdslIfFrPerfIntervalEntry 3 }
+
+sdslIfFrPerfIntervalNeReceivedFrames OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL in the
+         interval."
+    ::= { sdslIfFrPerfIntervalEntry 4 }
+
+sdslIfFrPerfIntervalNeReceivedOctets OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of octets received by the SLMI:SDSL in the
+         interval. Octets counted include the full frame relay
+         header, but do not include the flag characters or
+         the CRC."
+    ::= { sdslIfFrPerfIntervalEntry 5 }
+
+sdslIfFrPerfIntervalNeDiscards OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of frames dropped by the SLMI:SDSL
+         because of format errors in the interval."
+    ::= { sdslIfFrPerfIntervalEntry 6 }
+
+sdslIfFrPerfIntervalNeSentFECNs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames sent by the SLMI:SDSL indicating
+         forward congestion in the interval. This occurs
+         when the SLMI:SDSL sets the FECN flag."
+    ::= { sdslIfFrPerfIntervalEntry 7 }
+
+sdslIfFrPerfIntervalNeReceivedFECNs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL
+         indicating forward congestion in the interval.
+         This occurs when the SDSL-NT sets the FECN flag."
+    ::= { sdslIfFrPerfIntervalEntry 8 }
+
+sdslIfFrPerfIntervalNeSentBECNs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames sent by the SLMI:SDSL indicating
+         backward congestion in the interval. This occurs
+         when the SLMI:SDSL sets the BECN flag."
+    ::= { sdslIfFrPerfIntervalEntry 9 }
+
+sdslIfFrPerfIntervalNeReceivedBECNs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL
+         indicating backward congestion in the interval.
+         This occurs when the SDSL-NT sets the BECN flag."
+    ::= { sdslIfFrPerfIntervalEntry 10 }
+
+sdslIfFrPerfIntervalNeSentDEs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames sent to the SDSL-NT indicating
+         that they were eligible for discard in the interval.
+         This occurs when the SLMI:SDSL sets the DE flag,
+         indicating that during Network congestion situations
+         those frames should be discarded in preference
+         of other frames sent without the DE bit set."
+    ::= { sdslIfFrPerfIntervalEntry 11 }
+
+sdslIfFrPerfIntervalNeReceivedDEs OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL
+         indicating that they were eligible for discard in
+         the interval. This occurs when the SDSL-NT sets
+         the DE flag."
+    ::= { sdslIfFrPerfIntervalEntry 12 }
+
+sdslIfFrPerfIntervalFeSentFrames OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of frames sent by the SDSL-NT in the
+         interval."
+    ::= { sdslIfFrPerfIntervalEntry 13 }
+
+sdslIfFrPerfIntervalFeSentOctets OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of octets sent by the SDSL-NT in the
+         interval. Octets counted are the full frame relay
+         header and the payload, but do not include the
+         flag characters or CRC."
+    ::= { sdslIfFrPerfIntervalEntry 14 }
+
+sdslIfFrPerfIntervalFeReceivedFrames OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SDSL-NT in the
+         interval."
+    ::= { sdslIfFrPerfIntervalEntry 15 }
+
+sdslIfFrPerfIntervalFeReceivedOctets  OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of octets received by the SDSL-NT in the
+         interval. Octets counted include the full frame
+         relay header, but do not include the flag characters
+         or the CRC."
+    ::= { sdslIfFrPerfIntervalEntry 16 }
+
+sdslIfFrPerfIntervalFeDiscards OBJECT-TYPE
+    SYNTAX         Gauge32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The number of frames dropped by the SDSL-NT because
+         of format errors in the interval."
+    ::= { sdslIfFrPerfIntervalEntry 17 }
+
+sdslIfFrPerfIntervalValidData OBJECT-TYPE
+    SYNTAX         TruthValue
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "This variable indicates if there is valid data for
+         this interval."
+    ::= { sdslIfFrPerfIntervalEntry 18 }
+
+
+--  sdslIfFrPerfThresh subgroup
+
+sdslIfFrPerfThreshTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF SdslIfFrPerfThreshEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table contains thresholds for performance
+         traps."
+    ::= { sdslIfFrPerfThresh 1 }
+
+sdslIfFrPerfThreshEntry OBJECT-TYPE
+    SYNTAX         SdslIfFrPerfThreshEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per SLMI:SDSL interface."
+    INDEX          { ifIndex }
+    ::= { sdslIfFrPerfThreshTable 1 }
+
+SdslIfFrPerfThreshEntry ::= SEQUENCE {
+    sdslIfFrPerfThresh15MinNeDiscards       Unsigned32,
+    sdslIfFrPerfThresh15MinNeSentFECNs      Unsigned32,
+    sdslIfFrPerfThresh15MinNeReceivedFECNs  Unsigned32,
+    sdslIfFrPerfThresh15MinNeSentBECNs      Unsigned32,
+    sdslIfFrPerfThresh15MinNeReceivedBECNs  Unsigned32,
+    sdslIfFrPerfThresh15MinFeDiscards       Unsigned32
+}
+
+sdslIfFrPerfThresh15MinNeDiscards OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "The number of frames dropped by the SLMI:SDSL
+         because of format errors within any given
+         15-minute performance data collection period,
+         which causes the SNMP agent to send a
+         'sdslIfFrPerfThresh15MinNeDiscardsTrap'.
+         Limit of one trap will be sent for one interval.
+         A value of '0' will disable the trap."
+    ::= { sdslIfFrPerfThreshEntry 1 }
+
+sdslIfFrPerfThresh15MinNeSentFECNs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "Number of frames sent by the SLMI:SDSL indicating
+         forward congestion within any given 15-minute
+         performance data collection period, which causes
+         the SNMP agent to send a
+         'sdslIfFrPerfThresh15MinNeSentFECNsTrap'.
+         This occurs when the SLMI:SDSL sets the FECN flag.
+         Limit of one trap will be sent for one interval.
+         A value of '0' will disable the trap."
+    ::= { sdslIfFrPerfThreshEntry 2 }
+
+sdslIfFrPerfThresh15MinNeReceivedFECNs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL
+         indicating forward congestion within any given
+         15-minute performance data collection period,
+         which causes the SNMP agent to send a
+         'sdslIfFrPerfThresh15MinNeReceivedFECNsTrap'.
+         This occurs when the SDSL-NT sets the FECN flag.
+         Limit of one trap will be sent for one interval.
+         A value of '0' will disable the trap."
+    ::= { sdslIfFrPerfThreshEntry 3 }
+
+sdslIfFrPerfThresh15MinNeSentBECNs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "Number of frames sent by the SLMI:SDSL indicating
+         backward congestion within any given 15-minute
+         performance data collection period, which
+         causes the SNMP agent to send a
+         'sdslIfFrPerfThresh15MinNeSentBECNsTrap'.
+         This occurs when the SLMI:SDSL sets the BECN flag.
+         Limit of one trap will be sent for one interval.
+         A value of '0' will disable the trap."
+    ::= { sdslIfFrPerfThreshEntry 4 }
+
+sdslIfFrPerfThresh15MinNeReceivedBECNs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL
+         indicating backward congestion within any given
+         15-minute performance data collection period,
+         which causes the SNMP agent to send a
+         'sdslIfFrPerfThresh15MinNeReceivedBECNsTrap'.
+         This occurs when the SDSL-NT sets the BECN flag.
+         Limit of one trap will be sent for one interval.
+         A value of '0' will disable the trap."
+    ::= { sdslIfFrPerfThreshEntry 5 }
+
+sdslIfFrPerfThresh15MinFeDiscards OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "The number of frames dropped by the SDSL-NT because
+         of format errors within any given 15-minute
+         performance data collection period, which
+         causes the SNMP agent to send a
+         'sdslIfFrPerfThresh15MinFeDiscardsTrap'.
+         Limit of one trap will be sent for any one interval.
+         A value of '0' will disable the trap."
+    ::= { sdslIfFrPerfThreshEntry 6 }
+
+
+--  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+--  Trap objects consist of following groups
+sdslLcTraps             OBJECT IDENTIFIER ::= {sdslMIBTraps 1}
+sdslLcPortTraps         OBJECT IDENTIFIER ::= {sdslMIBTraps 2}
+sdslIfL1Traps           OBJECT IDENTIFIER ::= {sdslMIBTraps 3}
+sdslIfFrameRelayTraps   OBJECT IDENTIFIER ::= {sdslMIBTraps 4}
+
+
+--  sdslLcTraps group - - - - - - - - - - - - - - - - - - - - - - - -
+
+
+--  sdslLcPortTraps group - - - - - - - - - - - - - - - - - - - - - -
+
+sdslLcPortStateTxRateChangeTrap NOTIFICATION-TYPE
+    OBJECTS        { sysName,
+                     sdslLcPortStateCurrTxRate,
+                     sdslLcPortEwsdConfNominalTxRate,
+                     sdslLcPortEwsdConfMinTxRate,
+                     sdslLcModuleAttainableRate,
+                     sdslLcPortNtAttainableRate
+                   }
+    STATUS         current
+    DESCRIPTION
+        "Actual transmission rate on SDSL line changed.
+         If the transmission rate changes to 'not available'
+         (127 resp. 0x7F) the trap is only sent if the line
+         has become unavailable due to change of EWSD OST
+         (operational state) configuration.
+         If the transmission rate changes from 'not
+         available' (127 resp. 0x7F) the trap is sent if the
+         line has become available due to change of EWSD OST
+         (operational state) configuration or if the current
+         transmission rate is different from that
+         before it changed to 'not availalbe'."
+    ::= { sdslLcPortTraps 1 }
+
+sdslLcPortNtVersionCheckTrap NOTIFICATION-TYPE
+    OBJECTS        { sysName,
+                     sdslLcPortNtVendorId,
+                     sdslLcPortNtHwVersion,
+                     sdslLcPortNtFwVersion,
+                     sdslLcPortNtSwVersion,
+                     sdslLcPortNtCompatibility
+}
+    STATUS         current
+    DESCRIPTION
+        "SDSL-NT version check is necessary.
+         This happens after reset of the SDSL-NT if it is
+         without software or if there is no entry in
+         sdslLcNtCompTable that validates the SDSL-NTs
+         vendor/hardware/firmware/software combination."
+    ::= { sdslLcPortTraps 2 }
+
+
+--  sdslIfL1Traps group - - - - - - - - - - - - - - - - - - - - - - -
+
+sdslIfL1PerfThresh15MinErrSecsTrap NOTIFICATION-TYPE
+    OBJECTS        { sysName,
+                     sdslIfL1PerfThresh15MinErrSecs
+                   }
+    STATUS         current
+    DESCRIPTION
+        "Errored Seconds 15-minute interval threshold exceeded."
+    ::= { sdslIfL1Traps 1 }
+
+sdslIfL1PerfThresh15MinSeverelyErrSecsTrap NOTIFICATION-TYPE
+    OBJECTS        { sysName,
+                     sdslIfL1PerfThresh15MinSeverelyErrSecs
+                   }
+    STATUS         current
+    DESCRIPTION
+        "Severely Errored Seconds 15-minute interval threshold
+         exceeded."
+    ::= { sdslIfL1Traps 2 }
+
+
+--  sdslIfFrameRelayTraps group - - - - - - - - - - - - - - - - - - -
+
+sdslIfFrPerfThresh15MinNeDiscardsTrap NOTIFICATION-TYPE
+    OBJECTS        { sysName,
+                     sdslIfFrPerfThresh15MinNeDiscards
+                   }
+    STATUS         current
+    DESCRIPTION
+        "The number of frames dropped by the SLMI:SDSL
+         because of format errors 15-minute interval
+         threshold exceeded."
+    ::= { sdslIfFrameRelayTraps 1 }
+
+sdslIfFrPerfThresh15MinNeSentFECNsTrap NOTIFICATION-TYPE
+    OBJECTS        { sysName,
+                     sdslIfFrPerfThresh15MinNeSentFECNs
+                   }
+    STATUS         current
+    DESCRIPTION
+        "Number of frames sent by the SLMI:SDSL indicating
+         forward congestion 15-minute interval threshold
+         exceeded. This occurs when the SLMI:SDSL sets the
+         FECN flag."
+    ::= { sdslIfFrameRelayTraps 2 }
+
+sdslIfFrPerfThresh15MinNeReceivedFECNsTrap NOTIFICATION-TYPE
+    OBJECTS        { sysName,
+                     sdslIfFrPerfThresh15MinNeReceivedFECNs
+                   }
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL
+         indicating forward congestion 15-minute interval
+         threshold exceeded. This occurs when the SDSL-NT
+         sets the FECN flag."
+    ::= { sdslIfFrameRelayTraps 3 }
+
+sdslIfFrPerfThresh15MinNeSentBECNsTrap NOTIFICATION-TYPE
+    OBJECTS        { sysName,
+                     sdslIfFrPerfThresh15MinNeSentBECNs
+                   }
+    STATUS         current
+    DESCRIPTION
+        "Number of frames sent by the SLMI:SDSL indicating
+         backward congestion 15-minute interval threshold
+         exceeded. This occurs when the SLMI:SDSL sets the
+         BECN flag."
+    ::= { sdslIfFrameRelayTraps 4 }
+
+sdslIfFrPerfThresh15MinNeReceivedBECNsTrap NOTIFICATION-TYPE
+    OBJECTS        { sysName,
+                     sdslIfFrPerfThresh15MinNeReceivedBECNs
+                   }
+    STATUS         current
+    DESCRIPTION
+        "Number of frames received by the SLMI:SDSL
+         indicating backward congestion 15-minute interval
+         threshold exceeded. This occurs when the SDSL-NT
+         sets the BECN flag."
+    ::= { sdslIfFrameRelayTraps 5 }
+
+sdslIfFrPerfThresh15MinFeDiscardsTrap NOTIFICATION-TYPE
+    OBJECTS        { sysName,
+                     sdslIfFrPerfThresh15MinFeDiscards
+                   }
+    STATUS         current
+    DESCRIPTION
+        "The number of frames dropped by the SDSL-NT because
+         of format errors 15-minute interval threshold
+         exceeded."
+    ::= { sdslIfFrameRelayTraps 6 }
+
+END
+

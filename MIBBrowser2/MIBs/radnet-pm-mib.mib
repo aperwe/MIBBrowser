@@ -1,0 +1,2490 @@
+-- @(#)rnet_pm.mib
+-- ----------------------------------------------------------------------
+-- RADNET specific performance monitoring MIB
+-- Copyright (c) 1996 RADNET Ltd.
+-- ----------------------------------------------------------------------
+--
+-- MIB Module :   RADNET-PM-MIB
+--
+-- Revision   :   V2.06
+--
+-- Description:	Management of ATM OAM PM Tests
+-- 			The management includes the following subjects:
+--				- Configuration of F4 PM tests.
+--				- Current 15 minutes F4 interval statistics
+--				- History 15 minutes F4 interval statistics
+--				- Configuration of F5 PM tests.
+--				- Current 15 minutes F5 interval statistics
+--				- History 15 minutes F5 interval statistics
+--
+-- ----------------------------------------------------------------------
+RADNET-PM-MIB DEFINITIONS ::= BEGIN
+
+   IMPORTS
+      OBJECT-TYPE, MODULE-IDENTITY,
+		Gauge32							 	FROM SNMPv2-SMI
+
+      RowStatus, TruthValue,
+		DateAndTime				      	FROM SNMPv2-TC
+			
+		ifIndex								FROM RFC1213-MIB
+
+		atmVplVpi, 
+		atmVclVpi, atmVclVci				FROM ATM-MIB					
+
+      rnetProtocolAtmOam     			FROM RADNET-PROTOCOL-ATM-MIB;
+		
+
+
+
+
+rnetProtocolAtmOamPm MODULE-IDENTITY
+                    LAST-UPDATED "9711081300Z"
+                    ORGANIZATION "RADNET"
+                    CONTACT-INFO
+                      "          Eitan Mardiks
+                        Postal:  RADNET Ltd.
+            24 Raul Wallenberg St.
+            Tel-Aviv 69719, Israel.
+                        Tel:     +972 3 6455700
+                        Fax:     +972 3 6480582
+                        E-Mail:  eitan@gate.radnet.co.il"
+
+                    DESCRIPTION
+                    " Management of ATM OAM PM Tests
+          				The management includes the following subjects:
+							 Configuration of F4 PM tests.
+							 Current 15 minutes F4 interval statistics
+							 History 15 minutes F4 interval statistics
+							 Configuration of F5 PM tests.
+							 Current 15 minutes F5 interval statistics
+							 History 15 minutes F5 interval statistics "
+                    ::= { rnetProtocolAtmOam 3 }
+
+-- --------------------------------------------------------------------------
+-- RNET OAM PERFORMANCE MONITORING
+-- --------------------------------------------------------------------------
+
+-- --------------------------------------------------------------------------
+-- General Configuration Scalars
+-- --------------------------------------------------------------------------
+
+rnetAtmOamPmMerrored	OBJECT-TYPE
+	SYNTAX	   INTEGER  (1..16)
+	MAX-ACCESS read-write
+	STATUS	   current
+	DESCRIPTION
+		"This variable contains the boundary value for declaring a performance
+		  monitoring cell block as an SECB, when the block's impairment was
+		  caused by bit errors.
+		  This variable may not be written while any PM test is active."
+	DEFVAL	{ 3 }
+	::= { rnetProtocolAtmOamPm 1 }
+
+rnetAtmOamPmMlost	OBJECT-TYPE
+	SYNTAX	   INTEGER  (0..1023)
+	MAX-ACCESS read-write
+	STATUS	   current
+	DESCRIPTION
+		"This variable contains the boundary value for declaring a performance
+		  monitoring cell block as an SECB, when the block's impairment was
+		  caused by lost cells.
+		  This variable may not be written while any PM test is active."
+	DEFVAL	{ 3 }
+	::= { rnetProtocolAtmOamPm 2 }
+
+rnetAtmOamPmMmisinserted	OBJECT-TYPE
+	SYNTAX	   INTEGER  (0..1023)
+	MAX-ACCESS read-write
+	STATUS	   current
+	DESCRIPTION
+		"This variable contains the boundary value for declaring a performance
+		  monitoring cell block as an SECB, when the block's impairment was
+		  caused by misinserted cells.
+		  This variable may not be written while any PM test is active."
+	DEFVAL	{ 2 }
+	::= { rnetProtocolAtmOamPm 3 }
+
+
+-- --------------------------------------------------------------------------
+-- The ATM OAM Performance Monitoring F4 Table
+-- --------------------------------------------------------------------------
+--
+-- The table is used to configure F4 PM tests. 
+-- In a PM test there are 2 sides: the source and the sink.
+-- Forward monitoring cells are sent from the source to the sink. Backward 
+ -- reporting cells are returned from the sink to the source. A VPL may be a sink,
+-- source, or both.
+
+-- There is a limit on the required number of simultaneous unidirectional PM tests
+-- that may be activated on the same ATM interface. An agent is required to 
+-- support at least 12 tests per DS3 or STS-1 interface, 30 tests per STS-3c
+-- interface, and 120 tests per STS-12c interface. These numbers are the total
+-- number of tests of any kind: VP, VC, segment, or end-to-end.
+
+-- Rows in this table may be created without activation of a test. However, the agent
+-- may allocate PM resources upon the creation of the row, prior to the test actual
+-- activation.
+
+-- When a row is created in this table, the agent sets the
+-- rnetProtocolAtmOamF4PmConfigured to 'true', in the corresponding
+-- VPL row.
+
+-- Activation
+-- ========
+-- To activate a test the manager should configure 2 VPLs (in 2 different ATM NEs).
+-- To run a unidirectional test, one VPL should be configured as a source,
+-- and the other as a sink. To run a bidirectional test, both VPLs should be configured
+-- as a source and a sink. Each VPL shall act as a source for one direction and 
+-- as a sink for the other.
+
+-- Before a test may be activated the rnetAtmOamPmF4MonitoredFlow must be
+-- set to determine if the test should monitor the end-to-end or segment flow.
+-- Switching between monitoring levels is only permitted while the
+-- testing / monitoring is not active.
+
+-- To configure a VPL as a source, all 3 source columns must first be set. To configure
+-- a VPL as a sink, the single sink column must be set.
+
+-- Collection
+-- =======
+-- Test data collection is a distinct function from test activation. Data
+-- may be collected at either the source, the sink or at an intermediate
+-- point in between (monitoring). 
+
+-- To collect data at the source the manager has to set
+-- rnetAtmOamPmF4SrcStatus to
+-- 'generateAndCollectFarEndReports'. In this case the backward
+-- reporting cells from the far end will be used for the collection.
+-- The collected data refers to the egress flow of the source.
+
+-- To collect data at the sink, the manager should set 
+-- rnetAtmOamPmF4SinkStatus to either 'collect' or to
+ -- 'collectAndReportBackward'. In this case, the forward monitoring
+ -- cells, together with the local information of the agent, will be used
+ -- for the collection. The collected data refers to the ingress flow.
+
+-- To collect data about both directions of the vpc, at the same end-point,
+-- the end-point must be both a data collecting sink, and a data collecting source.
+
+-- Data collection at an intermediate NE is always done by 
+-- examination (but not extracting) received backward reporting cells. The manager
+-- should set rnetAtmOamPmF4SinkStatus to 'monitor', in the VPL whose
+-- egress flow he wishes to monitor. In order to monitor both directions of a vpc, the
+-- manager should set rnetAtmOamPmF4SinkStatus to 'monitor' in the
+-- two cross connected VPLs that are used for the connection.
+
+-- Data is collected in intervals of 15 minutes.
+-- There are current and history performance data tables for both types of
+--  intervals.
+
+-- The manager may start collecting data together with test activation or
+--  after test activation.
+
+-- The collection is stopped in either of the following cases:
+-- 1. When the corresponding VPL row is deleted.
+-- 2. When the test is deleted.
+-- 3. When the test is deactivated.
+-- 4. When there is a transition from a test activation and collection state (e.g.,
+--      'collect') to a test activation state (e.g., 'reportBackward').
+
+-- In cases1 and 2, the collected data (current & history) is deleted. In cases
+-- 3 and 4 it is retained.
+
+-- Collection may be restarted.
+-- IN THAT CASE ALL COLLECTED DATA WILL BE DISCARDED
+
+
+
+
+rnetAtmOamPmF4Table	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetAtmOamPmF4Entry
+	MAX-ACCESS not-accessible
+	STATUS	   current
+	DESCRIPTION
+		"The table contains information about configured 
+  ATM OAM PM F4 tests."
+	::= { rnetProtocolAtmOamPm 4 }
+
+rnetAtmOamPmF4Entry	OBJECT-TYPE
+	SYNTAX	    RnetAtmOamPmF4Entry
+	MAX-ACCESS  not-accessible
+	STATUS	    current
+	DESCRIPTION
+		"An entry that in ATM OAM PM Table"
+	INDEX          { ifIndex,  atmVplVpi }
+	::= { rnetAtmOamPmF4Table 1 }
+
+RnetAtmOamPmF4Entry ::= SEQUENCE {
+	rnetAtmOamPmF4SrcStatus
+		INTEGER,
+	rnetAtmOamPmF4SrcBlockSize
+		INTEGER,
+	rnetAtmOamPmF4SrcMonitoringCellClp
+		INTEGER,
+	rnetAtmOamPmF4SinkStatus
+		INTEGER,
+	rnetAtmOamPmF4MonitoredFlow
+		INTEGER,
+	rnetAtmOamPmF4RowStatus
+		RowStatus
+}
+
+rnetAtmOamPmF4SrcStatus	OBJECT-TYPE
+	SYNTAX  INTEGER {
+--
+--			state / action values, may be read or written
+--
+			generate (1),
+			generateAndCollectFarEndReports (2), 
+			notActive (3)
+	}
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+"This variable is used to control the test process at the
+		  source.
+
+		  The test may be activated only if the
+	   	  rnetAtmOamPmF4MonitoredFlow column is set.
+		  Actual activation will not start while the
+		  rnetAtmOamPmF4RowStatus column is not
+		  in the 'active' state.
+
+		  Transitions from a collecting state to a non-collecting
+		  state stop the collection but retains all current and
+		  history performance data.
+
+		  Transitions from a non-collecting state to a collecting
+		  state starts the data collection. IF COLLECTION HAS
+		   BEEN ACTIVE BEFORE FOR THIS VPL, THE
+		   COLLECTION DATA IS DELETED (CURRENT
+		   AND CURRORY).
+
+		  Setting an action value is prohibited while the 				 
+		  rnetAtmOamPmF4SinkStatus is set to 'monitor'.
+
+		   'generate' : Setting this value activates the test. The VPL 
+		   is a source in the test. Forward monitoring cells are
+		   transmitted. Test data isn't collected. If the far end (the
+		   sink) is configured to send backward reports, they will be
+		   removed from the ingress data stream, but will not be
+		   processed by this VPL.
+
+		   'generateAndCollectFarEndReports': Setting this value
+		   activates the test and starts the data collection. The VPL is
+		   the source in the test. Forward monitoring cells are
+		   transmitted. Test data is collected from backward reports
+		   that should be sent from the far end (the sink).
+
+		   'notActive': Setting this value deactivates the test, and
+		   stops the data collection."
+	DEFVAL	{ notActive }
+	::= {	rnetAtmOamPmF4Entry 1 }
+
+rnetAtmOamPmF4SrcBlockSize 	OBJECT-TYPE
+	SYNTAX  INTEGER {
+			decimal128 (1),
+			decimal256 (2),
+			decimal512 (3),
+			decimal1024 (4)
+	}
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		"The average block size that will be used for the 
+		 insertion of forward monitoring cells in the egress flow.
+		  This variable may be set only when
+		  testing is not active for the source."
+	DEFVAL	{ decimal1024 }
+	::= {	rnetAtmOamPmF4Entry 2 }
+
+rnetAtmOamPmF4SrcMonitoringCellClp	OBJECT-TYPE
+	SYNTAX  INTEGER {
+			high (1),
+			low (2)
+	}
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		"The CLP of the forward monitoring cells.
+		  This variable may be set only when
+		  testing is not active for the source."
+	DEFVAL	{ high }
+	::= {	rnetAtmOamPmF4Entry 3 }
+
+rnetAtmOamPmF4SinkStatus	OBJECT-TYPE
+	SYNTAX  INTEGER {
+--
+--			state / action values, may be read or written
+--
+			reportBackward (1),
+			collect (2),
+			collectAndReportBackward (3), 
+			monitor (4),
+			notActive (5)
+	}
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		   "This variable is used to control the test process at the
+		    sink.
+		   
+		  The test may be activated only if
+	   	  rnetAtmOamPmF4MonitoredFlow column is set.
+		  Actual activation will not start while the
+		  rnetAtmOamPmF4RowStatus column is not
+		  in the 'active' state.
+
+	 	  Transitions from a collecting state to a non-collecting
+		  state stops the collection but retains all current and
+		  history performance data.
+
+  		  Transitions from a non-collecting state to a collecting
+		  state starts the data collection. IF COLLECTION HAS
+		   BEEN ACTIVE BEFORE FOR THIS VPL, THE
+		   COLLECTION DATA IS DELETED (CURRENT
+		   AND CURRORY).
+
+		   'reportBackward' : Setting this value activates the test.
+		   The VPL is the sink in the test. Forward monitoring cells 
+		   are received, processed, and reports are sent back to the 
+		   source via backward reporting cells. Test data isn't 
+		  collected.
+
+		   'collect: Setting this value activates the test and starts the
+		   data collection. The VPL is the sink in the test. Forward
+		   monitoring cells are received and processed. No
+		   backward reporting cells are transmitted. Test data is
+		   collected from the data in the forward monitoring cells
+		   and from local data.
+
+		   'collectAndReportBackward' : Setting this value activates 
+		   the test and starts the data collection. The VPL is the sink in 
+		   the test. Forward monitoring cells are received, processed, 
+		   and reports are sent back to the source via backward 
+		   reporting cells. Test data is collected from the data in
+		   the forward monitoring cells and from local data.
+
+		   'monitor' : Setting this value activates data collection
+		   by examination of backward reporting cells. The cells
+		   are not extracted from the data flow. Setting this value
+		   is allowed only if the VPL isn't currently participating
+		   in a test (either as a sink or as a source).
+
+		   'notActive': Setting this value deactivates the test, and
+		   stops the data collection (if activated)."
+	DEFVAL	{ notActive }
+	::= {	rnetAtmOamPmF4Entry 4 }
+
+rnetAtmOamPmF4MonitoredFlow	OBJECT-TYPE
+	SYNTAX  INTEGER {
+			segment (1),
+			endToEnd (2)
+	}
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		"Indicated the level at which the monitoring is performed.
+		  Before a test may be activated this column must be
+		  set.
+		  End-to-end monitoring may be performed only for
+		  End-to-end terminating VPLs.
+		  Segment monitoring may be performed for terminating
+		  VPLs (they are always segment terminators), or for
+		  non-terminating VPLs that are configured as segment
+		  terminators.
+		  Switching between monitoring levels is only permitted
+		  while the testing / monitoring is not active."
+	::= {	rnetAtmOamPmF4Entry 5 }
+
+rnetAtmOamPmF4RowStatus	OBJECT-TYPE
+	SYNTAX	   RowStatus 
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		"This object is used to create, delete or modify a row in this table.
+		  To create a new row, this object is initially set to
+		  'createAndWait' or 'createAndGo'."
+	DEFVAL	{ active }
+		::= {	rnetAtmOamPmF4Entry 6 }
+
+
+
+-- The ATM OAM PM F4 Current 15 minutes Table
+
+rnetAtmOamPmF4Curr15Table	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetAtmOamPmF4Curr15Entry
+	MAX-ACCESS not-accessible
+	STATUS	   current
+	DESCRIPTION
+		"The ATM OAM PM F4 Curr 15 table contains various statistics
+		  being collected for the current 15 minute interval."
+	::= { rnetProtocolAtmOamPm 5 }
+
+rnetAtmOamPmF4Curr15Entry	OBJECT-TYPE
+	SYNTAX	 RnetAtmOamPmF4Curr15Entry
+	MAX-ACCESS  not-accessible
+	STATUS	    current
+	DESCRIPTION
+		"An entry in the ATM OAM PM F4 Curr 15 Table"
+	INDEX	{ ifIndex,  atmVplVpi }
+	::= { rnetAtmOamPmF4Curr15Table 1 }
+
+
+RnetAtmOamPmF4Curr15Entry ::= SEQUENCE {
+	rnetAtmOamPmF4Curr15TimeElapsed
+		INTEGER,
+	rnetAtmOamPmF4Curr15InCollected
+		TruthValue,
+	rnetAtmOamPmF4Curr15InTimeOfCollection
+		INTEGER,
+	rnetAtmOamPmF4Curr15InSecb
+		Gauge32,
+	rnetAtmOamPmF4Curr15InErroredCells
+		Gauge32,
+	rnetAtmOamPmF4Curr15InLostCells
+		Gauge32,
+	rnetAtmOamPmF4Curr15InLost0Cells
+		Gauge32,
+	rnetAtmOamPmF4Curr15InMisinsertedCells
+		Gauge32,
+	rnetAtmOamPmF4Curr15InTxCells
+		Gauge32,
+	rnetAtmOamPmF4Curr15InTx0Cells
+		Gauge32,
+	rnetAtmOamPmF4Curr15InImpairedBlocks
+		Gauge32,
+	rnetAtmOamPmF4Curr15InTotalLostCells
+		Gauge32,
+	rnetAtmOamPmF4Curr15InTotalLost0Cells
+		Gauge32,
+	rnetAtmOamPmF4Curr15InSecbErrored
+		Gauge32,
+	rnetAtmOamPmF4Curr15InSecbMisinserted
+		Gauge32,
+	rnetAtmOamPmF4Curr15InImpairedWithLossMis
+		Gauge32,
+	rnetAtmOamPmF4Curr15OutCollected
+		TruthValue,
+	rnetAtmOamPmF4Curr15OutTimeOfCollection
+		INTEGER,
+	rnetAtmOamPmF4Curr15OutSecb
+		Gauge32,
+	rnetAtmOamPmF4Curr15OutErroredCells
+		Gauge32,
+	rnetAtmOamPmF4Curr15OutLostCells
+		Gauge32,
+	rnetAtmOamPmF4Curr15OutLost0Cells
+		Gauge32,
+	rnetAtmOamPmF4Curr15OutMisinsertedCells
+		Gauge32,
+	rnetAtmOamPmF4Curr15OutTxCells
+		Gauge32,
+	rnetAtmOamPmF4Curr15OutTx0Cells
+		Gauge32,
+	rnetAtmOamPmF4Curr15OutImpairedBlocks
+		Gauge32,
+	rnetAtmOamPmF4Curr15OutTotalLostCells
+		Gauge32,
+	rnetAtmOamPmF4Curr15OutTotalLost0Cells
+		Gauge32,
+	rnetAtmOamPmF4Curr15OutSecbErrored
+		Gauge32,
+	rnetAtmOamPmF4Curr15OutSecbMisinserted
+		Gauge32,
+	rnetAtmOamPmF4Curr15OutImpairedWithLossMis
+		Gauge32
+}
+
+rnetAtmOamPmF4Curr15TimeElapsed OBJECT-TYPE
+	SYNTAX  INTEGER (0..899)
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of seconds that have elapsed since
+		  the beginning of the current measurement period."
+	::= { rnetAtmOamPmF4Curr15Entry 1 }
+
+rnetAtmOamPmF4Curr15InCollected OBJECT-TYPE
+	SYNTAX  TruthValue
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"If true, statistics were collected for the ingress direction ."
+	::=  { rnetAtmOamPmF4Curr15Entry 2 }
+
+rnetAtmOamPmF4Curr15InTimeOfCollection OBJECT-TYPE
+	SYNTAX  INTEGER (0..899)
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		" The number of seconds, since the beginning of
+		  the current measurement period, during which
+		  collection was performed for the source. This time 
+		  may be smaller than the elapsed time. The reason 
+		  may be physical failure, collection that starts in the
+		  middle of the interval, etc."
+	::=  { rnetAtmOamPmF4Curr15Entry 3 }
+
+rnetAtmOamPmF4Curr15InSecb OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of Severely Errored Cell Blocks in the ingress flow.
+		  This counter is incremented by one, if BIPV is defined and
+		  BIPV > rnetAtmOamPmMerrored, or if
+		  TUCD 0+1 < 0 and |TUCD 0+1| > rnetAtmOamPmMlost, or if 
+		  TUCD 0+1 > 0 and 
+		  TUCD 0+1 > rnetAtmOamPmMmisinserted."
+	::=  { rnetAtmOamPmF4Curr15Entry 4 }
+
+rnetAtmOamPmF4Curr15InErroredCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of errored cells in the ingress flow.
+		  This counter is incremented by BIPV, if BIPV is defined,
+		  > 0, and  <= rnetAtmOamPmMerrored."
+	::=  { rnetAtmOamPmF4Curr15Entry 5 }
+
+rnetAtmOamPmF4Curr15InLostCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of lost cells (regardless of their CLP) in the ingress flow.
+		  The counter measures background cell loss. The total number of lost
+		  cells is measured by rnetAtmOamPmF4Curr15InTotalLostCells.
+		  This counter is incremented by |TUCD 0+1|, if TUCD 0+1 < 0, and
+		  |TUCD 0+1| <= rnetAtmOamPmMlost"
+	::=  { rnetAtmOamPmF4Curr15Entry 6 }
+
+rnetAtmOamPmF4Curr15InLost0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of lost cells, with CLP = 0, in the ingress flow.
+		  The counter measures background cell loss of cells, with CLP = 0. The 
+		  total number of lost cells, with CLP = 0, is measured by
+		  rnetAtmOamPmF4Curr15InTotalLost0Cells.
+		  This counter is incremented by min(|TUCD 0+1|, |TUCD 0|), if
+		  TUCD0 < 0, and
+		  min(|TUCD 0+1|, |TUCD 0|) <= rnetAtmOamPmMlost."
+	::=  { rnetAtmOamPmF4Curr15Entry 7 }
+
+rnetAtmOamPmF4Curr15InMisinsertedCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of misinserted cells (regardless of their CLP) in the
+ 		  ingress flow.
+		  This counter is incremented by TUCD 0+1, if TUCD 0+1 > 0, and
+		  TUCD 0+1 <= rnetAtmOamPmMmisinserted."
+	::=  { rnetAtmOamPmF4Curr15Entry 8 }
+
+rnetAtmOamPmF4Curr15InTxCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of transmitted cells (regardless of their CLP)
+		  in the ingress flow.
+		  This counter is incremented by the difference of the TUC 0+1 values
+		  of the 2 most recent forward monitoring cells."
+	::=  { rnetAtmOamPmF4Curr15Entry 9 }
+
+rnetAtmOamPmF4Curr15InTx0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of transmitted cells, with CLP = 0, in the ingress flow.
+		  This counter is incremented by the difference of the TUC 0 values
+		  of the 2 most recent forward monitoring cells"
+	::=  { rnetAtmOamPmF4Curr15Entry 10 }
+
+rnetAtmOamPmF4Curr15InImpairedBlocks OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of blocks containing at least one errored cells,
+		  lost cell, or misinserted cell.
+		  This counter is incremented by one, if BIPV != 0, or TUCD 0+1 != 0."
+	::=  { rnetAtmOamPmF4Curr15Entry 11 }
+
+rnetAtmOamPmF4Curr15InTotalLostCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The total number of lost cells (regardless of their CLP) in the
+		  ingress flow. This count includes the background cell loss
+		  measured by rnetAtmOamPmF4Curr15InLostCells.
+		  The counter is incremented by |TUCD 0+1|, if TUCD 0+1 < 0."
+	::=  { rnetAtmOamPmF4Curr15Entry 12 }
+
+rnetAtmOamPmF4Curr15InTotalLost0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The total number of lost cells, with CLP = 0, in the
+		  ingress flow. This count includes the background cell loss, of cells
+		  with CLP = 0, measured by 
+		  rnetAtmOamPmF4Curr15InLost0Cells.
+		  The counter is incremented by min(|TUCD 0+1|, |TUCD 0|), if
+		  TUCD0 < 0."
+	::=  { rnetAtmOamPmF4Curr15Entry 13 }
+
+rnetAtmOamPmF4Curr15InSecbErrored OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of SECB due to bit errors.
+		  The counter is incremented by one
+		  if BIPV > rnetAtmOamPmMerrored."
+	::=  { rnetAtmOamPmF4Curr15Entry 14 }
+
+rnetAtmOamPmF4Curr15InSecbMisinserted OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of SECB due to misinserted cells.
+		  The counter is incremented by one
+		  if TUCD 0+1 > rnetAtmOamPmMmisinserted"
+	::=  { rnetAtmOamPmF4Curr15Entry 15 }
+
+rnetAtmOamPmF4Curr15InImpairedWithLossMis OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of blocks containing at least one lost cell,
+		  or misinserted cell.
+		  This counter is incremented by one if |TUCD 0+1 | > 0."
+	::=  { rnetAtmOamPmF4Curr15Entry 16 }
+
+rnetAtmOamPmF4Curr15OutCollected OBJECT-TYPE
+	SYNTAX  TruthValue
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"If true, statistics were collected for the egress direction ."
+	::=  { rnetAtmOamPmF4Curr15Entry 17 }
+
+rnetAtmOamPmF4Curr15OutTimeOfCollection OBJECT-TYPE
+	SYNTAX  INTEGER (0..899)
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		" The number of seconds, since the beginning of
+		  the current measurement period, during which
+		  collection was performed for the sink. This time
+		  may be smaller than the elapsed time. The reason 
+		  may be physical failure, collection that starts in the
+		  middle of the interval, etc."
+	::=  { rnetAtmOamPmF4Curr15Entry 18 }
+
+rnetAtmOamPmF4Curr15OutSecb OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of Severely Errored Cell Blocks in the egress flow.
+		  This counter is incremented by one, if BLER is defined and
+		  BLER > rnetAtmOamPmMerrored, or if
+		  TUCD 0+1 < 0 and |TUCD 0+1| > rnetAtmOamPmMlost, or if 
+		  TUCD 0+1 > 0 and 
+		  TUCD 0+1 > rnetAtmOamPmMmisinserted."
+	::=  { rnetAtmOamPmF4Curr15Entry 19 }
+
+rnetAtmOamPmF4Curr15OutErroredCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of errored cells in the egress flow.
+		  This counter is incremented by BLER, if BLER is defined,
+		  > 0, and  <= rnetAtmOamPmMerrored."
+	::=  { rnetAtmOamPmF4Curr15Entry 20 }
+
+rnetAtmOamPmF4Curr15OutLostCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of lost cells (regardless of their CLP) in the egress flow.
+		  The counter measures background cell loss. The total number of lost
+		  cells is measured by  rnetAtmOamPmF4Curr15OutTotalLostCells.
+		  This counter is incremented by |TUCD 0+1|, if TUCD 0+1 < 0, and
+		  |TUCD 0+1| <= rnetAtmOamPmMlost"
+	::=  { rnetAtmOamPmF4Curr15Entry 21 }
+
+rnetAtmOamPmF4Curr15OutLost0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of lost cells, with CLP = 0, in the egress flow.
+		  The counter measures background cell loss of cells, with CLP = 0.
+		  The total number of lost cells, with CLP = 0, is measured by
+		  rnetAtmOamPmF4Curr15OutTotalLost0Cells.
+		  This counter is incremented by min(|TUCD 0+1|, |TUCD 0|), if
+		  TUCD0 < 0, and
+		  min(|TUCD 0+1|, |TUCD 0|) <= rnetAtmOamPmMlost."
+	::=  { rnetAtmOamPmF4Curr15Entry 22 }
+
+rnetAtmOamPmF4Curr15OutMisinsertedCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of misinserted cells (regardless of their CLP) in
+		  the egress flow.
+		  This counter is incremented by TUCD 0+1, if TUCD 0+1 > 0, and
+		  TUCD 0+1 <= rnetAtmOamPmMmisinserted."
+	::=  { rnetAtmOamPmF4Curr15Entry 23 }
+
+rnetAtmOamPmF4Curr15OutTxCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of transmitted cells (regardless of their CLP) in
+		  the egress flow.
+		  If the VPL is the originator of PM cells, the counter is incremented
+		  by the number of cells the the ATM NE transmits on that VPL.
+		  If the VPL is a monitor point, , the counter is incremented
+		  by the difference of the TUC 0+1 values of the 2 most recent 
+		  backward reporting cells."
+	::=  { rnetAtmOamPmF4Curr15Entry 24 }
+
+rnetAtmOamPmF4Curr15OutTx0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of transmitted cells, with CLP = 0, in the egress flow.
+		 This counter is incremented by the difference of the TUC 0 values
+		  of the 2 most recent forward monitoring cells"
+	::=  { rnetAtmOamPmF4Curr15Entry 25 }
+
+rnetAtmOamPmF4Curr15OutImpairedBlocks OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of blocks containing at least one errored cells, lost cell,
+		  or misinserted cell.
+		  This counter is incremented by one, if BLER != 0,
+		  or TUCD 0+1 != 0."
+	::=  { rnetAtmOamPmF4Curr15Entry 26 }
+
+rnetAtmOamPmF4Curr15OutTotalLostCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The total number of lost cells (regardless of their CLP) in the
+		  egress flow. This count includes the background cell loss
+		  measured by rnetAtmOamPmF4Curr15OutLostCells.
+		  The counter is incremented by |TUCD 0+1|, if TUCD 0+1 < 0."
+	::=  { rnetAtmOamPmF4Curr15Entry 27 }
+
+rnetAtmOamPmF4Curr15OutTotalLost0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The total number of lost cells, with CLP = 0, in the
+		  egress flow. This count includes the background cell loss, of cells
+		  with CLP = 0, measured by 
+		  rnetAtmOamPmF4Curr15OutLost0Cells.
+		  The counter is incremented by min(|TUCD 0+1|, |TUCD 0|), if
+		  TUCD0 < 0."
+	::=  { rnetAtmOamPmF4Curr15Entry 28 }
+
+rnetAtmOamPmF4Curr15OutSecbErrored OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of SECB due to bit errors.
+		  The counter is incremented by one
+		  if BLER > rnetAtmOamPmMerrored."
+	::=  { rnetAtmOamPmF4Curr15Entry 29 }
+
+rnetAtmOamPmF4Curr15OutSecbMisinserted OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of SECB due to misinserted cells.
+		  The counter is incremented by one
+		  if TUCD 0+1 > rnetAtmOamPmMmisinserted"
+	::=  { rnetAtmOamPmF4Curr15Entry 30 }
+
+rnetAtmOamPmF4Curr15OutImpairedWithLossMis OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of blocks containing at least one lost cell,
+		  or misinserted cell.
+		  This counter is incremented by one if |TUCD 0+1 | > 0."
+	::=  { rnetAtmOamPmF4Curr15Entry 31 }
+
+-- The ATM OAM PM F4 15 minutes intervals Table
+
+-- The table contains various statistics collected by each system
+-- over a maximum of the previous 24 hours of operation.
+-- The past 24 hours may be broken into 96 completed 15 minute
+-- intervals.
+-- A system is required to store at least 32 completed 15 minute
+-- interval.
+
+rnetAtmOamPmF4Hist15Table	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetAtmOamPmF4Hist15Entry
+	MAX-ACCESS not-accessible
+	STATUS	   current
+	DESCRIPTION
+		"The ATM OAM PM F4 Hist15 table.
+		  This table maintains per-VPL statistics for previous
+             	  fifteen-minute intervals."
+	::= { rnetProtocolAtmOamPm 6 }
+
+rnetAtmOamPmF4Hist15Entry	OBJECT-TYPE
+	SYNTAX	 RnetAtmOamPmF4Hist15Entry
+	MAX-ACCESS  not-accessible
+	STATUS	    current
+	DESCRIPTION
+		"An entry in the ATM OAM PM F4 Hist 15 Table.
+		  Each VPL that had PM test data collected for it, automatically 
+		  has an entry in this table associated with it, for each
+	              fifteen-minute interval in which statistics were collected."
+	INDEX	{ ifIndex,  atmVplVpi, rnetAtmOamPmF4Hist15Index }
+	::= { rnetAtmOamPmF4Hist15Table 1 }
+
+
+RnetAtmOamPmF4Hist15Entry ::= SEQUENCE {
+	rnetAtmOamPmF4Hist15Index
+		INTEGER,
+	rnetAtmOamPmF4Hist15EndTime
+		DateAndTime,
+	rnetAtmOamPmF4Hist15InCollected
+		TruthValue,
+	rnetAtmOamPmF4Hist15InTimeOfCollection
+		INTEGER,
+	rnetAtmOamPmF4Hist15InSecb
+		Gauge32,
+	rnetAtmOamPmF4Hist15InErroredCells
+		Gauge32,
+	rnetAtmOamPmF4Hist15InLostCells
+		Gauge32,
+	rnetAtmOamPmF4Hist15InLost0Cells
+		Gauge32,
+	rnetAtmOamPmF4Hist15InMisinsertedCells
+		Gauge32,
+	rnetAtmOamPmF4Hist15InTxCells
+		Gauge32,
+	rnetAtmOamPmF4Hist15InTx0Cells
+		Gauge32,
+	rnetAtmOamPmF4Hist15InImpairedBlocks
+		Gauge32,
+	rnetAtmOamPmF4Hist15InTotalLostCells
+		Gauge32,
+	rnetAtmOamPmF4Hist15InTotalLost0Cells
+		Gauge32,
+	rnetAtmOamPmF4Hist15InSecbErrored
+		Gauge32,
+	rnetAtmOamPmF4Hist15InSecbMisinserted
+		Gauge32,
+	rnetAtmOamPmF4Hist15InImpairedWithLossMis
+		Gauge32,
+	rnetAtmOamPmF4Hist15OutCollected
+		TruthValue,
+	rnetAtmOamPmF4Hist15OutTimeOfCollection
+		INTEGER,
+	rnetAtmOamPmF4Hist15OutSecb
+		Gauge32,
+	rnetAtmOamPmF4Hist15OutErroredCells
+		Gauge32,
+	rnetAtmOamPmF4Hist15OutLostCells
+		Gauge32,
+	rnetAtmOamPmF4Hist15OutLost0Cells
+		Gauge32,
+	rnetAtmOamPmF4Hist15OutMisinsertedCells
+		Gauge32,
+	rnetAtmOamPmF4Hist15OutTxCells
+		Gauge32,
+	rnetAtmOamPmF4Hist15OutTx0Cells
+		Gauge32,
+	rnetAtmOamPmF4Hist15OutImpairedBlocks
+		Gauge32,
+	rnetAtmOamPmF4Hist15OutTotalLostCells
+		Gauge32,
+	rnetAtmOamPmF4Hist15OutTotalLost0Cells
+		Gauge32,
+	rnetAtmOamPmF4Hist15OutSecbErrored
+		Gauge32,
+	rnetAtmOamPmF4Hist15OutSecbMisinserted
+		Gauge32,
+	rnetAtmOamPmF4Hist15OutImpairedWithLossMis
+		Gauge32
+}
+
+rnetAtmOamPmF4Hist15Index OBJECT-TYPE
+        SYNTAX    INTEGER (1..96)
+        MAX-ACCESS     not-accessible
+        STATUS    current
+        DESCRIPTION
+             "A number between 1 and 96, which identifies the interval
+             for which the set of statistics in this entry was collected.
+             The interval identified by 1 is the most recently completed
+             24 minute interval, and the interval identified by N is the
+             interval immediately preceding the one identified by N-1."
+        ::= { rnetAtmOamPmF4Hist15Entry 1 }
+
+rnetAtmOamPmF4Hist15EndTime OBJECT-TYPE
+	SYNTAX  DateAndTime
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The date and time when this interval ended."
+	::=  { rnetAtmOamPmF4Hist15Entry 2 }
+
+rnetAtmOamPmF4Hist15InCollected OBJECT-TYPE
+	SYNTAX  TruthValue
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"If true, statistics were collected for the ingress direction ."
+	::=  { rnetAtmOamPmF4Hist15Entry 3 }
+
+rnetAtmOamPmF4Hist15InTimeOfCollection OBJECT-TYPE
+	SYNTAX  INTEGER (0..899)
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		" The number of seconds, since the beginning of
+		  the current measurement period, during which
+		  collection was performed for the source. This time
+		  may be smaller than 15 minutes. The reason 
+		  may be physical failure, collection that starts in the
+		  middle of the interval, etc."
+	::=  { rnetAtmOamPmF4Hist15Entry 4 }
+
+rnetAtmOamPmF4Hist15InSecb OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of Severely Errored Cell Blocks in the ingress flow.
+		  This counter is incremented by one, if BIPV is defined and
+		  BIPV > rnetAtmOamPmMerrored, or if
+		  TUCD 0+1 < 0 and |TUCD 0+1| > rnetAtmOamPmMlost, or if 
+		  TUCD 0+1 > 0 and 
+		  TUCD 0+1 > rnetAtmOamPmMmisinserted."
+	::=  { rnetAtmOamPmF4Hist15Entry 5 }
+
+rnetAtmOamPmF4Hist15InErroredCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of errored cells in the ingress flow.
+		  This counter is incremented by BIPV, if BIPV is defined,
+		  > 0, and  <= rnetAtmOamPmMerrored."
+	::=  { rnetAtmOamPmF4Hist15Entry 6 }
+
+rnetAtmOamPmF4Hist15InLostCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of lost cells (regardless of their CLP) in the ingress flow.
+		  The counter measures background cell loss. The total number of lost
+		  cells is measured by rnetAtmOamPmF4Hist15InTotalLostCells.
+		  This counter is incremented by |TUCD 0+1|, if TUCD 0+1 < 0, and
+		  |TUCD 0+1| <= rnetAtmOamPmMlost"
+	::=  { rnetAtmOamPmF4Hist15Entry 7 }
+
+rnetAtmOamPmF4Hist15InLost0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of lost cells, with CLP = 0, in the ingress flow.
+		  The counter measures background cell loss of cells, with CLP = 0. The 
+		  total number of lost cells, with CLP = 0, is measured by
+		  rnetAtmOamPmF4Hist15InTotalLost0Cells.
+		  This counter is incremented by min(|TUCD 0+1|, |TUCD 0|), if
+		  TUCD0 < 0, and
+		  min(|TUCD 0+1|, |TUCD 0|) <= rnetAtmOamPmMlost."
+	::=  { rnetAtmOamPmF4Hist15Entry 8 }
+
+rnetAtmOamPmF4Hist15InMisinsertedCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of misinserted cells (regardless of their CLP) in the
+ 		  ingress flow.
+		  This counter is incremented by TUCD 0+1, if TUCD 0+1 > 0, and
+		  TUCD 0+1 <= rnetAtmOamPmMmisinserted."
+	::=  { rnetAtmOamPmF4Hist15Entry 9 }
+
+rnetAtmOamPmF4Hist15InTxCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of transmitted cells (regardless of their CLP)
+		  in the ingress flow.
+		  This counter is incremented by the difference of the TUC 0+1 values
+		  of the 2 most recent forward monitoring cells."
+	::=  { rnetAtmOamPmF4Hist15Entry 10 }
+
+rnetAtmOamPmF4Hist15InTx0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of transmitted cells, with CLP = 0, in the ingress flow.
+		  This counter is incremented by the difference of the TUC 0 values
+		  of the 2 most recent forward monitoring cells"
+	::=  { rnetAtmOamPmF4Hist15Entry 11 }
+
+rnetAtmOamPmF4Hist15InImpairedBlocks OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of blocks containing at least one errored cells,
+		  lost cell, or misinserted cell.
+		  This counter is incremented by one, if BIPV != 0, or TUCD 0+1 != 0."
+	::=  { rnetAtmOamPmF4Hist15Entry 12 }
+
+rnetAtmOamPmF4Hist15InTotalLostCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The total number of lost cells (regardless of their CLP) in the
+		  ingress flow. This count includes the background cell loss
+		  measured by rnetAtmOamPmF4Hist15InLostCells.
+		  The counter is incremented by |TUCD 0+1|, if TUCD 0+1 < 0."
+	::=  { rnetAtmOamPmF4Hist15Entry 13 }
+
+rnetAtmOamPmF4Hist15InTotalLost0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The total number of lost cells, with CLP = 0, in the
+		  ingress flow. This count includes the background cell loss, of cells
+		  with CLP = 0, measured by 
+		  rnetAtmOamPmF4Hist15InLost0Cells.
+		  The counter is incremented by min(|TUCD 0+1|, |TUCD 0|), if
+		  TUCD0 < 0."
+	::=  { rnetAtmOamPmF4Hist15Entry 14 }
+
+rnetAtmOamPmF4Hist15InSecbErrored OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of SECB due to bit errors.
+		  The counter is incremented by one
+		  if BIPV > rnetAtmOamPmMerrored."
+	::=  { rnetAtmOamPmF4Hist15Entry 15 }
+
+rnetAtmOamPmF4Hist15InSecbMisinserted OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of SECB due to misinserted cells.
+		  The counter is incremented by one
+		  if TUCD 0+1 > rnetAtmOamPmMmisinserted"
+	::=  { rnetAtmOamPmF4Hist15Entry 16 }
+
+rnetAtmOamPmF4Hist15InImpairedWithLossMis OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of blocks containing at least one lost cell,
+		  or misinserted cell.
+		  This counter is incremented by one if |TUCD 0+1 | > 0."
+	::=  { rnetAtmOamPmF4Hist15Entry 17 }
+
+rnetAtmOamPmF4Hist15OutCollected OBJECT-TYPE
+	SYNTAX  TruthValue
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"If true, statistics were collected for the egress direction ."
+	::=  { rnetAtmOamPmF4Hist15Entry 18 }
+
+rnetAtmOamPmF4Hist15OutTimeOfCollection OBJECT-TYPE
+	SYNTAX  INTEGER (0..899)
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		" The number of seconds, since the beginning of
+		  the current measurement period, during which
+		  collection was performed for the sink. This time
+		  may be smaller than 15 minutes. The reason 
+		  may be physical failure, collection that starts in the
+		  middle of the interval, etc."
+	::=  { rnetAtmOamPmF4Hist15Entry 19 }
+
+rnetAtmOamPmF4Hist15OutSecb OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of Severely Errored Cell Blocks in the egress flow.
+		  This counter is incremented by one, if BLER is defined and
+		  BLER > rnetAtmOamPmMerrored, or if
+		  TUCD 0+1 < 0 and |TUCD 0+1| > rnetAtmOamPmMlost, or if 
+		  TUCD 0+1 > 0 and 
+		  TUCD 0+1 > rnetAtmOamPmMmisinserted."
+	::=  { rnetAtmOamPmF4Hist15Entry 20 }
+
+rnetAtmOamPmF4Hist15OutErroredCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of errored cells in the egress flow.
+		  This counter is incremented by BLER, if BLER is defined,
+		  > 0, and  <= rnetAtmOamPmMerrored."
+	::=  { rnetAtmOamPmF4Hist15Entry 21 }
+
+rnetAtmOamPmF4Hist15OutLostCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of lost cells (regardless of their CLP) in the egress flow.
+		  The counter measures background cell loss. The total number of lost
+		  cells is measured by  rnetAtmOamPmF4Hist15OutTotalLostCells.
+		  This counter is incremented by |TUCD 0+1|, if TUCD 0+1 < 0, and
+		  |TUCD 0+1| <= rnetAtmOamPmMlost"
+	::=  { rnetAtmOamPmF4Hist15Entry 22 }
+
+rnetAtmOamPmF4Hist15OutLost0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of lost cells, with CLP = 0, in the egress flow.
+		  The counter measures background cell loss of cells, with CLP = 0.
+		  The total number of lost cells, with CLP = 0, is measured by
+		  rnetAtmOamPmF4Hist15OutTotalLost0Cells.
+		  This counter is incremented by min(|TUCD 0+1|, |TUCD 0|), if
+		  TUCD0 < 0, and
+		  min(|TUCD 0+1|, |TUCD 0|) <= rnetAtmOamPmMlost."
+	::=  { rnetAtmOamPmF4Hist15Entry 23 }
+
+rnetAtmOamPmF4Hist15OutMisinsertedCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of misinserted cells (regardless of their CLP) in
+		  the egress flow.
+		  This counter is incremented by TUCD 0+1, if TUCD 0+1 > 0, and
+		  TUCD 0+1 <= rnetAtmOamPmMmisinserted."
+	::=  { rnetAtmOamPmF4Hist15Entry 24 }
+
+rnetAtmOamPmF4Hist15OutTxCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of transmitted cells (regardless of their CLP) in
+		  the egress flow.
+		  If the VPL is the originator of PM cells, the counter is incremented
+		  by the number of cells the the ATM NE transmits on that VPL.
+		  If the VPL is a monitor point, , the counter is incremented
+		  by the difference of the TUC 0+1 values of the 2 most recent 
+		  backward reporting cells."
+	::=  { rnetAtmOamPmF4Hist15Entry 25 }
+
+rnetAtmOamPmF4Hist15OutTx0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of transmitted cells, with CLP = 0, in the egress flow.
+		 This counter is incremented by the difference of the TUC 0 values
+		  of the 2 most recent forward monitoring cells"
+	::=  { rnetAtmOamPmF4Hist15Entry 26 }
+
+rnetAtmOamPmF4Hist15OutImpairedBlocks OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of blocks containing at least one errored cells, lost cell,
+		  or misinserted cell.
+		  This counter is incremented by one, if BLER != 0,
+		  or TUCD 0+1 != 0."
+	::=  { rnetAtmOamPmF4Hist15Entry 27 }
+
+rnetAtmOamPmF4Hist15OutTotalLostCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The total number of lost cells (regardless of their CLP) in the
+		  egress flow. This count includes the background cell loss
+		  measured by rnetAtmOamPmF4Hist15OutLostCells.
+		  The counter is incremented by |TUCD 0+1|, if TUCD 0+1 < 0."
+	::=  { rnetAtmOamPmF4Hist15Entry 28 }
+
+rnetAtmOamPmF4Hist15OutTotalLost0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The total number of lost cells, with CLP = 0, in the
+		  egress flow. This count includes the background cell loss, of cells
+		  with CLP = 0, measured by 
+		  rnetAtmOamPmF4Hist15OutLost0Cells.
+		  The counter is incremented by min(|TUCD 0+1|, |TUCD 0|), if
+		  TUCD0 < 0."
+	::=  { rnetAtmOamPmF4Hist15Entry 29 }
+
+rnetAtmOamPmF4Hist15OutSecbErrored OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of SECB due to bit errors.
+		  The counter is incremented by one
+		  if BLER > rnetAtmOamPmMerrored."
+	::=  { rnetAtmOamPmF4Hist15Entry 30 }
+
+rnetAtmOamPmF4Hist15OutSecbMisinserted OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of SECB due to misinserted cells.
+		  The counter is incremented by one
+		  if TUCD 0+1 > rnetAtmOamPmMmisinserted"
+	::=  { rnetAtmOamPmF4Hist15Entry 31 }
+
+rnetAtmOamPmF4Hist15OutImpairedWithLossMis OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of blocks containing at least one lost cell,
+		  or misinserted cell.
+		  This counter is incremented by one if |TUCD 0+1 | > 0."
+	::=  { rnetAtmOamPmF4Hist15Entry 32 }
+
+
+
+
+-- The ATM OAM Performance Monitoring F5 Table
+--
+-- The table is used to configure F5 PM tests. 
+-- In a PM test there are 2 sides: the source and the sink.
+-- Forward monitoring cells are sent from the source to the sink. Backward 
+ -- reporting cells are returned from the sink to the source. A VCL may be a sink,
+-- source, or both.
+
+-- There is a limit on the required number of simultaneous unidirectional PM tests
+-- that may be activated on the same ATM interface. An agent is required to 
+-- support at least 12 tests per DS3 or STS-1 interface, 30 tests per STS-3c
+-- interface, and 120 tests per STS-12c interface. These numbers are the total
+-- number of tests of any kind: VP, VC, segment, or end-to-end.
+
+-- Rows in this table may be created without activation of a test. However, the agent
+-- may allocate PM resources upon the creation of the row, prior to the test actual
+-- activation.
+
+-- When a row is created in this table, the agent sets the
+-- rnetProtocolAtmOamF5PmConfigured to 'true', in the corresponding
+-- VCL row.
+
+-- Activation
+-- ========
+-- To activate a test the manager should configure 2 VCLs (in 2 different ATM NEs).
+-- To run a unidirectional test, one VCL should be configured as a source,
+-- and the other as a sink. To run a bidirectional test, both VCLs should be configured
+-- as a source and a sink. Each VCL shall act as a source for one direction and 
+-- as a sink for the other.
+
+-- Before a test may be activated the rnetAtmOamPmF5MonitoredFlow must be
+-- set to determine if the test should monitor the end-to-end or segment flow.
+-- Switching between monitoring levels is only permitted while the
+-- testing / monitoring is not active.
+
+-- To configure a VCL as a source, all 3 source columns must first be set. To configure
+-- a VCL as a sink, the single sink column must be set.
+
+-- Collection
+-- =======
+-- Test data collection is a distinct function from test activation. Data
+-- may be collected at either the source, the sink or at an intermediate
+-- point in between (monitoring). 
+
+-- To collect data at the source the manager has to set
+-- rnetAtmOamPmF5SrcStatus to
+-- 'generateAndCollectFarEndReports'. In this case the backward
+-- reporting cells from the far end will be used for the collection.
+-- The collected data refers to the egress flow of the source.
+
+-- To collect data at the sink, the manager should set 
+-- rnetAtmOamPmF5SinkStatus to either 'collect' or to
+ -- 'collectAndReportBackward'. In this case, the forward monitoring
+ -- cells, together with the local information of the agent, will be used
+ -- for the collection. The collected data refers to the ingress flow.
+
+-- To collect data about both directions of the vpc, at the same end-point,
+-- the end-point must be both a data collecting sink, and a data collecting source.
+
+-- Data collection at an intermediate NE is always done by 
+-- examination (but not extracting) received backward reporting cells. The manager
+-- should set rnetAtmOamPmF5SinkStatus to 'monitor', in the VCL whose
+-- egress flow he wishes to monitor. In order to monitor both directions of a vpc, the
+-- manager should set rnetAtmOamPmF5SinkStatus to 'monitor' in the
+-- two cross connected VCLs that are used for the connection.
+
+-- Data is collected in intervals of 15 minutes.
+-- There are current and history performance data tables for both types of
+--  intervals.
+
+-- The manager may start collecting data together with test activation or
+--  after test activation.
+
+-- The collection is stopped in either of the following cases:
+-- 1. When the corresponding VCL row is deleted.
+-- 2. When the test is deleted.
+-- 3. When the test is deactivated.
+-- 4. When there is a transition from a test activation and collection state (e.g.,
+--      'collect') to a test activation state (e.g., 'reportBackward').
+
+-- In cases1 and 2, the collected data (current & history) is deleted. In cases
+-- 3 and 4 it is retained.
+
+-- Collection may be restarted.
+-- IN THAT CASE ALL COLLECTED DATA WILL BE DISCARDED
+
+rnetAtmOamPmF5Table	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetAtmOamPmF5Entry
+	MAX-ACCESS not-accessible
+	STATUS	   current
+	DESCRIPTION
+		"The table contains information about configured 
+  ATM OAM PM F5 tests."
+	::= { rnetProtocolAtmOamPm 7 }
+
+rnetAtmOamPmF5Entry	OBJECT-TYPE
+	SYNTAX	    RnetAtmOamPmF5Entry
+	MAX-ACCESS  not-accessible
+	STATUS	    current
+	DESCRIPTION
+		"An entry that in ATM OAM PM Table"
+	INDEX          { ifIndex,  atmVclVpi, atmVclVci }
+	::= { rnetAtmOamPmF5Table 1 }
+
+RnetAtmOamPmF5Entry ::= SEQUENCE {
+	rnetAtmOamPmF5SrcStatus
+		INTEGER,
+	rnetAtmOamPmF5SrcBlockSize
+		INTEGER,
+	rnetAtmOamPmF5SrcMonitoringCellClp
+		INTEGER,
+	rnetAtmOamPmF5SinkStatus
+		INTEGER,
+	rnetAtmOamPmF5MonitoredFlow
+		INTEGER,
+	rnetAtmOamPmF5RowStatus
+		RowStatus
+}
+
+rnetAtmOamPmF5SrcStatus	OBJECT-TYPE
+	SYNTAX  INTEGER {
+--
+--			state / action values, may be read or written
+--
+			generate (1),
+			generateAndCollectFarEndReports (2), 
+			notActive (3)
+	}
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+"This variable is used to control the test process at the
+		  source.
+
+		  The test may be activated only if the
+	   	  rnetAtmOamPmF5MonitoredFlow column is set.
+		  Actual activation will not start while the
+		  rnetAtmOamPmF5RowStatus column is not
+		  in the 'active' state.
+
+		  Transitions from a collecting state to a non-collecting
+		  state stop the collection but retains all current and
+		  history performance data.
+
+		  Transitions from a non-collecting state to a collecting
+		  state starts the data collection. IF COLLECTION HAS
+		   BEEN ACTIVE BEFORE FOR THIS VCL, THE
+		   COLLECTION DATA IS DELETED (CURRENT
+		   AND CURRORY).
+
+		  Setting an action value is prohibited while the 				 
+		  rnetAtmOamPmF5SinkStatus is set to 'monitor'.
+
+		   'generate' : Setting this value activates the test. The VCL 
+		   is a source in the test. Forward monitoring cells are
+		   transmitted. Test data isn't collected. If the far end (the
+		   sink) is configured to send backward reports, they will be
+		   removed from the ingress data stream, but will not be
+		   processed by this VCL.
+
+		   'generateAndCollectFarEndReports': Setting this value
+		   activates the test and starts the data collection. The VCL is
+		   the source in the test. Forward monitoring cells are
+		   transmitted. Test data is collected from backward reports
+		   that should be sent from the far end (the sink).
+
+		   'notActive': Setting this value deactivates the test, and
+		   stops the data collection."
+	DEFVAL	{ notActive }
+	::= {	rnetAtmOamPmF5Entry 1 }
+
+rnetAtmOamPmF5SrcBlockSize 	OBJECT-TYPE
+	SYNTAX  INTEGER {
+			decimal128 (1),
+			decimal256 (2),
+			decimal512 (3),
+			decimal1024 (4)
+	}
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		"The average block size that will be used for the 
+		 insertion of forward monitoring cells in the egress flow.
+		  This variable may be set only when
+		  testing is not active for the source."
+	DEFVAL	{ decimal1024 }
+	::= {	rnetAtmOamPmF5Entry 2 }
+
+rnetAtmOamPmF5SrcMonitoringCellClp	OBJECT-TYPE
+	SYNTAX  INTEGER {
+			high (1),
+			low (2)
+	}
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		"The CLP of the forward monitoring cells.
+		  This variable may be set only when
+		  testing is not active for the source."
+	DEFVAL	{ high }
+	::= {	rnetAtmOamPmF5Entry 3 }
+
+rnetAtmOamPmF5SinkStatus	OBJECT-TYPE
+	SYNTAX  INTEGER {
+--
+--			state / action values, may be read or written
+--
+			reportBackward (1),
+			collect (2),
+			collectAndReportBackward (3), 
+			monitor (4),
+			notActive (5)
+	}
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		   "This variable is used to control the test process at the
+		    sink.
+		   
+		  The test may be activated only if
+	   	  rnetAtmOamPmF5MonitoredFlow column is set.
+		  Actual activation will not start while the
+		  rnetAtmOamPmF5RowStatus column is not
+		  in the 'active' state.
+
+	 	  Transitions from a collecting state to a non-collecting
+		  state stops the collection but retains all current and
+		  history performance data.
+
+  		  Transitions from a non-collecting state to a collecting
+		  state starts the data collection. IF COLLECTION HAS
+		   BEEN ACTIVE BEFORE FOR THIS VCL, THE
+		   COLLECTION DATA IS DELETED (CURRENT
+		   AND CURRORY).
+
+		   'reportBackward' : Setting this value activates the test.
+		   The VCL is the sink in the test. Forward monitoring cells 
+		   are received, processed, and reports are sent back to the 
+		   source via backward reporting cells. Test data isn't 
+		  collected.
+
+		   'collect: Setting this value activates the test and starts the
+		   data collection. The VCL is the sink in the test. Forward
+		   monitoring cells are received and processed. No
+		   backward reporting cells are transmitted. Test data is
+		   collected from the data in the forward monitoring cells
+		   and from local data.
+
+		   'collectAndReportBackward' : Setting this value activates 
+		   the test and starts the data collection. The VCL is the sink in 
+		   the test. Forward monitoring cells are received, processed, 
+		   and reports are sent back to the source via backward 
+		   reporting cells. Test data is collected from the data in
+		   the forward monitoring cells and from local data.
+
+		   'monitor' : Setting this value activates data collection
+		   by examination of backward reporting cells. The cells
+		   are not extracted from the data flow. Setting this value
+		   is allowed only if the VCL isn't currently participating
+		   in a test (either as a sink or as a source).
+
+		   'notActive': Setting this value deactivates the test, and
+		   stops the data collection (if activated)."
+	DEFVAL	{ notActive }
+	::= {	rnetAtmOamPmF5Entry 4 }
+
+rnetAtmOamPmF5MonitoredFlow	OBJECT-TYPE
+	SYNTAX  INTEGER {
+			segment (1),
+			endToEnd (2)
+	}
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		"Indicated the level at which the monitoring is performed.
+		  Before a test may be activated this column must be
+		  set.
+		  End-to-end monitoring may be performed only for
+		  End-to-end terminating VCLs.
+		  Segment monitoring may be performed for terminating
+		  VCLs (they are always segment terminators), or for
+		  non-terminating VCLs that are configured as segment
+		  terminators.
+		  Switching between monitoring levels is only permitted
+		  while the testing / monitoring is not active."
+	::= {	rnetAtmOamPmF5Entry 5 }
+
+rnetAtmOamPmF5RowStatus	OBJECT-TYPE
+	SYNTAX	   RowStatus 
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		"This object is used to create, delete or modify a row in this table.
+		  To create a new row, this object is initially set to
+		  'createAndWait' or 'createAndGo'."
+	DEFVAL	{ active }
+	::= {	rnetAtmOamPmF5Entry 6 }
+
+-- The ATM OAM PM F5 Current 15 minutes Table
+--
+rnetAtmOamPmF5Curr15Table	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetAtmOamPmF5Curr15Entry
+	MAX-ACCESS not-accessible
+	STATUS	   current
+	DESCRIPTION
+		"The ATM OAM PM F5 Current 15 table contains various statistics
+		  being collected for the current 15 minute interval."
+	::= { rnetProtocolAtmOamPm 8 }
+
+rnetAtmOamPmF5Curr15Entry	OBJECT-TYPE
+	SYNTAX	 RnetAtmOamPmF5Curr15Entry
+	MAX-ACCESS  not-accessible
+	STATUS	    current
+	DESCRIPTION
+		"An entry in the ATM OAM PM F5 Curr 15 Table"
+	INDEX	{ ifIndex,  atmVclVpi, atmVclVci }
+	::= { rnetAtmOamPmF5Curr15Table 1 }
+
+
+RnetAtmOamPmF5Curr15Entry ::= SEQUENCE {
+	rnetAtmOamPmF5Curr15TimeElapsed
+		INTEGER,
+	rnetAtmOamPmF5Curr15InCollected
+		TruthValue,
+	rnetAtmOamPmF5Curr15InTimeOfCollection
+		INTEGER,
+	rnetAtmOamPmF5Curr15InSecb
+		Gauge32,
+	rnetAtmOamPmF5Curr15InErroredCells
+		Gauge32,
+	rnetAtmOamPmF5Curr15InLostCells
+		Gauge32,
+	rnetAtmOamPmF5Curr15InLost0Cells
+		Gauge32,
+	rnetAtmOamPmF5Curr15InMisinsertedCells
+		Gauge32,
+	rnetAtmOamPmF5Curr15InTxCells
+		Gauge32,
+	rnetAtmOamPmF5Curr15InTx0Cells
+		Gauge32,
+	rnetAtmOamPmF5Curr15InImpairedBlocks
+		Gauge32,
+	rnetAtmOamPmF5Curr15InTotalLostCells
+		Gauge32,
+	rnetAtmOamPmF5Curr15InTotalLost0Cells
+		Gauge32,
+	rnetAtmOamPmF5Curr15InSecbErrored
+		Gauge32,
+	rnetAtmOamPmF5Curr15InSecbMisinserted
+		Gauge32,
+	rnetAtmOamPmF5Curr15InImpairedWithLossMis
+		Gauge32,
+	rnetAtmOamPmF5Curr15OutCollected
+		TruthValue,
+	rnetAtmOamPmF5Curr15OutTimeOfCollection
+		INTEGER,
+	rnetAtmOamPmF5Curr15OutSecb
+		Gauge32,
+	rnetAtmOamPmF5Curr15OutErroredCells
+		Gauge32,
+	rnetAtmOamPmF5Curr15OutLostCells
+		Gauge32,
+	rnetAtmOamPmF5Curr15OutLost0Cells
+		Gauge32,
+	rnetAtmOamPmF5Curr15OutMisinsertedCells
+		Gauge32,
+	rnetAtmOamPmF5Curr15OutTxCells
+		Gauge32,
+	rnetAtmOamPmF5Curr15OutTx0Cells
+		Gauge32,
+	rnetAtmOamPmF5Curr15OutImpairedBlocks
+		Gauge32,
+	rnetAtmOamPmF5Curr15OutTotalLostCells
+		Gauge32,
+	rnetAtmOamPmF5Curr15OutTotalLost0Cells
+		Gauge32,
+	rnetAtmOamPmF5Curr15OutSecbErrored
+		Gauge32,
+	rnetAtmOamPmF5Curr15OutSecbMisinserted
+		Gauge32,
+	rnetAtmOamPmF5Curr15OutImpairedWithLossMis
+		Gauge32
+}
+
+rnetAtmOamPmF5Curr15TimeElapsed OBJECT-TYPE
+	SYNTAX  INTEGER (0..899)
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of seconds that have elapsed since
+		  the beginning of the current measurement period."
+	::= { rnetAtmOamPmF5Curr15Entry 1 }
+
+rnetAtmOamPmF5Curr15InCollected OBJECT-TYPE
+	SYNTAX  TruthValue
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"If true, statistics were collected for the ingress direction ."
+	::=  { rnetAtmOamPmF5Curr15Entry 2 }
+
+rnetAtmOamPmF5Curr15InTimeOfCollection OBJECT-TYPE
+	SYNTAX  INTEGER (0..899)
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		" The number of seconds, since the beginning of
+		  the current measurement period, during which
+		  collection was performed for the source. This time 
+		  may be smaller than the elapsed time. The reason 
+		  may be physical failure, collection that starts in the
+		  middle of the interval, etc."
+	::=  { rnetAtmOamPmF5Curr15Entry 3 }
+
+rnetAtmOamPmF5Curr15InSecb OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of Severely Errored Cell Blocks in the ingress flow.
+		  This counter is incremented by one, if BIPV is defined and
+		  BIPV > rnetAtmOamPmMerrored, or if
+		  TUCD 0+1 < 0 and |TUCD 0+1| > rnetAtmOamPmMlost, or if 
+		  TUCD 0+1 > 0 and 
+		  TUCD 0+1 > rnetAtmOamPmMmisinserted."
+	::=  { rnetAtmOamPmF5Curr15Entry 4 }
+
+rnetAtmOamPmF5Curr15InErroredCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of errored cells in the ingress flow.
+  		This counter is incremented by BIPV, if BIPV is defined,
+		  > 0, and  <= rnetAtmOamPmMerrored."
+	::=  { rnetAtmOamPmF5Curr15Entry 5 }
+
+rnetAtmOamPmF5Curr15InLostCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of lost cells (regardless of their CLP) in the ingress flow.
+		  The counter measures background cell loss. The total number of lost
+		  cells is measured by rnetAtmOamPmF5Curr15InTotalLostCells.
+		  This counter is incremented by |TUCD 0+1|, if TUCD 0+1 < 0, and
+		  |TUCD 0+1| <= rnetAtmOamPmMlost"
+	::=  { rnetAtmOamPmF5Curr15Entry 6 }
+
+rnetAtmOamPmF5Curr15InLost0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of lost cells, with CLP = 0, in the ingress flow.
+		  The counter measures background cell loss of cells, with CLP = 0. The 
+		  total number of lost cells, with CLP = 0, is measured by
+		  rnetAtmOamPmF5Curr15InTotalLost0Cells.
+		  This counter is incremented by min(|TUCD 0+1|, |TUCD 0|), if
+		  TUCD0 < 0, and
+		  min(|TUCD 0+1|, |TUCD 0|) <= rnetAtmOamPmMlost."
+	::=  { rnetAtmOamPmF5Curr15Entry 7 }
+
+rnetAtmOamPmF5Curr15InMisinsertedCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of misinserted cells (regardless of their CLP) in the
+ 		  ingress flow.
+		  This counter is incremented by TUCD 0+1, if TUCD 0+1 > 0, and
+		  TUCD 0+1 <= rnetAtmOamPmMmisinserted."
+	::=  { rnetAtmOamPmF5Curr15Entry 8 }
+
+rnetAtmOamPmF5Curr15InTxCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of transmitted cells (regardless of their CLP)
+		  in the ingress flow.
+		  This counter is incremented by the difference of the TUC 0+1 values
+		  of the 2 most recent forward monitoring cells."
+	::=  { rnetAtmOamPmF5Curr15Entry 9 }
+
+rnetAtmOamPmF5Curr15InTx0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of transmitted cells, with CLP = 0, in the ingress flow.
+		  This counter is incremented by the difference of the TUC 0 values
+		  of the 2 most recent forward monitoring cells"
+	::=  { rnetAtmOamPmF5Curr15Entry 10 }
+
+rnetAtmOamPmF5Curr15InImpairedBlocks OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of blocks containing at least one errored cells,
+		  lost cell, or misinserted cell.
+		  This counter is incremented by one, if BIPV != 0, or TUCD 0+1 != 0."
+	::=  { rnetAtmOamPmF5Curr15Entry 11 }
+
+rnetAtmOamPmF5Curr15InTotalLostCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The total number of lost cells (regardless of their CLP) in the
+		  ingress flow. This count includes the background cell loss
+		  measured by rnetAtmOamPmF5Curr15InLostCells.
+		  The counter is incremented by |TUCD 0+1|, if TUCD 0+1 < 0."
+	::=  { rnetAtmOamPmF5Curr15Entry 12 }
+
+rnetAtmOamPmF5Curr15InTotalLost0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The total number of lost cells, with CLP = 0, in the
+		  ingress flow. This count includes the background cell loss, of cells
+		  with CLP = 0, measured by 
+		  rnetAtmOamPmF5Curr15InLost0Cells.
+		  The counter is incremented by min(|TUCD 0+1|, |TUCD 0|), if
+		  TUCD0 < 0."
+	::=  { rnetAtmOamPmF5Curr15Entry 13 }
+
+rnetAtmOamPmF5Curr15InSecbErrored OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of SECB due to bit errors.
+		  The counter is incremented by one
+		  if BIPV > rnetAtmOamPmMerrored."
+	::=  { rnetAtmOamPmF5Curr15Entry 14 }
+
+rnetAtmOamPmF5Curr15InSecbMisinserted OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of SECB due to misinserted cells.
+		  The counter is incremented by one
+		  if TUCD 0+1 > rnetAtmOamPmMmisinserted"
+	::=  { rnetAtmOamPmF5Curr15Entry 15 }
+
+rnetAtmOamPmF5Curr15InImpairedWithLossMis OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of blocks containing at least one lost cell,
+		  or misinserted cell.
+		  This counter is incremented by one if |TUCD 0+1 | > 0."
+	::=  { rnetAtmOamPmF5Curr15Entry 16 }
+
+rnetAtmOamPmF5Curr15OutCollected OBJECT-TYPE
+	SYNTAX  TruthValue
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"If true, statistics were collected for the egress direction ."
+	::=  { rnetAtmOamPmF5Curr15Entry 17 }
+
+rnetAtmOamPmF5Curr15OutTimeOfCollection OBJECT-TYPE
+	SYNTAX  INTEGER (0..899)
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		" The number of seconds, since the beginning of
+		  the current measurement period, during which
+		  collection was performed for the sink. This time
+		  may be smaller than the elapsed time. The reason 
+		  may be physical failure, collection that starts in the
+		  middle of the interval, etc."
+	::=  { rnetAtmOamPmF5Curr15Entry 18 }
+
+rnetAtmOamPmF5Curr15OutSecb OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of Severely Errored Cell Blocks in the egress flow.
+		  This counter is incremented by one, if BLER is defined and
+		  BLER > rnetAtmOamPmMerrored, or if
+		  TUCD 0+1 < 0 and |TUCD 0+1| > rnetAtmOamPmMlost, or if 
+		  TUCD 0+1 > 0 and 
+		  TUCD 0+1 > rnetAtmOamPmMmisinserted."
+	::=  { rnetAtmOamPmF5Curr15Entry 19 }
+
+rnetAtmOamPmF5Curr15OutErroredCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of errored cells in the egress flow.
+		  This counter is incremented by BLER, if BLER is defined,
+		  > 0, and  <= rnetAtmOamPmMerrored."
+	::=  { rnetAtmOamPmF5Curr15Entry 20 }
+
+rnetAtmOamPmF5Curr15OutLostCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of lost cells (regardless of their CLP) in the egress flow.
+		  The counter measures background cell loss. The total number of lost
+		  cells is measured by  rnetAtmOamPmF5Curr15OutTotalLostCells.
+		  This counter is incremented by |TUCD 0+1|, if TUCD 0+1 < 0, and
+		  |TUCD 0+1| <= rnetAtmOamPmMlost"
+	::=  { rnetAtmOamPmF5Curr15Entry 21 }
+
+rnetAtmOamPmF5Curr15OutLost0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of lost cells, with CLP = 0, in the egress flow.
+		  The counter measures background cell loss of cells, with CLP = 0.
+		  The total number of lost cells, with CLP = 0, is measured by
+		  rnetAtmOamPmF5Curr15OutTotalLost0Cells.
+		  This counter is incremented by min(|TUCD 0+1|, |TUCD 0|), if
+		  TUCD0 < 0, and
+		  min(|TUCD 0+1|, |TUCD 0|) <= rnetAtmOamPmMlost."
+	::=  { rnetAtmOamPmF5Curr15Entry 22 }
+
+rnetAtmOamPmF5Curr15OutMisinsertedCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of misinserted cells (regardless of their CLP) in
+		  the egress flow.
+		  This counter is incremented by TUCD 0+1, if TUCD 0+1 > 0, and
+		  TUCD 0+1 <= rnetAtmOamPmMmisinserted."
+	::=  { rnetAtmOamPmF5Curr15Entry 23 }
+
+rnetAtmOamPmF5Curr15OutTxCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of transmitted cells (regardless of their CLP) in
+		  the egress flow.
+		  If the VCL is the originator of PM cells, the counter is incremented
+		  by the number of cells the the ATM NE transmits on that VCL.
+		  If the VCL is a monitor point, , the counter is incremented
+		  by the difference of the TUC 0+1 values of the 2 most recent 
+		  backward reporting cells."
+	::=  { rnetAtmOamPmF5Curr15Entry 24 }
+
+rnetAtmOamPmF5Curr15OutTx0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of transmitted cells, with CLP = 0, in the egress flow.
+		 This counter is incremented by the difference of the TUC 0 values
+		  of the 2 most recent forward monitoring cells"
+	::=  { rnetAtmOamPmF5Curr15Entry 25 }
+
+rnetAtmOamPmF5Curr15OutImpairedBlocks OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of blocks containing at least one errored cells, lost cell,
+		  or misinserted cell.
+		  This counter is incremented by one, if BLER != 0,
+		  or TUCD 0+1 != 0."
+	::=  { rnetAtmOamPmF5Curr15Entry 26 }
+
+rnetAtmOamPmF5Curr15OutTotalLostCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The total number of lost cells (regardless of their CLP) in the
+		  egress flow. This count includes the background cell loss
+		  measured by rnetAtmOamPmF5Curr15OutLostCells.
+		  The counter is incremented by |TUCD 0+1|, if TUCD 0+1 < 0."
+	::=  { rnetAtmOamPmF5Curr15Entry 27 }
+
+rnetAtmOamPmF5Curr15OutTotalLost0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The total number of lost cells, with CLP = 0, in the
+		  egress flow. This count includes the background cell loss, of cells
+		  with CLP = 0, measured by 
+		  rnetAtmOamPmF5Curr15OutLost0Cells.
+		  The counter is incremented by min(|TUCD 0+1|, |TUCD 0|), if
+		  TUCD0 < 0."
+	::=  { rnetAtmOamPmF5Curr15Entry 28 }
+
+rnetAtmOamPmF5Curr15OutSecbErrored OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of SECB due to bit errors.
+		  The counter is incremented by one
+		  if BLER > rnetAtmOamPmMerrored."
+	::=  { rnetAtmOamPmF5Curr15Entry 29 }
+
+rnetAtmOamPmF5Curr15OutSecbMisinserted OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of SECB due to misinserted cells.
+		  The counter is incremented by one
+		  if TUCD 0+1 > rnetAtmOamPmMmisinserted"
+	::=  { rnetAtmOamPmF5Curr15Entry 30 }
+
+rnetAtmOamPmF5Curr15OutImpairedWithLossMis OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of blocks containing at least one lost cell,
+		  or misinserted cell.
+		  This counter is incremented by one if |TUCD 0+1 | > 0."
+	::=  { rnetAtmOamPmF5Curr15Entry 31 }
+
+
+
+-- The ATM OAM PM F5 15 minutes intervals Table
+
+-- The table contains various statistics collected by each system
+-- over a maximum of the previous 24 hours of operation.
+-- The past 24 hours may be broken into 96 completed 15 minute
+-- intervals.
+-- A system is required to store at least 32 completed 15 minute
+-- interval.
+
+rnetAtmOamPmF5Hist15Table	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetAtmOamPmF5Hist15Entry
+	MAX-ACCESS not-accessible
+	STATUS	   current
+	DESCRIPTION
+		"The ATM OAM PM F5 Hist15 table.
+		  This table maintains per-VCL statistics for previous
+             	  fifteen-minute intervals."
+	::= { rnetProtocolAtmOamPm 9 }
+
+rnetAtmOamPmF5Hist15Entry	OBJECT-TYPE
+	SYNTAX	 RnetAtmOamPmF5Hist15Entry
+	MAX-ACCESS  not-accessible
+	STATUS	    current
+	DESCRIPTION
+		"An entry in the ATM OAM PM F5 Hist 15 Table.
+		  Each VCL that had PM test data collected for it, automatically 
+		  has an entry in this table associated with it, for each
+	              fifteen-minute interval in which statistics were collected."
+	INDEX	{ ifIndex,  atmVclVpi, atmVclVci, rnetAtmOamPmF5Hist15Index }
+	::= { rnetAtmOamPmF5Hist15Table 1 }
+
+
+RnetAtmOamPmF5Hist15Entry ::= SEQUENCE {
+	rnetAtmOamPmF5Hist15Index
+		INTEGER,
+	rnetAtmOamPmF5Hist15EndTime
+		DateAndTime,
+	rnetAtmOamPmF5Hist15InCollected
+		TruthValue,
+	rnetAtmOamPmF5Hist15InTimeOfCollection
+		INTEGER,
+	rnetAtmOamPmF5Hist15InSecb
+		Gauge32,
+	rnetAtmOamPmF5Hist15InErroredCells
+		Gauge32,
+	rnetAtmOamPmF5Hist15InLostCells
+		Gauge32,
+	rnetAtmOamPmF5Hist15InLost0Cells
+		Gauge32,
+	rnetAtmOamPmF5Hist15InMisinsertedCells
+		Gauge32,
+	rnetAtmOamPmF5Hist15InTxCells
+		Gauge32,
+	rnetAtmOamPmF5Hist15InTx0Cells
+		Gauge32,
+	rnetAtmOamPmF5Hist15InImpairedBlocks
+		Gauge32,
+	rnetAtmOamPmF5Hist15InTotalLostCells
+		Gauge32,
+	rnetAtmOamPmF5Hist15InTotalLost0Cells
+		Gauge32,
+	rnetAtmOamPmF5Hist15InSecbErrored
+		Gauge32,
+	rnetAtmOamPmF5Hist15InSecbMisinserted
+		Gauge32,
+	rnetAtmOamPmF5Hist15InImpairedWithLossMis
+		Gauge32,
+	rnetAtmOamPmF5Hist15OutCollected
+		TruthValue,
+	rnetAtmOamPmF5Hist15OutTimeOfCollection
+		INTEGER,
+	rnetAtmOamPmF5Hist15OutSecb
+		Gauge32,
+	rnetAtmOamPmF5Hist15OutErroredCells
+		Gauge32,
+	rnetAtmOamPmF5Hist15OutLostCells
+		Gauge32,
+	rnetAtmOamPmF5Hist15OutLost0Cells
+		Gauge32,
+	rnetAtmOamPmF5Hist15OutMisinsertedCells
+		Gauge32,
+	rnetAtmOamPmF5Hist15OutTxCells
+		Gauge32,
+	rnetAtmOamPmF5Hist15OutTx0Cells
+		Gauge32,
+	rnetAtmOamPmF5Hist15OutImpairedBlocks
+		Gauge32,
+	rnetAtmOamPmF5Hist15OutTotalLostCells
+		Gauge32,
+	rnetAtmOamPmF5Hist15OutTotalLost0Cells
+		Gauge32,
+	rnetAtmOamPmF5Hist15OutSecbErrored
+		Gauge32,
+	rnetAtmOamPmF5Hist15OutSecbMisinserted
+		Gauge32,
+	rnetAtmOamPmF5Hist15OutImpairedWithLossMis
+		Gauge32
+}
+
+rnetAtmOamPmF5Hist15Index OBJECT-TYPE
+        SYNTAX    INTEGER (1..96)
+        MAX-ACCESS     not-accessible
+        STATUS    current
+        DESCRIPTION
+             "A number between 1 and 96, which identifies the interval
+             for which the set of statistics in this entry was collected.
+             The interval identified by 1 is the most recently completed
+             24 minute interval, and the interval identified by N is the
+             interval immediately preceding the one identified by N-1."
+        ::= { rnetAtmOamPmF5Hist15Entry 1 }
+
+rnetAtmOamPmF5Hist15EndTime OBJECT-TYPE
+	SYNTAX  DateAndTime
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The date and time when this interval ended."
+	::=  { rnetAtmOamPmF5Hist15Entry 2 }
+
+rnetAtmOamPmF5Hist15InCollected OBJECT-TYPE
+	SYNTAX  TruthValue
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"If true, statistics were collected for the ingress direction ."
+	::=  { rnetAtmOamPmF5Hist15Entry 3 }
+
+rnetAtmOamPmF5Hist15InTimeOfCollection OBJECT-TYPE
+	SYNTAX  INTEGER (0..899)
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		" The number of seconds, since the beginning of
+		  the current measurement period, during which
+		  collection was performed for the source. This time
+		  may be smaller than 15 minutes. The reason 
+		  may be physical failure, collection that starts in the
+		  middle of the interval, etc."
+	::=  { rnetAtmOamPmF5Hist15Entry 4 }
+
+rnetAtmOamPmF5Hist15InSecb OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of Severely Errored Cell Blocks in the ingress flow.
+		  This counter is incremented by one, if BIPV is defined and
+		  BIPV > rnetAtmOamPmMerrored, or if
+		  TUCD 0+1 < 0 and |TUCD 0+1| > rnetAtmOamPmMlost, or if 
+		  TUCD 0+1 > 0 and 
+		  TUCD 0+1 > rnetAtmOamPmMmisinserted."
+	::=  { rnetAtmOamPmF5Hist15Entry 5 }
+
+rnetAtmOamPmF5Hist15InErroredCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of errored cells in the ingress flow.
+		  This counter is incremented by BIPV, if BIPV is defined,
+		  > 0, and  <= rnetAtmOamPmMerrored."
+	::=  { rnetAtmOamPmF5Hist15Entry 6 }
+
+rnetAtmOamPmF5Hist15InLostCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of lost cells (regardless of their CLP) in the ingress flow.
+		  The counter measures background cell loss. The total number of lost
+		  cells is measured by rnetAtmOamPmF5Hist15InTotalLostCells.
+		  This counter is incremented by |TUCD 0+1|, if TUCD 0+1 < 0, and
+		  |TUCD 0+1| <= rnetAtmOamPmMlost"
+	::=  { rnetAtmOamPmF5Hist15Entry 7 }
+
+rnetAtmOamPmF5Hist15InLost0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of lost cells, with CLP = 0, in the ingress flow.
+		  The counter measures background cell loss of cells, with CLP = 0. The 
+		  total number of lost cells, with CLP = 0, is measured by
+		  rnetAtmOamPmF5Hist15InTotalLost0Cells.
+		  This counter is incremented by min(|TUCD 0+1|, |TUCD 0|), if
+		  TUCD0 < 0, and
+		  min(|TUCD 0+1|, |TUCD 0|) <= rnetAtmOamPmMlost."
+	::=  { rnetAtmOamPmF5Hist15Entry 8 }
+
+rnetAtmOamPmF5Hist15InMisinsertedCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of misinserted cells (regardless of their CLP) in the
+ 		  ingress flow.
+		  This counter is incremented by TUCD 0+1, if TUCD 0+1 > 0, and
+		  TUCD 0+1 <= rnetAtmOamPmMmisinserted."
+	::=  { rnetAtmOamPmF5Hist15Entry 9 }
+
+rnetAtmOamPmF5Hist15InTxCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of transmitted cells (regardless of their CLP)
+		  in the ingress flow.
+		  This counter is incremented by the difference of the TUC 0+1 values
+		  of the 2 most recent forward monitoring cells."
+	::=  { rnetAtmOamPmF5Hist15Entry 10 }
+
+rnetAtmOamPmF5Hist15InTx0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of transmitted cells, with CLP = 0, in the ingress flow.
+		  This counter is incremented by the difference of the TUC 0 values
+		  of the 2 most recent forward monitoring cells"
+	::=  { rnetAtmOamPmF5Hist15Entry 11 }
+
+rnetAtmOamPmF5Hist15InImpairedBlocks OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of blocks containing at least one errored cells,
+		  lost cell, or misinserted cell.
+		  This counter is incremented by one, if BIPV != 0, or TUCD 0+1 != 0."
+	::=  { rnetAtmOamPmF5Hist15Entry 12 }
+
+rnetAtmOamPmF5Hist15InTotalLostCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The total number of lost cells (regardless of their CLP) in the
+		  ingress flow. This count includes the background cell loss
+		  measured by rnetAtmOamPmF5Hist15InLostCells.
+		  The counter is incremented by |TUCD 0+1|, if TUCD 0+1 < 0."
+	::=  { rnetAtmOamPmF5Hist15Entry 13 }
+
+rnetAtmOamPmF5Hist15InTotalLost0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The total number of lost cells, with CLP = 0, in the
+		  ingress flow. This count includes the background cell loss, of cells
+		  with CLP = 0, measured by 
+		  rnetAtmOamPmF5Hist15InLost0Cells.
+		  The counter is incremented by min(|TUCD 0+1|, |TUCD 0|), if
+		  TUCD0 < 0."
+	::=  { rnetAtmOamPmF5Hist15Entry 14 }
+
+rnetAtmOamPmF5Hist15InSecbErrored OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of SECB due to bit errors.
+		  The counter is incremented by one
+		  if BIPV > rnetAtmOamPmMerrored."
+	::=  { rnetAtmOamPmF5Hist15Entry 15 }
+
+rnetAtmOamPmF5Hist15InSecbMisinserted OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of SECB due to misinserted cells.
+		  The counter is incremented by one
+		  if TUCD 0+1 > rnetAtmOamPmMmisinserted"
+	::=  { rnetAtmOamPmF5Hist15Entry 16 }
+
+rnetAtmOamPmF5Hist15InImpairedWithLossMis OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of blocks containing at least one lost cell,
+		  or misinserted cell.
+		  This counter is incremented by one if |TUCD 0+1 | > 0."
+	::=  { rnetAtmOamPmF5Hist15Entry 17 }
+
+rnetAtmOamPmF5Hist15OutCollected OBJECT-TYPE
+	SYNTAX  TruthValue
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"If true, statistics were collected for the egress direction ."
+	::=  { rnetAtmOamPmF5Hist15Entry 18 }
+
+rnetAtmOamPmF5Hist15OutTimeOfCollection OBJECT-TYPE
+	SYNTAX  INTEGER (0..899)
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		" The number of seconds, since the beginning of
+		  the current measurement period, during which
+		  collection was performed for the sink. This time
+		  may be smaller than 15 minutes. The reason 
+		  may be physical failure, collection that starts in the
+		  middle of the interval, etc."
+	::=  { rnetAtmOamPmF5Hist15Entry 19 }
+
+rnetAtmOamPmF5Hist15OutSecb OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of Severely Errored Cell Blocks in the egress flow.
+		  This counter is incremented by one, if BLER is defined and
+		  BLER > rnetAtmOamPmMerrored, or if
+		  TUCD 0+1 < 0 and |TUCD 0+1| > rnetAtmOamPmMlost, or if 
+		  TUCD 0+1 > 0 and 
+		  TUCD 0+1 > rnetAtmOamPmMmisinserted."
+	::=  { rnetAtmOamPmF5Hist15Entry 20 }
+
+rnetAtmOamPmF5Hist15OutErroredCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of errored cells in the egress flow.
+		  This counter is incremented by BLER, if BLER is defined,
+		  > 0, and  <= rnetAtmOamPmMerrored."
+	::=  { rnetAtmOamPmF5Hist15Entry 21 }
+
+rnetAtmOamPmF5Hist15OutLostCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of lost cells (regardless of their CLP) in the egress flow.
+		  The counter measures background cell loss. The total number of lost
+		  cells is measured by  rnetAtmOamPmF5Hist15OutTotalLostCells.
+		  This counter is incremented by |TUCD 0+1|, if TUCD 0+1 < 0, and
+		  |TUCD 0+1| <= rnetAtmOamPmMlost"
+	::=  { rnetAtmOamPmF5Hist15Entry 22 }
+
+rnetAtmOamPmF5Hist15OutLost0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of lost cells, with CLP = 0, in the egress flow.
+		  The counter measures background cell loss of cells, with CLP = 0.
+		  The total number of lost cells, with CLP = 0, is measured by
+		  rnetAtmOamPmF5Hist15OutTotalLost0Cells.
+		  This counter is incremented by min(|TUCD 0+1|, |TUCD 0|), if
+		  TUCD0 < 0, and
+		  min(|TUCD 0+1|, |TUCD 0|) <= rnetAtmOamPmMlost."
+	::=  { rnetAtmOamPmF5Hist15Entry 23 }
+
+rnetAtmOamPmF5Hist15OutMisinsertedCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of misinserted cells (regardless of their CLP) in
+		  the egress flow.
+		  This counter is incremented by TUCD 0+1, if TUCD 0+1 > 0, and
+		  TUCD 0+1 <= rnetAtmOamPmMmisinserted."
+	::=  { rnetAtmOamPmF5Hist15Entry 24 }
+
+rnetAtmOamPmF5Hist15OutTxCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of transmitted cells (regardless of their CLP) in
+		  the egress flow.
+		  If the VCL is the originator of PM cells, the counter is incremented
+		  by the number of cells the the ATM NE transmits on that VCL.
+		  If the VCL is a monitor point, , the counter is incremented
+		  by the difference of the TUC 0+1 values of the 2 most recent 
+		  backward reporting cells."
+	::=  { rnetAtmOamPmF5Hist15Entry 25 }
+
+rnetAtmOamPmF5Hist15OutTx0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of transmitted cells, with CLP = 0, in the egress flow.
+		 This counter is incremented by the difference of the TUC 0 values
+		  of the 2 most recent forward monitoring cells"
+	::=  { rnetAtmOamPmF5Hist15Entry 26 }
+
+rnetAtmOamPmF5Hist15OutImpairedBlocks OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of blocks containing at least one errored cells, lost cell,
+		  or misinserted cell.
+		  This counter is incremented by one, if BLER != 0,
+		  or TUCD 0+1 != 0."
+	::=  { rnetAtmOamPmF5Hist15Entry 27 }
+
+rnetAtmOamPmF5Hist15OutTotalLostCells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The total number of lost cells (regardless of their CLP) in the
+		  egress flow. This count includes the background cell loss
+		  measured by rnetAtmOamPmF5Hist15OutLostCells.
+		  The counter is incremented by |TUCD 0+1|, if TUCD 0+1 < 0."
+	::=  { rnetAtmOamPmF5Hist15Entry 28 }
+
+rnetAtmOamPmF5Hist15OutTotalLost0Cells OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The total number of lost cells, with CLP = 0, in the
+		  egress flow. This count includes the background cell loss, of cells
+		  with CLP = 0, measured by 
+		  rnetAtmOamPmF5Hist15OutLost0Cells.
+		  The counter is incremented by min(|TUCD 0+1|, |TUCD 0|), if
+		  TUCD0 < 0."
+	::=  { rnetAtmOamPmF5Hist15Entry 29 }
+
+rnetAtmOamPmF5Hist15OutSecbErrored OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of SECB due to bit errors.
+		  The counter is incremented by one
+		  if BLER > rnetAtmOamPmMerrored."
+	::=  { rnetAtmOamPmF5Hist15Entry 30 }
+
+rnetAtmOamPmF5Hist15OutSecbMisinserted OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of SECB due to misinserted cells.
+		  The counter is incremented by one
+		  if TUCD 0+1 > rnetAtmOamPmMmisinserted"
+	::=  { rnetAtmOamPmF5Hist15Entry 31 }
+
+rnetAtmOamPmF5Hist15OutImpairedWithLossMis OBJECT-TYPE
+	SYNTAX  Gauge32
+	MAX-ACCESS  read-only
+	STATUS  current
+	DESCRIPTION
+		"The number of blocks containing at least one lost cell,
+		  or misinserted cell.
+		  This counter is incremented by one if |TUCD 0+1 | > 0."
+	::=  { rnetAtmOamPmF5Hist15Entry 32 }
+
+END
+

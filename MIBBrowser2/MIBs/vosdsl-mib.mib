@@ -1,0 +1,1558 @@
+VoSDSL-MIB DEFINITIONS ::= BEGIN
+
+--  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+IMPORTS
+    MODULE-IDENTITY, OBJECT-TYPE, enterprises
+        FROM SNMPv2-SMI
+    entPhysicalIndex
+        FROM ENTITY-MIB
+    ifIndex
+        FROM RFC1213-MIB  
+    DisplayString,TruthValue,DateAndTime,RowStatus
+        FROM SNMPv2-TC
+    sysName
+        FROM SNMPv2-MIB;
+
+--  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+sni            OBJECT IDENTIFIER ::= { enterprises 231 }
+siemensUnits   OBJECT IDENTIFIER ::= { sni 7 }
+oenProductMibs OBJECT IDENTIFIER ::= { siemensUnits 1 }
+sn             OBJECT IDENTIFIER ::= { oenProductMibs 4 }
+
+--  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+vosdsl MODULE-IDENTITY
+    LAST-UPDATED "0025111650Z"
+    ORGANIZATION "SIEMENS AG, PSE EZE MSA4"
+    CONTACT-INFO
+        "   PSE EZE MSA 4
+            Erdberger Laende 26
+            A-1031 Vienna, Austria
+
+            Josef Schoeberl
+            Tel:   +43 (0)51707-37941
+            Fax:   +43 (0)51707-57911
+            Email: josef.schoeberl@siemens.at "
+    DESCRIPTION
+        "The MIB for Voice over Symmetrical Digital Subscriber Line
+         (VoSDSL):
+         - objects describing the SLMI:VoSDSL (module and ports)
+         - objects describing the SLMI:VoSDSL interface (layer 1)"
+    ::= { sn 13 }
+
+--  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+vosdslMIBObjects     OBJECT IDENTIFIER ::= { vosdsl 1 }
+vosdslMIBTraps       OBJECT IDENTIFIER ::= { vosdsl 2 }
+
+--  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+--  MIB Objects consist of following groups
+vosdslLc             OBJECT IDENTIFIER ::= { vosdslMIBObjects 1 }
+vosdslLcPort         OBJECT IDENTIFIER ::= { vosdslMIBObjects 2 }
+vosdslIfL1           OBJECT IDENTIFIER ::= { vosdslMIBObjects 3 }
+
+
+--  vosdslLc group  - - - - - - - - - - - - - - - - - - - - - - - - - -
+--  contains following subgroups
+vosdslLcVersion           OBJECT IDENTIFIER ::= { vosdslLc 1 }
+vosdslLcModule            OBJECT IDENTIFIER ::= { vosdslLc 2 }
+vosdslLcNtuCompatibility  OBJECT IDENTIFIER ::= { vosdslLc 3 }
+
+
+--  vosdslLcVersion subgroup
+
+vosdslLcVersionTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF VosdslLcVersionEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table includes attributes describing the
+         SLMI:VoSDSL linecard version."
+    ::= { vosdslLcVersion 1 }
+
+vosdslLcVersionEntry OBJECT-TYPE
+    SYNTAX         VosdslLcVersionEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per physical entity of type module (compare
+         ENTITY-MIB)."
+    INDEX          { entPhysicalIndex }
+    ::= { vosdslLcVersionTable 1 }
+
+VosdslLcVersionEntry ::= SEQUENCE {
+    vosdslLcVersionMibLevel                   Integer32
+}
+
+vosdslLcVersionMibLevel OBJECT-TYPE
+    SYNTAX         Integer32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Identifies the implemented revision level of the MIB.
+         The initial revision has the value 1. For each
+         functional enhancement the MIB level is incremented
+         by 1."
+    ::= { vosdslLcVersionEntry 1 }
+
+
+--  vosdslLcModule subgroup
+
+vosdslLcModuleTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF VosdslLcModuleEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table includes attributes describing the
+         SLMI:VoSDSL linecard module."
+    ::= { vosdslLcModule 1 }
+
+vosdslLcModuleEntry OBJECT-TYPE
+    SYNTAX         VosdslLcModuleEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per physical entity of type module (compare
+         ENTITY-MIB)."
+    INDEX          { entPhysicalIndex }
+    ::= { vosdslLcModuleTable 1 }
+
+VosdslLcModuleEntry ::= SEQUENCE {
+    vosdslLcModuleCoding                      INTEGER,
+    vosdslLcModuleAttainableRate              Unsigned32,
+    vosdslLcModuleType                        BITS
+}
+
+vosdslLcModuleCoding OBJECT-TYPE
+    SYNTAX         INTEGER { other(1),
+                             scPam(2)
+                           }
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Specifies the coding type used on the lines of the
+         SLMI:VoSDSL.
+         Other types may be added in the future.
+         scPam - simply coded pulse amplitude modulation"
+    ::= { vosdslLcModuleEntry 1 }
+
+vosdslLcModuleAttainableRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The value of this object multiplied with 64 kbit/s,
+         is the maximum physical data rate theoretically
+         attainable by the SLMI:VoSDSL linecard. This value
+         may be higher than the actual physical data rate.
+         It may also differ from the configured physical 
+         data rate and from the physical data rate
+         attainable by the vosdsl-NTU."
+    ::= { vosdslLcModuleEntry 2 }
+
+vosdslLcModuleType OBJECT-TYPE
+    SYNTAX         BITS { noService(0),
+                          isdnBa(1),
+                          ab(2),
+                          s2m(3),
+                          ethernet(4),
+                          other(5)
+                        }
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Defines the vosdsl-NTU interfaces that are supported
+         by the SLMI:VoSDSL linecard.
+         This is a bitmap of possible services. Bit
+         'noService(0) may be set only if all other bits are
+         not set. For SLMI:MSA noService will be set"
+    ::= { vosdslLcModuleEntry 3 }
+
+
+--  vosdslLcNtuCompatibility subgroup
+
+vosdslLcNtuCompTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF VosdslLcNtuCompEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Table of compatible vosdsl-NTUs."
+    ::= { vosdslLcNtuCompatibility 1 }
+
+vosdslLcNtuCompEntry OBJECT-TYPE 
+    SYNTAX         VosdslLcNtuCompEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One or more entries per physical entity of type
+         module (compare ENTITY-MIB)."
+    INDEX          { entPhysicalIndex, vosdslLcNtuCompIndex}
+    ::= { vosdslLcNtuCompTable 1 }
+
+VosdslLcNtuCompEntry ::= SEQUENCE {
+    vosdslLcNtuCompIndex                       Integer32,
+    vosdslLcNtuCompVendorId                    DisplayString,
+    vosdslLcNtuCompHwVersion                   DisplayString,
+    vosdslLcNtuCompSwVersion                   DisplayString,
+    vosdslLcNtuCompRowStatus               RowStatus
+}
+
+vosdslLcNtuCompIndex OBJECT-TYPE
+    SYNTAX         Integer32(1..20)
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Table index of compatible vosdsl-NTU."
+::= { vosdslLcNtuCompEntry 1 }
+
+vosdslLcNtuCompVendorId OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-create
+    STATUS         current
+    DESCRIPTION
+        "Vendor name of compatible vosdsl-NTU."
+::= { vosdslLcNtuCompEntry 2 }
+
+vosdslLcNtuCompHwVersion OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-create
+    STATUS         current
+    DESCRIPTION
+        "Hardware version of compatible vosdsl-NTU."
+::= { vosdslLcNtuCompEntry 3 }
+
+vosdslLcNtuCompSwVersion OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-create
+    STATUS         current
+    DESCRIPTION
+        "Software version of compatible vosdsl-NTU."
+::= { vosdslLcNtuCompEntry 4 }
+
+vosdslLcNtuCompRowStatus OBJECT-TYPE
+    SYNTAX       RowStatus
+    MAX-ACCESS     read-create
+    STATUS         current
+    DESCRIPTION
+        "The Status of the row."
+::= { vosdslLcNtuCompEntry 5 }
+
+
+--  vosdslLcPort group
+--  contains following subgroups
+vosdslLcPortConf          OBJECT IDENTIFIER ::= { vosdslLcPort 1 }
+vosdslLcPortState         OBJECT IDENTIFIER ::= { vosdslLcPort 2 }
+vosdslLcPortNtu           OBJECT IDENTIFIER ::= { vosdslLcPort 3 }
+vosdslLcPortThresh        OBJECT IDENTIFIER ::= { vosdslLcPort 4 }
+
+--  vosdslLcPortConf subgroup
+
+vosdslLcPortConfTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF VosdslLcPortConfEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Table contains information about the port
+         configuration data."
+    ::= { vosdslLcPortConf 1 }
+
+vosdslLcPortConfEntry OBJECT-TYPE
+    SYNTAX         VosdslLcPortConfEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per SLMI:VoSDSL port."
+    INDEX          { entPhysicalIndex }
+    ::= { vosdslLcPortConfTable 1 }
+
+VosdslLcPortConfEntry ::= SEQUENCE {
+    vosdslLcPortConfNominalTxRate         Unsigned32,
+    vosdslLcPortConfMinimumTxRate         Unsigned32,
+    vosdslLcPortConfEmergencyTxRate       Unsigned32,
+    vosdslLcPortConfTxPower               Unsigned32,
+    vosdslLcPortConfNtuHwAddress          OCTET STRING (SIZE(6))
+}
+
+vosdslLcPortConfNominalTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "The value of this object multiplied with 64 kbit/s,
+         is the configured nominal physical transmission
+         rate on the line. The Default Value is 36 (2304 kBit/sec).
+         This value is given by NetM.
+         The value 127 (0x7F) indicates that the
+         configuration value is not availabe."
+    DEFVAL {36}
+::= { vosdslLcPortConfEntry 1 }
+
+vosdslLcPortConfMinimumTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "The value of this object multiplied with 64 kbit/s
+         is the configured minimal physical transmission
+         rate on the line.
+         This value is given by NetM. The Default Value is 0.
+         The value 127 (0x7F) indicates that the
+         configuration value is not availabe."
+    DEFVAL {0}
+    ::= { vosdslLcPortConfEntry 2 }
+
+vosdslLcPortConfEmergencyTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "The value of this object multiplied with 64 kbit/s
+         is the configured emergency transmission rate on the line.
+         This value is given by NetM. The Default Value is 0."
+    DEFVAL {0}
+    ::= { vosdslLcPortConfEntry 3 }
+
+vosdslLcPortConfTxPower OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+"The value of this object is 
+         0 .. maximum Transmission Power 
+         1 .. reduced Transmission Power
+         This value is given by NetM. The Default Value is 0."
+    DEFVAL {0}
+    ::= { vosdslLcPortConfEntry 4 }
+
+vosdslLcPortConfNtuHwAddress OBJECT-TYPE
+    SYNTAX         OCTET STRING (SIZE(6))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+" The pseudo HW- Address (MAC- Adress) of the connected NTU.
+  The NTU (IAD) needs this address for its BOOTP request."
+    ::= { vosdslLcPortConfEntry 5 }
+
+--  vosdslLcPortState subgroup
+
+vosdslLcPortStateTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF VosdslLcPortStateEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Table contains SLMI:VoSDSL specific port state
+         information."
+    ::= { vosdslLcPortState 1 }
+
+vosdslLcPortStateEntry OBJECT-TYPE
+    SYNTAX         VosdslLcPortStateEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per SLMI:VoSDSL port."
+    INDEX          { entPhysicalIndex }
+    ::= { vosdslLcPortStateTable 1 }
+
+VosdslLcPortStateEntry ::= SEQUENCE {
+    vosdslLcPortStateL1                       INTEGER,
+    vosdslLcPortStateCurrTxRate               Unsigned32,
+    vosdslLcPortStateDetails                  BITS
+}
+
+vosdslLcPortStateL1 OBJECT-TYPE
+    SYNTAX         INTEGER { unknown(1),
+                             active(2),
+                             inActive(3),
+                             failure(4)
+                           }
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Information if vosdsl layer 1 is currently active."
+    ::= { vosdslLcPortStateEntry 1 }
+
+vosdslLcPortStateCurrTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The value of this object is the actual physical
+         transmission rate in kbit/s on the line. If the minimal 
+         transmission rate (configured by NetM) can not be reached,
+         the object reflects the highest possible transmission rate 
+         taking into account the actual linecard, vosdsl-NTU and the 
+         line. The value 0 indicates that the transmission rate is 
+         currently not available (in case of activation process, 
+         transmission interrupting errors,layer 1 affecting tests 
+         or if the line is not available due to configuration activities.
+         The actual physical data rate on the line may differ from 
+         the physical data rate attainable by the actual linecard 
+         and the vosdsl-NTU and from that configured by NetM"
+::= { vosdslLcPortStateEntry 2 }
+
+vosdslLcPortStateDetails OBJECT-TYPE
+    SYNTAX         BITS { lossOfSync(0),
+                          berPortfailure(1),
+                          lineFeedingOverload(2),
+                          noPortAccess(3),
+                          l1ActivationTested(4),
+                          l1ActivationFault(5),
+                          slcTested(6),
+                          slcFault(7),
+                          vosdslNtuTested(8),
+                          vosdslNtuFault(9),
+                          vosdslNtuVersionTested(10),
+                          vosdslNtuVersionFault(11)
+                         }
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Information about possible port error as detailed
+         as it can be determined by the SLMI:VoSDSL:
+         - The first six bits (lossOfSync, sesPortfailureberPortfailure,
+           lineFeedingOverload, noPortAccess) are set if a
+           corresponding error is detected.
+         - The remaining bits are used in pairs: Always two
+           bits belong together. The first bit shows if the
+           test result shown by the second bit is valid. If
+           the first bit is not set, this means, that the
+           linecard can not make a statement if there is an
+           error or not. If it is set, the statement of the
+           second bit (errror if set, no error if not set)
+           is ok."
+    ::= { vosdslLcPortStateEntry 3 }
+
+
+--  vosdslLcPortNtu subgroup
+
+vosdslLcPortNtuTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF VosdslLcPortNtuEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Contains HW/FW/SW version information for vosdsl-NT."
+    ::= { vosdslLcPortNtu 1 }
+
+vosdslLcPortNtuEntry OBJECT-TYPE
+    SYNTAX         VosdslLcPortNtuEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per SLMI:VoSDSL port."
+    INDEX          { entPhysicalIndex }
+    ::= { vosdslLcPortNtuTable 1 }
+
+VosdslLcPortNtuEntry ::= SEQUENCE {
+    vosdslLcPortNtuSerialNo                    DisplayString,
+    vosdslLcPortNtuVendorId                    DisplayString,
+    vosdslLcPortNtuHwVersion                   DisplayString,
+    vosdslLcPortNtuFwVersion                   DisplayString,
+    vosdslLcPortNtuSwVersion                   DisplayString,
+    vosdslLcPortNtuCompatibility               BITS,
+    vosdslLcPortNtuSDSLVersion                 DisplayString,
+    vosdslLcPortNtuVendorModel                 DisplayString,
+    vosdslLcPortNtuVersionCheckTrapEnable      INTEGER
+}
+
+vosdslLcPortNtuSerialNo OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The serial number of the vosdsl-NTU. Empty if a serial
+         number is not available."
+    ::= { vosdslLcPortNtuEntry 1 }
+
+vosdslLcPortNtuVendorId OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Name of vendor of the vosdsl-NTU."
+    ::= { vosdslLcPortNtuEntry 2 }
+
+vosdslLcPortNtuHwVersion OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Unambiguous indication of the vosdsl-NTU hardware
+         version."
+    ::= { vosdslLcPortNtuEntry 3 }
+
+vosdslLcPortNtuFwVersion OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Unambiguous indication of the vosdsl-NTU Firmware
+         version."
+    ::= { vosdslLcPortNtuEntry 4 }
+
+vosdslLcPortNtuSwVersion OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Unambiguous indication of the vosdsl-NTU software
+         (downloadable) version."
+    ::= { vosdslLcPortNtuEntry 5 }
+
+vosdslLcPortNtuCompatibility OBJECT-TYPE
+    SYNTAX         BITS { vendorCompatible(0),
+                          hwCompatible(1),
+                          fwCompatible (2),
+                          swCompatible(3)
+                        }
+    MAX-ACCESS     accessible-for-notify
+    STATUS         current
+    DESCRIPTION
+        "Provides information about the compatibility
+         between SLMI:VoSDSL linecard and vosdsl-NTU:
+         vendorCompatible - the vendor name of the current
+                            vosdsl-NTU is available in the
+                            vosdslLcNtuCompTable
+         hwCompatible - only set in case of vendor
+                        compatibility if the hardware
+                        version of the current vosdsl-NTU is
+                        available in the vosdslLcNtuCompTable
+         fwCompatible - only set in case of vendor
+                        compatibility if the firmware
+                        version of the current vosdsl-NTU is
+                        available in the vosdslLcNtuCompTable                       
+         swCompatible - only set in case of vendor, hardware
+                        and software compatibility if the 
+                        software version of the current
+                        vosdsl-NTU is available in the
+                        vosdslLcNtuCompTable"
+    ::= { vosdslLcPortNtuEntry 6 }
+
+vosdslLcPortNtuSDSLVersion OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "The SDSL Version number of the vosdsl-NTU. Empty if the SDSL-Version
+         number is not available."
+    ::= { vosdslLcPortNtuEntry 7 }
+
+vosdslLcPortNtuVendorModel OBJECT-TYPE
+    SYNTAX         DisplayString
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Vendor Model name of the vosdsl-NTU."
+    ::= { vosdslLcPortNtuEntry 8 }
+
+vosdslLcPortNtuVersionCheckTrapEnable OBJECT-TYPE
+    SYNTAX         INTEGER { enabled(1),
+                             disabled(2)
+                           }
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "Indicatesn whether vosdslLcPortNtuVersionCheckTrap is
+         generated."
+    DEFVAL { disabled }
+    ::= { vosdslLcPortNtuEntry 9 }
+
+--  vosdslLcPortThresh subgroup
+
+vosdslLcPortThreshTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF VosdslLcPortThreshEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table contains thresholds for performance
+         traps."
+    ::= { vosdslLcPortThresh 1 }
+
+vosdslLcPortThreshEntry OBJECT-TYPE
+    SYNTAX         VosdslLcPortThreshEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per SLMI:VoSDSL interface."
+    INDEX          { ifIndex }
+    ::= { vosdslLcPortThreshTable 1 }
+
+VosdslLcPortThreshEntry ::= SEQUENCE {
+    vosdslLcPortBERMeasureInterval            Unsigned32,
+    vosdslLcPortThreshLowerBER                OCTET STRING (SIZE(1)),
+    vosdslLcPortThreshUpperBER                OCTET STRING (SIZE(1)),
+    vosdslLcPortThreshRestartBER              OCTET STRING (SIZE(1))
+}
+
+vosdslLcPortBERMeasureInterval OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "Measurement interval for Bit Error Rate evaluation
+         in seconds."
+    DEFVAL {1}
+    ::= { vosdslLcPortThreshEntry 1 }
+
+vosdslLcPortThreshLowerBER OBJECT-TYPE
+    SYNTAX         OCTET STRING (SIZE(1))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "BER- Threshold for a Good Line Trap.
+        The value is expressed hexadecimal representation.
+        The first nibble represents the mantisse of the value. 
+        The second nibble represents the negative exponent of the power of ten value. 
+        Examples are: 0x1A = Bit Error Rate of 1,0 EE-10, 
+                      0x57 = Bit Error Rate of 5,0 EE-07.
+        A value of 0x00 will disable the trap."
+    ::= { vosdslLcPortThreshEntry 2 }
+
+vosdslLcPortThreshUpperBER OBJECT-TYPE
+    SYNTAX         OCTET STRING (SIZE(1))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        " BER- Threshold for a Bad Line Trap.
+        The value is expressed hexadecimal representation.
+        The first nibble represents the mantisse of the value. 
+        The second nibble represents the negative exponent of the power of ten value. 
+        Examples are: 0x1A = Bit Error Rate of 1,0 EE-10, 
+                      0x57 = Bit Error Rate of 5,0 EE-07.
+        A value of 0x00 will disable the trap."
+    ::= { vosdslLcPortThreshEntry 3 }
+
+vosdslLcPortThreshRestartBER OBJECT-TYPE
+    SYNTAX         OCTET STRING (SIZE(1))
+    MAX-ACCESS     read-write
+    STATUS         current
+    DESCRIPTION
+        "BER- Threshold for Restarting the Line
+        The value is expressed hexadecimal representation.
+        The first nibble represents the mantisse of the value. 
+        The second nibble represents the negative exponent of the power of ten value. 
+        Examples are: 0x1A = Bit Error Rate of 1,0 EE-10, 
+                      0x57 = Bit Error Rate of 5,0 EE-07.
+        A value of 0x00 will disable the trap."
+    ::= { vosdslLcPortThreshEntry 4 }
+
+--  vosdslIfL1 group  - - - - - - - - - - - - - - - - - - - - - - - - -
+--  contains following subgroups
+vosdslIfL1PerfData          OBJECT IDENTIFIER ::= { vosdslIfL1 1 }
+vosdslIfNtuL1PerfData       OBJECT IDENTIFIER ::= { vosdslIfL1 2 }
+
+--  vosdslIfL1PerfData subgroup
+
+vosdslIfL1PerfDataTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF VosdslIfL1PerfDataEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table includes performance measurement data
+         describing the quality of the vosdsl line."
+    ::= { vosdslIfL1PerfData 1 }
+
+vosdslIfL1PerfDataEntry OBJECT-TYPE
+    SYNTAX         VosdslIfL1PerfDataEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per SLMI:VoSDSL interface."
+    INDEX          { ifIndex }
+    ::= { vosdslIfL1PerfDataTable 1 }
+
+VosdslIfL1PerfDataEntry ::= SEQUENCE {
+    vosdslIfL1PerfValid15MinIntervals         Unsigned32,
+    vosdslIfL1PerfCurr15MinTimeElapsed        Unsigned32,
+    vosdslIfL1PerfCurr15MinCrcAnomalies       Unsigned32,
+    vosdslIfL1PerfCurr15MinErrFreeSecs        Unsigned32,
+    vosdslIfL1PerfCurr15MinErrSecs            Unsigned32,
+    vosdslIfL1PerfCurr15MinSeverelyErrSecs    Unsigned32,
+    vosdslIfL1PerfCurr15MinUnavailableSecs    Unsigned32,
+    vosdslIfL1PerfCurr15MinTxRate             Unsigned32,
+    vosdslIfL1PerfValid1DayIntervals          Unsigned32,
+    vosdslIfL1PerfCurr1DayTimeElapsed         Unsigned32,
+    vosdslIfL1PerfCurr1DayCrcAnomalies        Unsigned32,    
+    vosdslIfL1PerfCurr1DayErrFreeSecs         Unsigned32,
+    vosdslIfL1PerfCurr1DayErrSecs             Unsigned32,
+    vosdslIfL1PerfCurr1DaySeverelyErrSecs     Unsigned32,
+    vosdslIfL1PerfCurr1DayUnavailableSecs     Unsigned32,
+    vosdslIfL1PerfCurr1DayTxRate              Unsigned32
+}
+
+vosdslIfL1PerfValid15MinIntervals OBJECT-TYPE
+    SYNTAX         Unsigned32(0..32)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of previous 15-minute intervals in the
+         'vosdslIfL1PerfIntervalTable' for which valid data has
+         been stored. This value will be equal to the maximum
+         number of intervals that are kept (n) unless the
+         device was brought online within the last (n*15)
+         minutes."
+    ::= { vosdslIfL1PerfDataEntry 1 }
+
+vosdslIfL1PerfCurr15MinTimeElapsed OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Total elapsed seconds in this interval. A normal
+         interval is 900 seconds."
+    ::= { vosdslIfL1PerfDataEntry 2 }
+
+vosdslIfL1PerfCurr15MinCrcAnomalies OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of CRC anaomalies in the current 15- minute
+         interval."
+    ::= { vosdslIfL1PerfDataEntry 3 }
+
+
+vosdslIfL1PerfCurr15MinErrFreeSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of seconds in the current 15- minute
+         interval with errorfree vosdsl layer 1."
+    ::= { vosdslIfL1PerfDataEntry 4 }
+
+vosdslIfL1PerfCurr15MinErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Errored Seconds in the current 15-minute interval.
+         The errored second parameter is a count of one-
+         second intervals containing 1 or more CRC errors."
+    ::= { vosdslIfL1PerfDataEntry 5 }
+
+vosdslIfL1PerfCurr15MinSeverelyErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Severely Errored Seconds in the current 15-minute
+         interval. The severely errored seconds parameter is
+         a count of one-second intervals containing >= 50 CRC errors
+         or >= 1 LOSW defect detections."
+    ::= { vosdslIfL1PerfDataEntry 6 }
+
+vosdslIfL1PerfCurr15MinUnavailableSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of seconds with layer 1 unavailable in the
+         current 15-minute interval. Layer 1 is unavailable
+         due to test activation, layer 1 affecting tests or
+         layer 1 affecting portfailures or a LOSW failure detection."
+    ::= { vosdslIfL1PerfDataEntry 7 }
+
+vosdslIfL1PerfCurr15MinTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Physical transmission rate in kbit/s available
+         during the current 15-minute interval. If the 
+         physical transmission rate has changed within
+         the current 15-minute
+         interval at least once, the value is 0."
+    ::= { vosdslIfL1PerfDataEntry 8 }
+
+vosdslIfL1PerfValid1DayIntervals OBJECT-TYPE
+    SYNTAX         Unsigned32(0..7)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of previous 1 day intervals in the
+         'vosdslIfL1PerfIntervalTable' for which valid data has
+         been stored. This value will be equal to the maximum
+         number of intervals that are kept (n) unless the
+         device was brought online within the last 7days."
+    ::= { vosdslIfL1PerfDataEntry 9 }
+
+vosdslIfL1PerfCurr1DayTimeElapsed OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Seconds that have elapsed since the beginning of
+         the current 1-day interval."
+    ::= { vosdslIfL1PerfDataEntry 10 }
+
+vosdslIfL1PerfCurr1DayCrcAnomalies OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of CRC- anomalies of
+         the current 1-day interval."
+    ::= { vosdslIfL1PerfDataEntry 11 }
+
+vosdslIfL1PerfCurr1DayErrFreeSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of seconds during the current day as
+         measured by 'vosdslIfL1PerfCurr1DayTimeElapsed' with
+         errorfree vosdsl layer 1."
+    ::= { vosdslIfL1PerfDataEntry 12 }
+
+vosdslIfL1PerfCurr1DayErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Errored Seconds during the current day as measured
+         by 'vosdslIfL1PerfCurr1DayTimeElapsed'. The errored
+         second parameter is a count of one-second intervals
+         containing one or more CRC failures."
+    ::= { vosdslIfL1PerfDataEntry 13 }
+
+vosdslIfL1PerfCurr1DaySeverelyErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Severely Errored Seconds during the current day as
+         measured by 'vosdslIfL1PerfCurr1DayTimeElapsed'. The
+         severely errored seconds parameter is a count of
+         one-second intervals containing >= 50 CRC errors
+         or >= 1 LOSW defect detections."
+    ::= { vosdslIfL1PerfDataEntry 14 }
+
+vosdslIfL1PerfCurr1DayUnavailableSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of seconds with layer 1 unavailable during
+         the current day as measured by
+         'vosdslIfL1PerfCurr1DayTimeElapsed'. Layer 1 is
+         unavailable due to test activation, layer 1
+         affecting tests or layer 1 affecting portfailures 
+         or a LOSW failure detection."
+    ::= { vosdslIfL1PerfDataEntry 15 }
+
+vosdslIfL1PerfCurr1DayTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Physical transmission rate in kbit/s available
+         during the current day as measured by
+         'vosdslIfL1PerfCurr1DayTimeElapsed'. If the physical 
+         transmission rate has changed within the current 
+         day at least once, the value is 0."
+    ::= { vosdslIfL1PerfDataEntry 16 }
+
+vosdslIfL1PerfIntervalTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF VosdslIfL1PerfIntervalEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table provides 15-minute intervals of
+         performance data measured at the subscriber line
+         for the last 8 hours."
+    ::= { vosdslIfL1PerfData 2 }
+
+vosdslIfL1PerfIntervalEntry OBJECT-TYPE
+    SYNTAX         VosdslIfL1PerfIntervalEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per interval and per each vosdsl line."
+    INDEX          { ifIndex, vosdslIfL1PerfIntervalNumber }
+    ::= { vosdslIfL1PerfIntervalTable 1 }
+
+VosdslIfL1PerfIntervalEntry ::= SEQUENCE {
+    vosdslIfL1PerfIntervalNumber              Integer32,
+    vosdslIfL1PerfIntervalCrcAnomalies        Unsigned32,
+    vosdslIfL1PerfIntervalErrFreeSecs         Unsigned32,
+    vosdslIfL1PerfIntervalErrSecs             Unsigned32,
+    vosdslIfL1PerfIntervalSeverelyErrSecs     Unsigned32,
+    vosdslIfL1PerfIntervalUnavailableSecs     Unsigned32,
+    vosdslIfL1PerfIntervalTxRate              Unsigned32,
+    vosdslIfL1PerfIntervalValidData           TruthValue
+}
+
+vosdslIfL1PerfIntervalNumber OBJECT-TYPE
+    SYNTAX         Integer32(1..32)
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Performance data interval number. 1 is the most
+         recent interval; interval 32 is 8 hours ago."
+    ::= { vosdslIfL1PerfIntervalEntry 1 }
+
+vosdslIfL1PerfIntervalCrcAnomalies OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of CRC Anomalies in the interval."
+    ::= { vosdslIfL1PerfIntervalEntry 2 }
+
+vosdslIfL1PerfIntervalErrFreeSecs OBJECT-TYPE
+    SYNTAX         Unsigned32(0..900)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Seconds in the interval with errorfree vosdsl layer 1."
+    ::= { vosdslIfL1PerfIntervalEntry 3 }
+
+vosdslIfL1PerfIntervalErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32(0..900)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Errored Seconds in the interval. The errored second
+         parameter is a count of one-second intervals
+         containing one or more CRC errors ."
+    ::= { vosdslIfL1PerfIntervalEntry 4 }
+
+vosdslIfL1PerfIntervalSeverelyErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32(0..900)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Severely Errored Seconds in the interval. The
+         severely errored seconds parameter is a count of
+         one-second intervals containing >= 50 CRC errors
+         or >= 1 LOSW defect detections."
+    ::= { vosdslIfL1PerfIntervalEntry 5 }
+
+vosdslIfL1PerfIntervalUnavailableSecs OBJECT-TYPE
+    SYNTAX         Unsigned32(0..900)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Seconds with layer 1 unavailable in the
+         interval. Layer 1 is unavailable due to test
+         activation, layer 1 affecting tests or layer 1
+         affecting portfailures or a LOSW failure detection."
+    ::= { vosdslIfL1PerfIntervalEntry 6 }
+
+vosdslIfL1PerfIntervalTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Physical transmission rate in kbit/s available in
+         the interval. If the physical transmission rate 
+         changed during the interval at least once, the value is 0."
+    ::= { vosdslIfL1PerfIntervalEntry 7 }
+
+vosdslIfL1PerfIntervalValidData OBJECT-TYPE
+    SYNTAX         TruthValue
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "This variable indicates if there are valid data for
+         this interval."
+    ::= { vosdslIfL1PerfIntervalEntry 8 }
+
+vosdslIfL1PerfDayTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF VosdslIfL1PerfDayEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table provides 1 day intervals of
+         performance data measured at the subscriber line
+         for the last 7 days."
+    ::= { vosdslIfL1PerfData 3 }
+
+vosdslIfL1PerfDayEntry OBJECT-TYPE
+    SYNTAX         VosdslIfL1PerfDayEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per interval and per each vosdsl line."
+    INDEX          { ifIndex, vosdslIfL1PerfDayNumber }
+    ::= { vosdslIfL1PerfDayTable 1 }
+
+VosdslIfL1PerfDayEntry ::= SEQUENCE {
+    vosdslIfL1PerfDayNumber              Integer32,
+    vosdslIfL1PerfDayCrcAnomalies        Unsigned32,
+    vosdslIfL1PerfDayErrFreeSecs         Unsigned32,
+    vosdslIfL1PerfDayErrSecs             Unsigned32,
+    vosdslIfL1PerfDaySeverelyErrSecs     Unsigned32,
+    vosdslIfL1PerfDayUnavailableSecs     Unsigned32,
+    vosdslIfL1PerfDayTxRate              Unsigned32,
+    vosdslIfL1PerfDayValidData           TruthValue
+}
+
+vosdslIfL1PerfDayNumber OBJECT-TYPE
+    SYNTAX         Integer32(1..7)
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Performance data interval number. 1 is the most
+         recent interval; interval 7 is 1 week ago."
+    ::= { vosdslIfL1PerfDayEntry 1 }
+
+vosdslIfL1PerfDayCrcAnomalies OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of CRC Anomalies in the interval."
+    ::= { vosdslIfL1PerfDayEntry 2 }
+
+vosdslIfL1PerfDayErrFreeSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Seconds in the interval with errorfree vosdsl layer 1."
+    ::= { vosdslIfL1PerfDayEntry 3 }
+
+vosdslIfL1PerfDayErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Errored Seconds in the interval. The errored second
+         parameter is a count of one-second intervals
+         containing one or more CRC Anomalies ."
+    ::= { vosdslIfL1PerfDayEntry 4 }
+
+vosdslIfL1PerfDaySeverelyErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Severely Errored Seconds in the interval. The
+         severely errored seconds parameter is a count of
+         one-second intervals containing >= 50 CRC errors
+         or >= 1 LOSW defect detections."
+    ::= { vosdslIfL1PerfDayEntry 5 }
+
+vosdslIfL1PerfDayUnavailableSecs OBJECT-TYPE
+    SYNTAX         Unsigned32(0..900)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Seconds with layer 1 unavailable in the
+         interval. Layer 1 is unavailable due to test
+         activation, layer 1 affecting tests or layer 1
+         affecting portfailures or a LOSW failure detection."
+    ::= { vosdslIfL1PerfDayEntry 6 }
+
+vosdslIfL1PerfDayTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Physical transmission rate in kbit/s available in
+         the interval. If the physical transmission rate 
+         changed during the interval at least once, the value is 0."
+    ::= { vosdslIfL1PerfDayEntry 7 }
+
+vosdslIfL1PerfDayValidData OBJECT-TYPE
+    SYNTAX         TruthValue
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "This variable indicates if there are valid data for
+         this interval."
+    ::= { vosdslIfL1PerfDayEntry 8 }
+
+--  vosdslIfNtuL1PerfData subgroup
+
+vosdslIfNtuL1PerfDataTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF VosdslIfNtuL1PerfDataEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table includes performance measurement data
+         describing the quality of the vosdsl line."
+    ::= { vosdslIfNtuL1PerfData 1 }
+
+vosdslIfNtuL1PerfDataEntry OBJECT-TYPE
+    SYNTAX         VosdslIfNtuL1PerfDataEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per SLMI:VoSDSL interface."
+    INDEX          { ifIndex }
+    ::= { vosdslIfNtuL1PerfDataTable 1 }
+
+VosdslIfNtuL1PerfDataEntry ::= SEQUENCE {
+    vosdslIfNtuL1PerfValid15MinIntervals         Unsigned32,
+    vosdslIfNtuL1PerfCurr15MinTimeElapsed        Unsigned32,
+    vosdslIfNtuL1PerfCurr15MinCrcAnomalies       Unsigned32,
+    vosdslIfNtuL1PerfCurr15MinErrFreeSecs        Unsigned32,
+    vosdslIfNtuL1PerfCurr15MinErrSecs            Unsigned32,
+    vosdslIfNtuL1PerfCurr15MinSeverelyErrSecs    Unsigned32,
+    vosdslIfNtuL1PerfCurr15MinUnavailableSecs    Unsigned32,
+    vosdslIfNtuL1PerfCurr15MinTxRate             Unsigned32,
+    vosdslIfNtuL1PerfValid1DayIntervals          Unsigned32, 
+    vosdslIfNtuL1PerfCurr1DayTimeElapsed         Unsigned32,
+    vosdslIfNtuL1PerfCurr1DayCrcAnomalies        Unsigned32,    
+    vosdslIfNtuL1PerfCurr1DayErrFreeSecs         Unsigned32,
+    vosdslIfNtuL1PerfCurr1DayErrSecs             Unsigned32,
+    vosdslIfNtuL1PerfCurr1DaySeverelyErrSecs     Unsigned32,
+    vosdslIfNtuL1PerfCurr1DayUnavailableSecs     Unsigned32,
+    vosdslIfNtuL1PerfCurr1DayTxRate              Unsigned32
+}
+
+vosdslIfNtuL1PerfValid15MinIntervals OBJECT-TYPE
+    SYNTAX         Unsigned32(0..32)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of previous 15-minute intervals in the
+         'vosdslIfNtuL1PerfIntervalTable' for which valid data has
+         been stored. This value will be equal to the maximum
+         number of intervals that are kept (n) unless the
+         device was brought online within the last (n*15)
+         minutes."
+    ::= { vosdslIfNtuL1PerfDataEntry 1 }
+
+vosdslIfNtuL1PerfCurr15MinTimeElapsed OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Total elapsed seconds in this interval. A normal
+         interval is 900 seconds."
+    ::= { vosdslIfNtuL1PerfDataEntry 2 }
+
+vosdslIfNtuL1PerfCurr15MinCrcAnomalies OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of CRC anomalies in the current 15- minute
+         interval."
+    ::= { vosdslIfNtuL1PerfDataEntry 3 }
+
+
+vosdslIfNtuL1PerfCurr15MinErrFreeSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of seconds in the current 15- minute
+         interval with errorfree vosdsl layer 1."
+    ::= { vosdslIfNtuL1PerfDataEntry 4 }
+
+vosdslIfNtuL1PerfCurr15MinErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Errored Seconds in the current 15-minute interval.
+         The errored second parameter is a count of one-
+         second intervals containing one or more CRC errors."
+    ::= { vosdslIfNtuL1PerfDataEntry 5 }
+
+vosdslIfNtuL1PerfCurr15MinSeverelyErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Severely Errored Seconds in the current 15-minute
+         interval. The severely errored seconds parameter is
+         a count of one-second intervals containing >= 50 CRC errors
+         or >= 1 LOSW defect detections."
+    ::= { vosdslIfNtuL1PerfDataEntry 6 }
+
+vosdslIfNtuL1PerfCurr15MinUnavailableSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of seconds with layer 1 unavailable in the
+         current 15-minute interval. Layer 1 is unavailable
+         due to test activation, layer 1 affecting tests or
+         layer 1 affecting portfailures or a LOSW failure detection."
+    ::= { vosdslIfNtuL1PerfDataEntry 7 }
+
+vosdslIfNtuL1PerfCurr15MinTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Physical transmission rate in kbit/s available
+         during the current 15-minute interval. If 
+         the physical transmission rate has been changed
+         within the current 15-minute
+         interval at least once, the value is 0."
+    ::= { vosdslIfNtuL1PerfDataEntry 8 }
+
+vosdslIfNtuL1PerfValid1DayIntervals OBJECT-TYPE
+    SYNTAX         Unsigned32(0..7)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of previous 1Day  intervals in the
+         'vosdslIfNtuL1PerfIntervalTable' for which valid data has
+         been stored. This value will be equal to the maximum
+         number of intervals that are kept (n) unless the
+         device was brought online within the last (n*7) days."
+    ::= { vosdslIfNtuL1PerfDataEntry 9 }
+
+vosdslIfNtuL1PerfCurr1DayTimeElapsed OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Seconds that have elapsed since the beginning of
+         the current 1-day interval."
+    ::= { vosdslIfNtuL1PerfDataEntry 10 }
+
+vosdslIfNtuL1PerfCurr1DayCrcAnomalies OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of CRC- anomalies of
+         the current 1-day interval."
+    ::= { vosdslIfNtuL1PerfDataEntry 11 }
+
+vosdslIfNtuL1PerfCurr1DayErrFreeSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of seconds during the current day as
+         measured by 'vosdslIfNtuL1PerfCurr1DayTimeElapsed' with
+         errorfree vosdsl layer 1."
+    ::= { vosdslIfNtuL1PerfDataEntry 12 }
+
+vosdslIfNtuL1PerfCurr1DayErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Errored Seconds during the current day as measured
+         by 'vosdslIfNtuL1PerfCurr1DayTimeElapsed'. The errored
+         second parameter is a count of one-second intervals
+         containing one or more CRC failures."
+    ::= { vosdslIfNtuL1PerfDataEntry 13 }
+
+vosdslIfNtuL1PerfCurr1DaySeverelyErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Severely Errored Seconds during the current day as
+         measured by 'vosdslIfNtuL1PerfCurr1DayTimeElapsed'. The
+         severely errored seconds parameter is a count of
+         one-second intervals containing >= 50 CRC errors
+         or >= 1 LOSW defect detections."
+    ::= { vosdslIfNtuL1PerfDataEntry 14 }
+
+vosdslIfNtuL1PerfCurr1DayUnavailableSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of seconds with layer 1 unavailable during
+         the current day as measured by
+         'vosdslIfNtuL1PerfCurr1DayTimeElapsed'. Layer 1 is
+         unavailable due to test activation, layer 1
+         affecting tests or layer 1 affecting portfailures 
+         or a LOSW failure detection."
+    ::= { vosdslIfNtuL1PerfDataEntry 15 }
+
+vosdslIfNtuL1PerfCurr1DayTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Physical transmission rate in kbit/s available
+         during the current day as measured by
+         'vosdslIfNtuL1PerfCurr1DayTimeElapsed'. If the 
+         physical transmission rate has changed within 
+         the current day at least once, the value is 0."
+    ::= { vosdslIfNtuL1PerfDataEntry 16 }
+
+vosdslIfNtuL1PerfIntervalTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF VosdslIfNtuL1PerfIntervalEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table provides 15-minute intervals of
+         performance data measured at the subscriber line
+         for the last 8 hours."
+    ::= { vosdslIfNtuL1PerfData 2 }
+
+vosdslIfNtuL1PerfIntervalEntry OBJECT-TYPE
+    SYNTAX         VosdslIfNtuL1PerfIntervalEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per interval and per each vosdsl line."
+    INDEX          { ifIndex, vosdslIfNtuL1PerfIntervalNumber }
+    ::= { vosdslIfNtuL1PerfIntervalTable 1 }
+
+VosdslIfNtuL1PerfIntervalEntry ::= SEQUENCE {
+    vosdslIfNtuL1PerfIntervalNumber              Integer32,
+    vosdslIfNtuL1PerfIntervalCrcAnomalies        Unsigned32,
+    vosdslIfNtuL1PerfIntervalErrFreeSecs         Unsigned32,
+    vosdslIfNtuL1PerfIntervalErrSecs             Unsigned32,
+    vosdslIfNtuL1PerfIntervalSeverelyErrSecs     Unsigned32,
+    vosdslIfNtuL1PerfIntervalUnavailableSecs     Unsigned32,
+    vosdslIfNtuL1PerfIntervalTxRate              Unsigned32,
+    vosdslIfNtuL1PerfIntervalValidData           TruthValue
+}
+
+vosdslIfNtuL1PerfIntervalNumber OBJECT-TYPE
+    SYNTAX         Integer32(1..32)
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Performance data interval number. 1 is the most
+         recent interval; interval 32 is 8 hours ago."
+    ::= { vosdslIfNtuL1PerfIntervalEntry 1 }
+
+vosdslIfNtuL1PerfIntervalCrcAnomalies OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of CRC Anomalies in the interval."
+    ::= { vosdslIfNtuL1PerfIntervalEntry 2 }
+
+vosdslIfNtuL1PerfIntervalErrFreeSecs OBJECT-TYPE
+    SYNTAX         Unsigned32(0..900)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Seconds in the interval with errorfree vosdsl layer 1."
+    ::= { vosdslIfNtuL1PerfIntervalEntry 3 }
+
+vosdslIfNtuL1PerfIntervalErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32(0..900)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Errored Seconds in the interval. The errored second
+         parameter is a count of one-second intervals
+         containing one or more CRC errors."
+    ::= { vosdslIfNtuL1PerfIntervalEntry 4 }
+
+vosdslIfNtuL1PerfIntervalSeverelyErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32(0..900)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Severely Errored Seconds in the interval. The
+         severely errored seconds parameter is a count of
+         one-second intervals containing >= 50 CRC errors
+         or >= 1 LOSW defect detections."
+    ::= { vosdslIfNtuL1PerfIntervalEntry 5 }
+
+vosdslIfNtuL1PerfIntervalUnavailableSecs OBJECT-TYPE
+    SYNTAX         Unsigned32(0..900)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Seconds with layer 1 unavailable in the
+         interval. Layer 1 is unavailable due to test
+         activation, layer 1 affecting tests or layer 1
+         affecting portfailures or a LOSW failure detection."
+    ::= { vosdslIfNtuL1PerfIntervalEntry 6 }
+
+vosdslIfNtuL1PerfIntervalTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Physical transmission rate in kbit/s available in
+         the interval. If the physical transmission rate 
+         changed during the interval at least once, the value is 0."
+    ::= { vosdslIfNtuL1PerfIntervalEntry 7 }
+
+vosdslIfNtuL1PerfIntervalValidData OBJECT-TYPE
+    SYNTAX         TruthValue
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "This variable indicates if there are valid data for
+         this interval."
+    ::= { vosdslIfNtuL1PerfIntervalEntry 8 }
+
+vosdslIfNtuL1PerfDayTable OBJECT-TYPE
+    SYNTAX         SEQUENCE OF VosdslIfNtuL1PerfDayEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "This table provides 1 day intervals of
+         performance data measured at the subscriber line
+         for the last 7 days."
+    ::= { vosdslIfNtuL1PerfData 3 }
+
+vosdslIfNtuL1PerfDayEntry OBJECT-TYPE
+    SYNTAX         VosdslIfNtuL1PerfDayEntry
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "One entry per interval and per each vosdsl line."
+    INDEX          { ifIndex, vosdslIfNtuL1PerfDayNumber }
+    ::= { vosdslIfNtuL1PerfDayTable 1 }
+
+VosdslIfNtuL1PerfDayEntry ::= SEQUENCE {
+    vosdslIfNtuL1PerfDayNumber              Integer32,
+    vosdslIfNtuL1PerfDayCrcAnomalies        Unsigned32,
+    vosdslIfNtuL1PerfDayErrFreeSecs         Unsigned32,
+    vosdslIfNtuL1PerfDayErrSecs             Unsigned32,
+    vosdslIfNtuL1PerfDaySeverelyErrSecs     Unsigned32,
+    vosdslIfNtuL1PerfDayUnavailableSecs     Unsigned32,
+    vosdslIfNtuL1PerfDayTxRate              Unsigned32,
+    vosdslIfNtuL1PerfDayValidData           TruthValue
+}
+
+vosdslIfNtuL1PerfDayNumber OBJECT-TYPE
+    SYNTAX         Integer32(1..7)
+    MAX-ACCESS     not-accessible
+    STATUS         current
+    DESCRIPTION
+        "Performance data interval number. 1 is the most
+         recent interval; interval 7 is 1 week ago."
+    ::= { vosdslIfNtuL1PerfDayEntry 1 }
+
+vosdslIfNtuL1PerfDayCrcAnomalies OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Number of CRC Anomalies in the interval."
+    ::= { vosdslIfNtuL1PerfDayEntry 2 }
+
+vosdslIfNtuL1PerfDayErrFreeSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Seconds in the interval with errorfree vosdsl layer 1."
+    ::= { vosdslIfNtuL1PerfDayEntry 3 }
+
+vosdslIfNtuL1PerfDayErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Errored Seconds in the interval. The errored second
+         parameter is a count of one-second intervals
+         containing one or more CRC errors."
+    ::= { vosdslIfNtuL1PerfDayEntry 4 }
+
+vosdslIfNtuL1PerfDaySeverelyErrSecs OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Severely Errored Seconds in the interval. The
+         severely errored seconds parameter is a count of
+         one-second intervals containing >= 50 CRC errors
+         or >= 1 LOSW defect detections."
+    ::= { vosdslIfNtuL1PerfDayEntry 5 }
+
+vosdslIfNtuL1PerfDayUnavailableSecs OBJECT-TYPE
+    SYNTAX         Unsigned32(0..900)
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Seconds with layer 1 unavailable in the
+         interval. Layer 1 is unavailable due to test
+         activation, layer 1 affecting tests or layer 1
+         affecting portfailures or a LOSW failure detection."
+    ::= { vosdslIfNtuL1PerfDayEntry 6 }
+
+vosdslIfNtuL1PerfDayTxRate OBJECT-TYPE
+    SYNTAX         Unsigned32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "Physical transmission rate in kbit/s available in
+         the interval. If the physical transmission rate 
+         changed during the interval at least once, the value is 0."
+    ::= { vosdslIfNtuL1PerfDayEntry 7 }
+
+vosdslIfNtuL1PerfDayValidData OBJECT-TYPE
+    SYNTAX         TruthValue
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+        "This variable indicates if there are valid data for
+         this interval."
+    ::= { vosdslIfNtuL1PerfDayEntry 8 }
+
+--  Trap objects consist of following groups
+
+vosdslLcPortTraps         OBJECT IDENTIFIER ::= {vosdslMIBTraps 1}
+
+--  vosdslLcPortTraps group - - - - - - - - - - - - - - - - - - - - - -
+
+vosdslLcPortStateTxRateChangeTrap NOTIFICATION-TYPE
+    OBJECTS        { sysName,
+                     vosdslLcPortStateCurrTxRate,
+                     vosdslLcPortConfNominalTxRate,
+                     vosdslLcPortConfMinimumTxRate,
+                     vosdslLcModuleAttainableRate
+                   }
+    STATUS         current
+    DESCRIPTION
+        "Actual transmission rate on SDSL line changed.
+         If the transmission rate changes to 'not available'
+         (127 resp. 0x7F) the trap is only sent if the line
+         has become unavailable due to change of OST
+         (operational state) configuration.
+         If the transmission rate changes from 'not
+         available' (127 resp. 0x7F) the trap is sent if the
+         line has become available due to change of OST
+         (operational state) configuration or if the current
+         transmission rate is different from that
+         before it changed to 'not availalbe'."
+    ::= { vosdslLcPortTraps 1 }
+
+vosdslLcPortNtuVersionCheckTrap NOTIFICATION-TYPE
+    OBJECTS        { sysName,
+                     vosdslLcPortNtuVendorId,
+                     vosdslLcPortNtuHwVersion,
+                     vosdslLcPortNtuFwVersion,
+                     vosdslLcPortNtuSwVersion,
+                     vosdslLcPortNtuCompatibility
+}
+    STATUS         current
+    DESCRIPTION
+        "VoSDSL-NTU version check is necessary.
+         This happens after reset of the VoSDSL-NTU if it is
+         without software or if there is no entry in
+         vosdslLcNtuCompTable that validates the VoSDSL-NTUs
+         vendor/hardware/software combination."
+    ::= { vosdslLcPortTraps 2 }
+
+
+vosdslLcPortBadLineTrap NOTIFICATION-TYPE
+    OBJECTS        { sysName,
+                     vosdslLcPortThreshUpperBER
+                   }
+    STATUS         current
+    DESCRIPTION
+        "Upper Bit error rate threshold has been exceeded."
+    ::= { vosdslLcPortTraps 3 }
+
+vosdslLcPortGoodLineTrap NOTIFICATION-TYPE
+    OBJECTS        { sysName,
+                     vosdslLcPortThreshLowerBER
+                   }
+    STATUS         current
+    DESCRIPTION
+"Actual Bit error rate has crossed underneath the lower BER 
+ threshold and a Bad Line Trap has been sent before."
+    ::= { vosdslLcPortTraps 4 }
+
+END

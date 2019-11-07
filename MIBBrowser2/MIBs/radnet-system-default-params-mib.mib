@@ -1,0 +1,60 @@
+-- @(#)rnet_sys_dflt.mib
+-- ----------------------------------------------------------------------
+-- RADNET system MIB
+-- Copyright (c) 1996 RADNET Ltd.
+-- ----------------------------------------------------------------------
+--
+-- MIB Module :   RADNET-SYSTEM-MIB
+--
+-- Revision   :   V2.105
+--
+-- Description:   Definition of the system default parameters
+--
+-- ----------------------------------------------------------------------
+RADNET-SYSTEM-DEFAULT-PARAMS-MIB DEFINITIONS ::= BEGIN
+
+	IMPORTS
+  
+			OBJECT-TYPE,MODULE-IDENTITY
+								     FROM SNMPv2-SMI			
+			rnetSystem			  FROM RADNET-SYSTEM-MIB;	
+
+			rnetSystemDefaultParams MODULE-IDENTITY
+                    LAST-UPDATED "9709021300Z"
+                    ORGANIZATION "RADNET"
+                    CONTACT-INFO
+                      "          Eitan Mardiks
+                        Postal:  RADNET Ltd.
+				24 Raul Wallenberg St.
+				Tel-Aviv 69719, Israel.
+                        Tel:     +972 3 6455700
+                        Fax:     +972 3 6480582
+                        E-Mail:  eitan@gate.radnet.co.il"
+
+                    DESCRIPTION
+                     "Definition of the system parameters and configuration."
+                    ::= { rnetSystem 7 }
+
+-- --------------------------------------------------------------
+-- RADNET System Default Parameters Objects
+-- --------------------------------------------------------------
+
+rnetSysLanDefaultParams	 OBJECT IDENTIFIER ::= { rnetSystemDefaultParams 1 }
+
+-- --------------------------------------------------------------
+-- RADNET System LAN Default Parameters Group
+-- --------------------------------------------------------------
+
+rnetDefaultLanAgeingTime OBJECT-TYPE 
+	SYNTAX		INTEGER (1..30)
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION
+		"This Variable contains LAN ageing time."
+	DEFVAL	{ 10 }
+	::= { rnetSysLanDefaultParams 1 }
+
+END
+
+
+

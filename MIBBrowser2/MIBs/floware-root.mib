@@ -1,0 +1,26 @@
+   FLOWARE-ROOT DEFINITIONS ::= BEGIN
+
+   IMPORTS
+       MODULE-IDENTITY, enterprises        FROM SNMPv2-SMI;
+
+-- enterprises  OBJECT IDENTIFIER ::=
+--   { iso org(3) dod(6) internet(1) private(4) 1 }
+   floware MODULE-IDENTITY
+       LAST-UPDATED "9803010000Z"
+       ORGANIZATION "FLOWARE"
+       CONTACT-INFO "   Amir Freund
+                        Postal: Floware System Solutions
+			P.O.Box 812
+			Or Yehuda 60250
+			ISRAEL
+		Tel:    972-3-5332324
+		Fax:    972-3-5332678
+		E-mail: amir@floware.com
+		co-authors: Galia Dreman, Ofer Porat"
+       DESCRIPTION "WALKair MIB Textual Convention Definitions."
+--     REVISION "01"
+       ::= {enterprises 2933  }
+
+   products           OBJECT IDENTIFIER ::= { floware 1 }
+
+   END

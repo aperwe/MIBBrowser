@@ -1,0 +1,637 @@
+-- @(#)rnet_fr.mib
+-- ----------------------------------------------------------------------
+-- RADNET FRAME RELAY MIB
+-- Copyright (c) 1996 RADNET Ltd.
+-- ----------------------------------------------------------------------
+--
+-- MIB Module :   RADNET-PROTOCOL-FR-MIB
+--
+-- Revision   :   V2.201
+--
+-- Description:   Definition of FR protocol.
+--		  The definition includes the following subjects:
+--		  - Re definition of standard objects to be writable.
+--		  - Expansion of the standard end point table.
+--		  - Expansion of the standard End point connection table.
+--
+-- ----------------------------------------------------------------------
+RADNET-PROTOCOL-FR-MIB DEFINITIONS ::= BEGIN
+
+	IMPORTS
+      OBJECT-TYPE, MODULE-IDENTITY,
+		Counter32          	FROM SNMPv2-SMI
+			
+		 
+		DisplayString		FROM SNMPv2-TC
+
+		frLportEntry, 
+		frMgtVCSigEntry,	
+		frPVCEndptEntry, 
+		frPVCConnectEntry	FROM FRNETSERV-MIB
+
+		RnetConnectType,
+		rnetProtocol 		
+				FROM RADNET-PROTOCOL-MIB;
+		
+				rnetProtocolFrameRelay MODULE-IDENTITY
+                    LAST-UPDATED "9709021300Z"
+                    ORGANIZATION "RADNET"
+                    CONTACT-INFO
+                      "          Eitan Mardiks
+                        Postal:  RADNET Ltd.
+				24 Raul Wallenberg St.
+				Tel-Aviv 69719, Israel.
+                        Tel:     +972 3 6455700
+                        Fax:     +972 3 6480582
+                        E-Mail:  eitan@gate.radnet.co.il"
+
+                    DESCRIPTION
+                    "Definition of FR protocol.
+					      The definition includes the following subjects:
+					      - Re definition of standard objects to be writable.
+					      - Expansion of the standard end point table.
+					      - Expansion of the standard End point connection table."
+                    ::= { rnetProtocol 7 }
+
+
+-- --------------------------------------------------------------
+-- rnetProtocolFrameRelay Group
+-- --------------------------------------------------------------
+
+-- --------------------------------------------------------------
+--  the Frame Relay Logical Port Group
+-- --------------------------------------------------------------
+
+rnetFrLportTable OBJECT-TYPE
+ 	SYNTAX  SEQUENCE OF RnetFrLportEntry
+ 	MAX-ACCESS  not-accessible
+ 	STATUS  current
+ 	DESCRIPTION
+             	"The table Contains objects that are defined as 
+		 read-only objects in the standard frLportTable from
+		 RFC1604 MIB, and need to be writable."
+  	::= { rnetProtocolFrameRelay 1 }
+
+rnetFrLportEntry OBJECT-TYPE
+ 	SYNTAX  RnetFrLportEntry
+ 	MAX-ACCESS  not-accessible
+ 	STATUS  current
+ 	DESCRIPTION
+          	"An entry in the Frame Relay Logical Port
+          	Information table."
+	AUGMENTS  { frLportEntry }
+ 	::= { rnetFrLportTable 1 }
+
+RnetFrLportEntry ::=
+  	SEQUENCE {
+     	rnetFrLportVCSigProtocol
+          	INTEGER,
+     	rnetFrLportCLLM
+          	INTEGER,
+      rnetFrLportType
+            INTEGER,
+		 rnetFrLportLoadBooking
+				INTEGER
+  	}
+
+rnetFrLportVCSigProtocol OBJECT-TYPE
+     	SYNTAX  INTEGER {
+               	none(1),
+               	lmi(2),
+               	ansiT1617D(3),
+               	ansiT1617B(4),
+               	ccittQ933A(5)
+        }
+     	MAX-ACCESS  read-write
+     	STATUS  current
+     	DESCRIPTION
+             	"The value of this object identifies the Local
+             	In-Channel Signaling Protocol that is used for
+            	this frame relay UNI/NNI logical port."
+     	DEFVAL { none }
+     	::= { rnetFrLportEntry 1 }
+
+rnetFrLportCLLM OBJECT-TYPE
+     	SYNTAX  INTEGER {
+               	not-active(1),
+               	active(2)
+        }
+     	MAX-ACCESS  read-write
+     	STATUS  current
+     	DESCRIPTION
+             	" 'Consolidated Link Layer Management' is active/inactive
+		 on this port."
+     	::= { rnetFrLportEntry 2 }
+
+rnetFrLportType OBJECT-TYPE
+     SYNTAX  INTEGER {
+               uni(1),
+               nni(2)
+             }
+     MAX-ACCESS  read-write
+     STATUS  current
+     DESCRIPTION
+             "The value of this object identifies the type of
+             network interface for this logical port."
+     ::= {rnetFrLportEntry 3 }
+
+rnetFrLportLoadBooking OBJECT-TYPE
+		SYNTAX INTEGER(20..1000)
+		MAX-ACCESS read-write
+		STATUS current
+		DESCRIPTION
+		"the value of this object identifiws the frane relay over load in percents. 
+		This parameterenable the user to configure the CAC algorithm to enable 
+		overbooking of CIR. This means that the CIR sum might eceed the AR"
+		DEFVAL {100}
+		::={rnetFrLportEntry 4}
+
+
+
+rnetFrMgtVCSigTable OBJECT-TYPE
+     	SYNTAX  SEQUENCE OF RnetFrMgtVCSigEntry
+     	MAX-ACCESS  not-accessible
+     	STATUS  current
+     	DESCRIPTION
+             	"The table Contains objects that are defined as 
+		 read-only objects in the standard frMgtVCSigTable from
+		 RFC1604 MIB, and need to be writable."
+     	::= { rnetProtocolFrameRelay 2 }
+
+rnetFrMgtVCSigEntry OBJECT-TYPE
+	SYNTAX  RnetFrMgtVCSigEntry
+     	MAX-ACCESS  not-accessible
+     	STATUS  current
+     	DESCRIPTION
+             	"An entry in the Frame Relay Management VC
+             	 Signaling Parameters Errors table."
+	AUGMENTS { frMgtVCSigEntry }
+     	::= { rnetFrMgtVCSigTable 1 }
+
+RnetFrMgtVCSigEntry ::=
+     	SEQUENCE {
+     	rnetFrMgtVCSigUserN391
+             INTEGER,
+        rnetFrMgtVCSigUserN392
+             INTEGER,
+        rnetFrMgtVCSigUserN393
+             INTEGER,
+        rnetFrMgtVCSigUserT391
+             INTEGER,
+        rnetFrMgtVCSigNetN393
+             INTEGER,
+        rnetFrMgtVCSigNetT392
+             INTEGER,
+        rnetFrMgtVCSigNetnT3
+             INTEGER,
+        rnetFrMgtVCSigNetN392
+	          INTEGER
+}
+
+
+
+rnetFrMgtVCSigUserN391 OBJECT-TYPE
+     	SYNTAX  INTEGER (1..255)
+     	MAX-ACCESS  read-write
+    	STATUS  current
+    	DESCRIPTION
+               "The value of this object identifies the User-side
+             	N391 full status polling cycle value for this
+            	UNI/NNI logical port.  If the logical port is not
+             	performing user-side procedures, then this value
+             	is equal to noSuchName. This object applies to
+            	Q.933 Annex A and T1.617 Annex D."
+     	DEFVAL { 6 }
+     	::= { rnetFrMgtVCSigEntry 1 }
+
+rnetFrMgtVCSigUserN392 OBJECT-TYPE
+     	SYNTAX  INTEGER (1..10)
+     	MAX-ACCESS  read-write
+     	STATUS  current
+     	DESCRIPTION
+               "The value of this object identifies the User-side
+             	N392 error threshold value for this UNI/NNI
+             	logical port.  If the logical port is not
+             	performing user-side procedures, then this value
+             	is equal to noSuchName. This object applies to
+             	Q.933 Annex A and T1.617 Annex D."
+     	DEFVAL { 3 }
+     	::= { rnetFrMgtVCSigEntry 2 }
+
+rnetFrMgtVCSigUserN393 OBJECT-TYPE
+     	SYNTAX  INTEGER (1..10)
+     	MAX-ACCESS  read-write
+     	STATUS  current
+     	DESCRIPTION
+               "The value of this object identifies the User-side
+             	N393 monitored events count value for this UNI/NNI
+             	logical port.  If the logical port is not
+             	performing user-side procedures, then this value
+             	is equal to noSuchName. This object applies to
+             	Q.933 Annex A and T1.617 Annex D."
+     	DEFVAL { 4 }
+     	::= { rnetFrMgtVCSigEntry 3 }
+
+rnetFrMgtVCSigUserT391 OBJECT-TYPE
+     	SYNTAX  INTEGER (5..30)
+     	MAX-ACCESS  read-write
+     	STATUS  current
+     	DESCRIPTION
+               "The value of this object identifies the User-side
+             	T391 link integrity verification polling timer
+             	value for this UNI/NNI logical port.  If the
+            	logical port is not performing user-side
+             	procedures, then this value is equal to
+             	noSuchName. This object applies to Q.933 Annex A
+             	and T1.617 Annex D."
+     	DEFVAL { 10 }
+     	::= { rnetFrMgtVCSigEntry 4 }
+
+rnetFrMgtVCSigNetN393 OBJECT-TYPE
+     	SYNTAX  INTEGER (1..10)
+     	MAX-ACCESS  read-write
+     	STATUS  current
+     	DESCRIPTION
+               "The value of this object identifies the Network-
+             	side N393 monitored events count value (nN3 for
+             	LMI) for this UNI/NNI logical port.  If the
+             	logical port is not performing network-side
+             	procedures, then this value is equal to
+             	noSuchName. This object applies to Q.933 Annex A,
+             	T1.617 Annex D and LMI."
+     	DEFVAL { 4 }
+     	::= { rnetFrMgtVCSigEntry 5 }
+
+rnetFrMgtVCSigNetT392 OBJECT-TYPE
+     	SYNTAX  INTEGER (5..30)
+     	MAX-ACCESS  read-write
+     	STATUS  current
+     	DESCRIPTION
+               "The value of this object identifies the Network-
+             	side T392 polling verification timer value (nT2
+             	for LMI)  for this UNI/NNI logical port.  If the
+             	logical port is not performing network-side
+             	procedures, then this value is equal to
+             	noSuchName. This object applies to Q.933 Annex A,
+             	T1.617 Annex D and LMI."
+     	DEFVAL { 15 }
+     	::= { rnetFrMgtVCSigEntry 6 }
+
+rnetFrMgtVCSigNetnT3 OBJECT-TYPE
+     	SYNTAX  INTEGER {
+                	five(5),
+		      	ten(10),
+		      	fifteen(15),
+		      	twenty(20),
+		      	twentyFive(25),
+		      	thirty(30)
+		}
+
+     	MAX-ACCESS  read-write
+     	STATUS  current
+    	DESCRIPTION
+               "The value of this object identifies the Network-
+             	side nT3 timer (for nN4 status enquires received)
+             	value for this UNI/NNI logical port.  If the
+             	logical port is not performing network-side
+             	procedures or is not performing LMI procedures,
+             	then this value is equal to noSuchName. This
+            	 object applies only to LMI."
+     	DEFVAL { twenty }
+     	::= { rnetFrMgtVCSigEntry 7 }
+
+
+rnetFrMgtVCSigNetN392 OBJECT-TYPE
+     SYNTAX  INTEGER (1..10)
+     MAX-ACCESS  read-write
+     STATUS  current
+     DESCRIPTION
+             "The value of this object identifies the Network-
+             side N392 error threshold value (nN2 for LMI) for
+             this UNI/NNI logical port.  If the logical port is
+             not performing network-side procedures, then this
+             value is equal to noSuchName. This object applies
+             to Q.933 Annex A, T1.617 Annex D and LMI."
+     DEFVAL { 3 }
+     ::= { rnetFrMgtVCSigEntry 8 }
+
+
+-- **************************************************************
+-- RADNET Private Frame Relay Tables
+-- **************************************************************
+
+-- --------------------------------------------------------------
+--  RADNET Frame Relay Configuration table. The table add more 
+--  columns to the RFC1604 frPVCEndptTable
+-- --------------------------------------------------------------
+
+rnetFrPVCEndptConfigTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetFrPVCEndptConfigEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"The table contains additional information about
+		 the Frame Relay end point." 
+	::= {  rnetProtocolFrameRelay 3 }
+
+rnetFrPVCEndptConfigEntry	OBJECT-TYPE
+	SYNTAX	RnetFrPVCEndptConfigEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry that adds columns to the FR end
+		 point table from RFC 1604." 
+	AUGMENTS	{ frPVCEndptEntry }
+	::= { rnetFrPVCEndptConfigTable 1 }
+
+RnetFrPVCEndptConfigEntry ::= SEQUENCE {	
+	rnetFrPVCEndptConfigCastType
+             	INTEGER,
+	rnetFrPVCEndptConfigAlias
+		DisplayString, 
+        rnetFrPVCEndptConfigAdminStatus
+             	INTEGER,
+        rnetFrPVCEndptConfigOperStatus
+             	INTEGER,
+        rnetFrPVCEndptConfigTypicalFrameSize
+             	INTEGER,
+	rnetFrPVCEndptConfigActivationType
+		INTEGER,
+	rnetFrPVCEndptConfigActivationTime
+		INTEGER,
+	rnetFrPVCEndptConfigDeactivationTime
+		INTEGER,
+	rnetFrPVCEndptConfigConnectType
+		RnetConnectType,
+	rnetFrPVCEndptConfigInEIR
+		INTEGER,
+	rnetFrPVCEndptConfigOutEIR
+		INTEGER
+	}
+
+rnetFrPVCEndptConfigCastType   OBJECT-TYPE
+        SYNTAX INTEGER {
+			point-to-point (1),
+			point-to-multipoint-root (2),
+			point-to-multipoint-leaf (3)
+	}
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"End point type is either a point to point connection or
+		 point to multipoint root or leaf.
+		 This MIB object was taken from a draft ATM Supplemental 
+		 MIB document. In the future, if a device will support a
+		 standard FR MIB with a similar object, this private 
+		 object will become deprecated."
+	::= { rnetFrPVCEndptConfigEntry 1 }
+
+rnetFrPVCEndptConfigAlias   OBJECT-TYPE
+        SYNTAX DisplayString
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The end point Alias, as assigned by the user."
+	::= { rnetFrPVCEndptConfigEntry 2 }
+
+rnetFrPVCEndptConfigAdminStatus   OBJECT-TYPE
+         SYNTAX   INTEGER  {
+                             up(1),
+                             down(2)
+                           }
+         MAX-ACCESS   read-create
+         STATUS       current
+         DESCRIPTION
+                  "The value specifies the desired administrative
+                  state of the FR end point. The up and down states indicate
+                  that the traffic flow is enabled and disabled
+                  respectively for this FR end point."
+         ::= { rnetFrPVCEndptConfigEntry 3}
+
+rnetFrPVCEndptConfigOperStatus   OBJECT-TYPE
+         SYNTAX   INTEGER  {
+                             up(1),
+                             down(2),
+                             unknown(3)
+                           }
+         MAX-ACCESS   read-only
+         STATUS       current
+         DESCRIPTION
+                 "The up and down states
+                  indicate that the FR end point is currently
+                  operational, or not operational, respectively.
+                  The unknown state indicates that the status of
+                  this FR end point cannot be determined."
+         ::= { rnetFrPVCEndptConfigEntry 4}
+
+rnetFrPVCEndptConfigTypicalFrameSize   OBJECT-TYPE
+        SYNTAX INTEGER (1..2147483647)
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"."
+	::= { rnetFrPVCEndptConfigEntry 5 }
+
+rnetFrPVCEndptConfigActivationType   OBJECT-TYPE
+        SYNTAX INTEGER {
+		       normal(1),
+		       impermanent(2),
+		       periodic(3)
+	} 
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The object indication of the requested activation type."
+	::= { rnetFrPVCEndptConfigEntry 6 }
+
+rnetFrPVCEndptConfigActivationTime   OBJECT-TYPE
+        SYNTAX INTEGER (1..48)
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The time interval of the desired connection activation 
+		 time."
+	::= { rnetFrPVCEndptConfigEntry 7 }
+
+rnetFrPVCEndptConfigDeactivationTime   OBJECT-TYPE
+        SYNTAX INTEGER (1..48)
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The time interval of the desired connection activation 
+		 time."
+	::= { rnetFrPVCEndptConfigEntry 8 }
+
+rnetFrPVCEndptConfigConnectType OBJECT-TYPE
+        SYNTAX  RnetConnectType
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+             "This object describes the type of the connection
+	      to which the end point belongs. This object, together
+	      with frPVCEndptConfigConnectIdentifier, determines
+	      the connection to which the end point belongs."
+        ::= { rnetFrPVCEndptConfigEntry 9 }
+
+
+rnetFrPVCEndptConfigInEIR OBJECT-TYPE
+     SYNTAX  INTEGER
+     MAX-ACCESS  read-create
+     STATUS  current
+     DESCRIPTION
+             "The value of this object is equal to the
+             excess information rate (EIR) parameter
+             (measured in bits per second) for this PVC end-
+             point in the ingress direction (into the frame
+             relay network)."
+     ::= {rnetFrPVCEndptConfigEntry 10 }
+
+rnetFrPVCEndptConfigOutEIR OBJECT-TYPE
+     SYNTAX  INTEGER
+     MAX-ACCESS  read-create
+     STATUS  current
+     DESCRIPTION
+             "The value of this object is equal to the
+             excess information rate (EIR) parameter
+             (measured in bits per second) for this PVC end-
+             point in the Egress direction (out of the frame
+             relay network)."
+     ::= {rnetFrPVCEndptConfigEntry 11 }
+
+
+-- --------------------------------------------------------------
+--  RADNET Frame Relay Statistics table. The table add more 
+--  columns to the RFC1604 frPVCEndptTable
+-- --------------------------------------------------------------
+
+rnetFrPVCEndptStatisticsTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetFrPVCEndptStatisticsEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"The table contains additional information about
+		 the Frame Relay end point." 
+	::= {  rnetProtocolFrameRelay 4 }
+
+
+rnetFrPVCEndptStatisticsEntry	OBJECT-TYPE
+	SYNTAX	RnetFrPVCEndptStatisticsEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry that adds columns to the FR end
+		 point table from RFC 1604." 
+	AUGMENTS	{ frPVCEndptEntry }
+	::= { rnetFrPVCEndptStatisticsTable 1 }
+
+RnetFrPVCEndptStatisticsEntry ::= SEQUENCE {
+	rnetFrPVCEndptStatisticsTxFECNs
+		Counter32,
+	rnetFrPVCEndptStatisticsTxBECNs
+		Counter32,
+	rnetFrPVCEndptStatisticsTxDEs
+		Counter32,
+	rnetFrPVCEndptStatisticsRxFECNs
+		Counter32,
+	rnetFrPVCEndptStatisticsRxBECNs
+		Counter32
+	}
+
+rnetFrPVCEndptStatisticsTxFECNs   OBJECT-TYPE
+        SYNTAX Counter32 
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"."
+	::= { rnetFrPVCEndptStatisticsEntry 1 }
+
+rnetFrPVCEndptStatisticsTxBECNs   OBJECT-TYPE
+        SYNTAX Counter32 
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"."
+	::= { rnetFrPVCEndptStatisticsEntry 2 }
+
+rnetFrPVCEndptStatisticsTxDEs   OBJECT-TYPE
+        SYNTAX Counter32 
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"."
+	::= { rnetFrPVCEndptStatisticsEntry 3 }
+
+rnetFrPVCEndptStatisticsRxFECNs    OBJECT-TYPE
+        SYNTAX Counter32 
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"."
+	::= { rnetFrPVCEndptStatisticsEntry 4 }
+
+rnetFrPVCEndptStatisticsRxBECNs   OBJECT-TYPE
+        SYNTAX Counter32 
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"."
+	::= { rnetFrPVCEndptStatisticsEntry 5 }
+
+-- --------------------------------------------------------------
+--  RADNET private Frame Relay connection table. The table adds more 
+--  columns to the RFC1604 frPVCConnectEntry
+-- --------------------------------------------------------------
+
+rnetFrPVCConnectTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetFrPVCConnectEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"The table contains additional information about
+		 the Frame Relay end point connections." 
+	::= {  rnetProtocolFrameRelay 5 }
+
+
+rnetFrPVCConnectEntry	OBJECT-TYPE
+	SYNTAX	RnetFrPVCConnectEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry that adds columns to the FR end
+		 point connection table from RFC 1604." 
+	AUGMENTS	{ frPVCConnectEntry }
+	::= { rnetFrPVCConnectTable 1 }
+
+RnetFrPVCConnectEntry ::= SEQUENCE {
+	rnetFrPVCConnectBusSelection
+		INTEGER,
+	rnetFrPVCConnectCastType
+		INTEGER
+	}
+	
+rnetFrPVCConnectBusSelection   OBJECT-TYPE
+        SYNTAX INTEGER {
+			first(1),
+			second(2),
+			automatic(3)
+	}
+	MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+		"An internal bus entry."
+        DEFVAL { automatic }
+	::= { rnetFrPVCConnectEntry 1 }
+
+rnetFrPVCConnectCastType   OBJECT-TYPE
+        SYNTAX INTEGER {
+			point-to-point(1),
+			multicast-low-if-root(2),
+			multicast-high-if-root(3)
+	}
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The connection type of the frPVCConnectIndex."
+	::= { rnetFrPVCConnectEntry 2 }
+
+END

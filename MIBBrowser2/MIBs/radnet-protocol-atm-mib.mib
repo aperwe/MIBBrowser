@@ -1,0 +1,1479 @@
+-- @(#)rnet_atm.mib
+-- ----------------------------------------------------------------------
+-- RADNET ATM ATM MIB
+-- Copyright (c) 1996 RADNET Ltd.
+-- ----------------------------------------------------------------------
+--
+-- MIB Module :   RADNET-PROTOCOL-ATM-MIB
+--
+-- Revision   :   V2.101
+--
+-- Description:   Definition of ATM protocol.
+--		  The definition includes the following subjects:
+--		  - Interface configuration
+--		  - Interface statistics
+--		  - Vp/Vc end point configuration
+--		  - Cross Connection parameters
+--		  - Traffic descriptor parameters
+--		  - ATM OAM
+--
+-- ----------------------------------------------------------------------
+RADNET-PROTOCOL-ATM-MIB DEFINITIONS ::= BEGIN
+
+	IMPORTS
+
+     	OBJECT-TYPE, MODULE-IDENTITY,
+		Counter32            	FROM SNMPv2-SMI
+			
+		DisplayString,
+		TimeStamp,
+		RowStatus,
+		AutonomousType,
+		TruthValue,
+		TEXTUAL-CONVENTION		FROM SNMPv2-TC
+
+		IfIndex, 
+		atmVplEntry, 
+		atmVclEntry,
+		atmInterfaceConfEntry,
+		atmTrafficDescrParamEntry,
+		atmVpCrossConnectEntry,
+		atmVcCrossConnectEntry
+					FROM ATM-MIB
+
+--		AtmServiceCategory
+--					FROM ATM-TC-MIB
+
+		RnetConnectType,
+		rnetProtocol
+				FROM RADNET-PROTOCOL-MIB;
+		
+
+            rnetProtocolAtm    MODULE-IDENTITY
+                    LAST-UPDATED "9701301200Z"
+                    ORGANIZATION "RADNET"
+                    CONTACT-INFO
+                      "          Eitan Mardiks
+                        Postal:  RADNET Ltd.
+				24 Raul Wallenberg St.
+				Tel-Aviv 69719, Israel.
+                        Tel:     +972 3 6455700
+                        Fax:     +972 3 6480582
+                        E-Mail:  eitan@gate.radnet.co.il"
+
+                    DESCRIPTION
+                    "Definition of ATM protocol.
+					      The definition includes the following subjects:
+					      - Interface configuration
+					      - Interface statistics
+					      - Vp/Vc end point configuration
+					      - Cross Connection parameters
+					      - Traffic descriptor parameters
+					      - ATM OAM"
+                    ::= { rnetProtocol 6 }
+
+
+            AtmServiceCategory ::= TEXTUAL-CONVENTION
+                     STATUS  current
+                     DESCRIPTION
+                         "The service category for a connection."
+                    REFERENCE
+                        "ATM Forum Traffic Management 4.0."
+                   SYNTAX   INTEGER {
+                      other(1),   -- none of the following
+                      cbr(2),     -- constant bit rate
+                      vbrRt(3),   -- real-time variable bit rate
+                      vbrNRt(4),  -- non real-time variable bit rate
+                      abr(5),     -- available bit rate
+                      ubr(6),      -- unspecified bit rate
+                      ubrShaped(100)  -- shaped unspecified bit rate
+                      }
+
+-- --------------------------------------------------------------
+-- RADNET ATM Objects
+-- --------------------------------------------------------------
+
+rnetProtocolAtmExpansions	OBJECT IDENTIFIER ::= { rnetProtocolAtm 1 }
+rnetProtocolAtmOam		OBJECT IDENTIFIER ::= { rnetProtocolAtm 2 }
+rnetProtocolAtmIp		OBJECT IDENTIFIER ::= { rnetProtocolAtm 3 }
+
+-- --------------------------------------------------------------
+--  RADNET private ATM Interface table. The table  
+--  augments the RFC1695 atmInterfaceConfTable
+-- --------------------------------------------------------------
+
+rnetAtmInterfaceConfTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetAtmInterfaceConfEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"The table contains additional information about
+		 the ATM interfaces." 
+	::= { rnetProtocolAtmExpansions 1 }
+
+
+rnetAtmInterfaceConfEntry	OBJECT-TYPE
+	SYNTAX	RnetAtmInterfaceConfEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry that adds columns to the ATM mib
+		 interface table." 
+	AUGMENTS	{ atmInterfaceConfEntry }
+	::= { rnetAtmInterfaceConfTable 1 }
+
+RnetAtmInterfaceConfEntry ::= SEQUENCE {
+	rnetAtmInterfaceMode
+		INTEGER,
+	rnetAtmInterfaceMaxVpcsOnly
+		INTEGER,
+   rnetAtmInterfaceUnusedQueuesNum
+       Counter32,
+	rnetAtmInterfaceLoadBooking
+		INTEGER,
+	rnetAtmInterfaceMarginsAllocation
+		INTEGER
+	}
+
+rnetAtmInterfaceMode   OBJECT-TYPE
+        SYNTAX INTEGER{
+			uni(1),
+			nni(2)
+	}
+	MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+		"The mode of the intefrace."
+	::= { rnetAtmInterfaceConfEntry 1 }
+
+rnetAtmInterfaceMaxVpcsOnly   OBJECT-TYPE
+        SYNTAX INTEGER (0..4096)
+	MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+		"The maximum number of VPC's (powers of 2 only)
+		 supported at this ATM interface for VP switching only."
+	::= { rnetAtmInterfaceConfEntry 2 }
+
+rnetAtmInterfaceUnusedQueuesNum   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		" "
+	::= { rnetAtmInterfaceConfEntry 3 }
+
+rnetAtmInterfaceLoadBooking OBJECT-TYPE
+       SYNTAX      INTEGER (20..1000)
+       MAX-ACCESS  read-write
+       STATUS      current
+       DESCRIPTION
+                " The percentage of the link bandwidth that is used for
+                    allocation (in the CAC mechanism). "
+        DEFVAL { 100 }
+       ::= { rnetAtmInterfaceConfEntry 4 }
+
+rnetAtmInterfaceMarginsAllocation OBJECT-TYPE
+       SYNTAX      INTEGER (16..100)
+       MAX-ACCESS  read-write
+       STATUS      current
+       DESCRIPTION
+                " An indication for the margins that are reserved for
+                    VBR in the CAC mechanism. "
+        DEFVAL { 36 }
+       ::= { rnetAtmInterfaceConfEntry 5 }
+
+
+
+-- --------------------------------------------------------------
+--  RADNET private ATM Interface statistics table. The table adds 
+--  more columns to the RFC1695 atmInterfaceConfTable
+-- --------------------------------------------------------------
+
+rnetAtmIfStatisticsTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetAtmIfStatisticsEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"The table contains additional information about
+		 the ATM interfaces." 
+	::= { rnetProtocolAtmExpansions 2 }
+
+
+rnetAtmIfStatisticsEntry	OBJECT-TYPE
+	SYNTAX	RnetAtmIfStatisticsEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry that adds columns to the ATM mib
+		 interface table." 
+	AUGMENTS	{ atmInterfaceConfEntry }
+	::= { rnetAtmIfStatisticsTable 1 }
+
+RnetAtmIfStatisticsEntry ::= SEQUENCE {
+	rnetAtmClp0RxCorrectHecCells
+		Counter32,
+	rnetAtmRxCorrectHecCells
+		Counter32,
+	rnetAtmClp0DiscardsViolationCells
+		Counter32,
+	rnetAtmDiscardsViolationCells
+		Counter32,
+	rnetAtmTaggedViolationCells
+		Counter32,
+	rnetAtmClp0TxCells
+		Counter32,
+	rnetAtmTxCells
+		Counter32,
+	rnetAtmDiscardsTxQueueOvfCells
+		Counter32,
+	rnetAtmEfciSetTxCells
+		Counter32,
+	rnetAtmDiscardsBadHecCells
+		Counter32,
+	rnetAtmDiscardsMisroutingCells	
+		Counter32,
+	rnetAtmOampRxCorrectHecCells
+		Counter32,
+	rnetAtmOampTxCells
+		Counter32,
+	rnetAtmTotalRxCorrectedHecCells
+		Counter32,
+	rnetAtmTotalRxCorrectHecCells
+		Counter32,
+	rnetAtmCellHeaderErrorRatio
+		Counter32,
+	rnetAtmMisroutedCellRate
+		Counter32,
+	rnetAtmRxCells
+		Counter32
+	}
+
+rnetAtmClp0RxCorrectHecCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells received with correct
+		 HEC's and CLP=0 and not misrouted"
+	::= { rnetAtmIfStatisticsEntry 1 }
+
+rnetAtmRxCorrectHecCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells received with correct
+		 HEC's and CLP=0+1 and not misrouted."
+	::= { rnetAtmIfStatisticsEntry 2 }
+
+
+rnetAtmClp0DiscardsViolationCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells, in ingress direction,
+		 discarded due to policing violation, with CLP=0."
+	::= { rnetAtmIfStatisticsEntry 3 }
+
+rnetAtmDiscardsViolationCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells, in ingress direction,
+		 discarded due to policing violation, with CLP=0+1."
+	::= { rnetAtmIfStatisticsEntry 4 }
+
+rnetAtmTaggedViolationCells  OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells, in ingress direction,
+		 marked due to policing violation."
+	::= { rnetAtmIfStatisticsEntry 5 }
+
+rnetAtmClp0TxCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells transmitted with CLP=0."
+	::= { rnetAtmIfStatisticsEntry 6 }
+
+rnetAtmTxCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells transmitted with CLP=0+1."
+	::= { rnetAtmIfStatisticsEntry 7 }
+
+rnetAtmDiscardsTxQueueOvfCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of discarded cells, in the egress
+		 direction when the transmit buffer
+		 is full."
+	::= { rnetAtmIfStatisticsEntry 8 }
+
+rnetAtmEfciSetTxCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells transmitted with EFCI bit set by
+		 the Agent"
+	::= { rnetAtmIfStatisticsEntry 9 }
+
+rnetAtmDiscardsBadHecCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells received and discarded due
+		 to failed HECs."
+	::= { rnetAtmIfStatisticsEntry 10 }
+
+rnetAtmDiscardsMisroutingCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells received and discarded due to misrouting
+		 or misinsertion."
+	::= { rnetAtmIfStatisticsEntry 11 }
+
+rnetAtmOampRxCorrectHecCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of OAM&P cells received with correct
+		 HECs."
+	::= { rnetAtmIfStatisticsEntry 12 }
+
+rnetAtmOampTxCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of transmitted OAM&P cells."
+	::= { rnetAtmIfStatisticsEntry 13 }
+
+rnetAtmTotalRxCorrectedHecCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells received with corrected HECs."
+	::= { rnetAtmIfStatisticsEntry 14 }
+
+rnetAtmTotalRxCorrectHecCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The total number of cells received with correct HECs."
+	::= { rnetAtmIfStatisticsEntry 15 }
+
+rnetAtmCellHeaderErrorRatio   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"Cell header error ratio."
+	::= { rnetAtmIfStatisticsEntry 16 }
+
+rnetAtmMisroutedCellRate   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"Misrouted cell rate."
+	::= { rnetAtmIfStatisticsEntry 17 }
+
+rnetAtmRxCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The total number of cells received with
+		 correct HEC's."
+	::= { rnetAtmIfStatisticsEntry 18 }
+
+
+-- **************************************************************
+-- RADNET Private ATM Vpl Tables
+-- **************************************************************
+-- --------------------------------------------------------------
+--  RADNET Vpl Configuration table. The table adds more columns to
+--  the RFC1695 atmVplTable
+-- --------------------------------------------------------------
+
+rnetAtmVplConfigTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetAtmVplConfigEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"A VPL configuration table. The table contains additional 
+		 information about the ATM Vpl end points." 
+	::= { rnetProtocolAtmExpansions 3 }
+
+
+rnetAtmVplConfigEntry	OBJECT-TYPE
+	SYNTAX	RnetAtmVplConfigEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry that adds columns to the ATM mib
+		 Vpl table." 
+	AUGMENTS	{ atmVplEntry }
+	::= { rnetAtmVplConfigTable 1 }
+
+RnetAtmVplConfigEntry ::= SEQUENCE {
+	rnetAtmVplConfigCastType
+		INTEGER, 
+	rnetAtmVplConfigAlias
+		DisplayString, 
+	rnetAtmVplConfigEtETerm
+		INTEGER, 
+	rnetAtmVplConfigActivationType
+		INTEGER,
+	rnetAtmVplConfigActivationTime
+		INTEGER,
+	rnetAtmVplConfigDeactivationTime
+		INTEGER
+	}
+
+rnetAtmVplConfigCastType   OBJECT-TYPE
+        SYNTAX INTEGER {
+			point-to-point (1),
+			point-to-multipoint-root (2),
+			point-to-multipoint-leaf (3)
+	}
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"Vpl type is either a point to point connection or
+		 point to multipoint root or leaf.
+		 This MIB object was taken from a draft ATM Supplemental 
+		 MIB document. If a device will support a future standard
+		 ATM MIB with a similar object, this private object will 
+		 become deprecated."
+	::= { rnetAtmVplConfigEntry 1 }
+
+rnetAtmVplConfigAlias   OBJECT-TYPE
+        SYNTAX DisplayString
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The end point name, as assinged by the user."
+	::= { rnetAtmVplConfigEntry 2 }
+
+rnetAtmVplConfigEtETerm   OBJECT-TYPE
+        SYNTAX INTEGER {
+			terminating (1),
+			non-terminating (2)
+	}
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The object defines the end-to-end terminating 
+		 mode of the end point."
+	::= { rnetAtmVplConfigEntry 3 }
+
+rnetAtmVplConfigActivationType   OBJECT-TYPE
+        SYNTAX INTEGER {
+		       normal(1),
+		       impermanent(2),
+		       periodic(3)
+	} 
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The object indication of the requested activation type."
+	::= { rnetAtmVplConfigEntry 4 }
+
+rnetAtmVplConfigActivationTime   OBJECT-TYPE
+        SYNTAX INTEGER (1..48)
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The time interval of the desired connection activation 
+		 time."
+	::= { rnetAtmVplConfigEntry 5 }
+
+rnetAtmVplConfigDeactivationTime   OBJECT-TYPE
+        SYNTAX INTEGER (1..48)
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The time interval of the desired connection deactivation 
+		 time."
+	::= { rnetAtmVplConfigEntry 6 }
+
+
+
+-- --------------------------------------------------------------
+--  RADNET Vpl Statistics table. The table adds more columns to
+--  the RFC1695 atmVplTable
+-- --------------------------------------------------------------
+
+rnetAtmVplStatisticsTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetAtmVplStatisticsEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"The table contains additional information about
+		 the ATM Vpl end points." 
+	::= { rnetProtocolAtmExpansions 4 }
+
+
+rnetAtmVplStatisticsEntry	OBJECT-TYPE
+	SYNTAX	RnetAtmVplStatisticsEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry that adds columns to the ATM mib
+		 Vpl table." 
+	AUGMENTS	{ atmVplEntry }
+	::= { rnetAtmVplStatisticsTable 1 }
+
+RnetAtmVplStatisticsEntry ::= SEQUENCE {
+	rnetAtmVplStatisticsRxCorrectHecClp0Cells
+		Counter32,
+	rnetAtmVplStatisticsRxCorrectHecCells
+		Counter32,
+	rnetAtmVplStatisticsTxClp0Cells
+		Counter32,
+	rnetAtmVplStatisticsTxCells
+		Counter32,
+	rnetAtmVplStatisticsDiscardsViolationClp0Cells
+		Counter32,
+	rnetAtmVplStatisticsDiscardsViolationCells
+		Counter32,
+	rnetAtmVplStatisticsTaggedViolationCells
+		Counter32
+	}
+
+rnetAtmVplStatisticsRxCorrectHecClp0Cells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells received with correct
+		 HEC's and CLP=0."
+	::= { rnetAtmVplStatisticsEntry 1 }
+
+rnetAtmVplStatisticsRxCorrectHecCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells received with correct
+		 HEC's and CLP=0+1."
+	::= { rnetAtmVplStatisticsEntry 2 }
+
+
+rnetAtmVplStatisticsTxClp0Cells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells transmitted with CLP=0."
+	::= { rnetAtmVplStatisticsEntry 3 }
+
+rnetAtmVplStatisticsTxCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells transmitted with CLP=0+1."
+	::= { rnetAtmVplStatisticsEntry 4 }
+
+rnetAtmVplStatisticsDiscardsViolationClp0Cells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells, in ingress direction,
+		 discarded due to policing violation, with CLP=0."
+	::= { rnetAtmVplStatisticsEntry 5 }
+
+rnetAtmVplStatisticsDiscardsViolationCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells, in ingress direction,
+		 discarded due to policing violation with CLP=0+1."
+	::= { rnetAtmVplStatisticsEntry 6 }
+
+rnetAtmVplStatisticsTaggedViolationCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells, in ingress direction,
+		 marked due to policing violation."
+	::= { rnetAtmVplStatisticsEntry 7 }
+
+
+
+-- **************************************************************
+-- RADNET Private ATM Vcl Tables
+-- **************************************************************
+-- --------------------------------------------------------------
+--  RADNET Vcl Configuration table. The table adds more columns to
+--  the RFC1695 atmVclTable
+-- --------------------------------------------------------------
+
+rnetAtmVclConfigTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetAtmVclConfigEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"A VCL configuration table. The table contains additional 
+		 information about the ATM Vcl end points." 
+	::= { rnetProtocolAtmExpansions 5 }
+
+
+rnetAtmVclConfigEntry	OBJECT-TYPE
+	SYNTAX	RnetAtmVclConfigEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry that adds columns to the ATM mib
+		 Vcl table." 
+	AUGMENTS	{ atmVclEntry }
+	::= { rnetAtmVclConfigTable 1 }
+
+RnetAtmVclConfigEntry ::= SEQUENCE {
+	rnetAtmVclConfigCastType
+		INTEGER, 
+	rnetAtmVclConfigAlias
+		DisplayString, 
+	rnetAtmVclConfigEtETerm
+		INTEGER, 
+	rnetAtmVclConfigActivationType
+		INTEGER,
+	rnetAtmVclConfigActivationTime
+		INTEGER,
+	rnetAtmVclConfigDeactivationTime
+		INTEGER,
+        rnetAtmVclConfigConnectType    
+		RnetConnectType
+	}
+
+rnetAtmVclConfigCastType   OBJECT-TYPE
+        SYNTAX INTEGER {
+			point-to-point (1),
+			point-to-multipoint-root (2),
+			point-to-multipoint-leaf (3)
+	}
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"Vcl type is either a point to point connection or
+		 point to multipoint root or leaf.
+		 This MIB object was taken from a draft ATM Supplemental 
+		 MIB document. If a device will support a future standard
+		 ATM MIB with a similar object, this private object will 
+		 become deprecated."
+	::= { rnetAtmVclConfigEntry 1 }
+
+rnetAtmVclConfigAlias   OBJECT-TYPE
+        SYNTAX DisplayString
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The end point name, as assinged by the user."
+	::= { rnetAtmVclConfigEntry 2 }
+
+rnetAtmVclConfigEtETerm   OBJECT-TYPE
+        SYNTAX INTEGER {
+			terminating (1),
+			non-terminating (2)
+	}
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The object defines the end-to-end 
+		 terminating mode of the end point."
+	::= { rnetAtmVclConfigEntry 3 }
+
+rnetAtmVclConfigActivationType   OBJECT-TYPE
+        SYNTAX INTEGER {
+		       normal(1),
+		       impermanent(2),
+		       periodic(3)
+	} 
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The object indication of the requested activation type."
+	::= { rnetAtmVclConfigEntry 4 }
+
+rnetAtmVclConfigActivationTime   OBJECT-TYPE
+        SYNTAX INTEGER (1..48)
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The time interval of the desired connection activation 
+		 time."
+	::= { rnetAtmVclConfigEntry 5 }
+
+rnetAtmVclConfigDeactivationTime   OBJECT-TYPE
+        SYNTAX INTEGER (1..48)
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The time interval of the desired connection deactivation 
+		 time."
+	::= { rnetAtmVclConfigEntry 6 }
+
+rnetAtmVclConfigConnectType OBJECT-TYPE
+        SYNTAX  RnetConnectType
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+             "This object describes the type of the connection
+	      to which the end point belongs. This object, together
+	      with atmVclCrossConnectIdentifier, determines
+	      the connection to which the end point belongs.
+	      If the end point is not connected, the value of
+	      this object has no meaning."
+        ::= { rnetAtmVclConfigEntry 7 }
+	
+
+
+
+-- --------------------------------------------------------------
+--  RADNET Vcl Statistics table. The table adds more columns to
+--  the RFC1695 atmVclTable
+-- --------------------------------------------------------------
+
+rnetAtmVclStatisticsTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetAtmVclStatisticsEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"The table contains additional information about
+		 the ATM Vcl end points." 
+	::= { rnetProtocolAtmExpansions 6 }
+
+
+rnetAtmVclStatisticsEntry	OBJECT-TYPE
+	SYNTAX	RnetAtmVclStatisticsEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry that adds columns to the ATM mib
+		 Vcl table." 
+	AUGMENTS	{ atmVclEntry }
+	::= { rnetAtmVclStatisticsTable 1 }
+
+RnetAtmVclStatisticsEntry ::= SEQUENCE {
+	rnetAtmVclStatisticsRxCorrectHecClp0Cells
+		Counter32,
+	rnetAtmVclStatisticsRxCorrectHecCells
+		Counter32,
+	rnetAtmVclStatisticsTxClp0Cells
+		Counter32,
+	rnetAtmVclStatisticsTxCells
+		Counter32,
+	rnetAtmVclStatisticsDiscardsViolationClp0Cells
+		Counter32,
+	rnetAtmVclStatisticsDiscardsViolationCells
+		Counter32,
+	rnetAtmVclStatisticsTaggedViolationCells
+		Counter32,
+	rnetAtmVclStatisticsRxCells
+		Counter32
+	}
+
+rnetAtmVclStatisticsRxCorrectHecClp0Cells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells received with correct
+		 HEC's and CLP=0."
+	::= { rnetAtmVclStatisticsEntry 1 }
+
+rnetAtmVclStatisticsRxCorrectHecCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells received with correct
+		 HEC's and CLP=0+1."
+	::= { rnetAtmVclStatisticsEntry 2 }
+
+
+rnetAtmVclStatisticsTxClp0Cells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells transmitted with CLP=0."
+	::= { rnetAtmVclStatisticsEntry 3 }
+
+rnetAtmVclStatisticsTxCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells transmitted with CLP=0+1."
+	::= { rnetAtmVclStatisticsEntry 4 }
+
+rnetAtmVclStatisticsDiscardsViolationClp0Cells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells, in ingress direction,
+		 discarded due to policing violation, with CLP=0."
+	::= { rnetAtmVclStatisticsEntry 5 }
+
+rnetAtmVclStatisticsDiscardsViolationCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells, in ingress direction,
+		 discarded due to policing violation, with CLP=0+1."
+	::= { rnetAtmVclStatisticsEntry 6 }
+
+rnetAtmVclStatisticsTaggedViolationCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The number of cells, in ingress direction,
+		 marked due to policing violation."
+	::= { rnetAtmVclStatisticsEntry 7 }
+
+rnetAtmVclStatisticsRxCells   OBJECT-TYPE
+        SYNTAX Counter32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The total number of cells received with
+		 correct HEC's."
+	::= { rnetAtmVclStatisticsEntry 8 }
+
+
+
+
+-- --------------------------------------------------------------
+--  RADNET private ATM VP cross connection table. The table adds more 
+--  columns to the RFC1695 atmVpCrossConnectEntry
+-- --------------------------------------------------------------
+
+
+rnetAtmVpCrossConnectTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetAtmVpCrossConnectEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"The table contains additional information about
+		 the ATM VP cross connections." 
+	::= { rnetProtocolAtmExpansions 7 }
+
+
+rnetAtmVpCrossConnectEntry	OBJECT-TYPE
+	SYNTAX	RnetAtmVpCrossConnectEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry that adds columns to the ATM mib
+		 VP cross connection table." 
+	AUGMENTS	{ atmVpCrossConnectEntry }
+	::= { rnetAtmVpCrossConnectTable 1 }
+
+RnetAtmVpCrossConnectEntry ::= SEQUENCE {
+	rnetAtmVpCrossConnectBusSelection
+		INTEGER,
+	rnetAtmVpCrossConnectCastType
+		INTEGER
+	}
+
+rnetAtmVpCrossConnectBusSelection   OBJECT-TYPE
+        SYNTAX INTEGER {
+			first(1),
+			second(2),
+			automatic(3)
+	}
+	MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+		"An internal bus entry."
+        DEFVAL { automatic }
+	::= { rnetAtmVpCrossConnectEntry 1 }
+
+rnetAtmVpCrossConnectCastType   OBJECT-TYPE
+        SYNTAX INTEGER {
+			point-to-point(1),
+			multicast-low-if-root(2),
+			multicast-high-if-root(3)
+	}
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The connection type of the atmVpCrossConnectIndex."
+	::= { rnetAtmVpCrossConnectEntry 2 }
+
+
+-- --------------------------------------------------------------
+--  RADNET private ATM VC cross connection table. The table adds more 
+--  columns to the RFC1695 atmVcCrossConnectEntry
+-- --------------------------------------------------------------
+
+rnetAtmVcCrossConnectTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetAtmVcCrossConnectEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"The table contains additional information about
+		 the ATM VC cross connections." 
+	::= { rnetProtocolAtmExpansions 8 }
+
+
+rnetAtmVcCrossConnectEntry	OBJECT-TYPE
+	SYNTAX	RnetAtmVcCrossConnectEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry that adds columns to the ATM mib
+		 VP cross connection table." 
+	AUGMENTS	{ atmVcCrossConnectEntry }
+	::= { rnetAtmVcCrossConnectTable 1 }
+
+RnetAtmVcCrossConnectEntry ::= SEQUENCE {
+	rnetAtmVcCrossConnectBusSelection
+		INTEGER,
+	rnetAtmVcCrossConnectCastType
+		INTEGER
+	}
+
+rnetAtmVcCrossConnectBusSelection   OBJECT-TYPE
+        SYNTAX INTEGER {
+			first(1),
+			second(2),
+			automatic(3)
+	}
+	MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+		"States the type of the created VC cross connection."
+        DEFVAL { automatic }
+	::= { rnetAtmVcCrossConnectEntry 1 }
+
+rnetAtmVcCrossConnectCastType   OBJECT-TYPE
+        SYNTAX INTEGER {
+			point-to-point(1),
+			multicast-low-if-root(2),
+			multicast-high-if-root(3)
+	}
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The connection type of the atmVcCrossConnectIndex."
+	::= { rnetAtmVcCrossConnectEntry 2 }
+
+-- --------------------------------------------------------------
+--  RADNET private ATM Traffic descriptors param table. The table 
+--  adds more columns to the RFC1695 atmTrafficDescrParamTable
+-- --------------------------------------------------------------
+
+rnetAtmTrafficDescrParamTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetAtmTrafficDescrParamEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"The table contains additional information about
+		 the ATM traffic descriptor types." 
+	::= { rnetProtocolAtmExpansions 9 }
+
+
+rnetAtmTrafficDescrParamEntry	OBJECT-TYPE
+	SYNTAX	RnetAtmTrafficDescrParamEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry that adds columns to the ATM traffic
+		 descriptor params entry." 
+	AUGMENTS	{ atmTrafficDescrParamEntry }
+	::= { rnetAtmTrafficDescrParamTable 1 }
+
+RnetAtmTrafficDescrParamEntry ::= SEQUENCE {
+	rnetAtmTrafficDescrParamUseIndication
+		INTEGER,
+	rnetAtmTrafficDescrParamAlias
+		DisplayString,
+        rnetAtmTrafficDescrParamServiceCat         
+		AtmServiceCategory
+	}
+	
+rnetAtmTrafficDescrParamUseIndication     OBJECT-TYPE
+	SYNTAX       INTEGER { 
+			not-in-use(1),
+			in-use(2)
+	}
+	MAX-ACCESS   read-write
+	STATUS       current
+	DESCRIPTION
+		"This objects shows whether this traffic descriptor is
+		 used by one of the connections."
+	::= { rnetAtmTrafficDescrParamEntry 1 }
+
+rnetAtmTrafficDescrParamAlias     OBJECT-TYPE
+	SYNTAX       DisplayString
+	MAX-ACCESS   read-write
+	STATUS       current
+	DESCRIPTION
+		"."
+	::= { rnetAtmTrafficDescrParamEntry 2 }
+
+rnetAtmTrafficDescrParamServiceCat  OBJECT-TYPE
+        SYNTAX         AtmServiceCategory
+        MAX-ACCESS     read-write
+        STATUS         current
+        DESCRIPTION
+                 " The ATM service category."
+        DEFVAL  { ubr }
+	::= { rnetAtmTrafficDescrParamEntry 3 }
+ 
+rnetAtmTrafficDescrIndexNext    OBJECT-TYPE
+        SYNTAX  INTEGER (0..2147483647)
+        MAX-ACCESS  read-only
+        STATUS  current
+        DESCRIPTION
+         "This object contains an appropriate value to
+          be used for atmTrafficDescrParamIndex when creating
+          entries in the  atmTrafficDescrParamTable.  The value
+          0 indicates that no unassigned entries are
+          available. To obtain the atmTrafficDescrParamIndex
+          value for a new entry, the manager issues a
+          management protocol retrieval operation to obtain
+          the current value of this object.  After each
+          retrieval, the agent should modify the value to
+          the next unassigned index."
+        ::= { rnetProtocolAtmExpansions 10 }
+
+-- --------------------------------------------------------------
+-- ATM OAM Group. The group defines ATM end point tests.
+--
+-- This group will be implemented by using the objects:
+-- atmLoopbackID, atmLoopbackLocID and atmLoopbackSrcID from
+-- ATM Test MIB
+-- --------------------------------------------------------------
+
+-- --------------------------------------------------------------
+--  The ATM OAM F4 table.
+--
+-- This group is necessary to perform different tests on the
+-- same interface and on multiple VPs over the same interface.
+-- --------------------------------------------------------------
+
+rnetProtocolAtmOamF4Table OBJECT-TYPE
+ 	SYNTAX  SEQUENCE OF RnetProtocolAtmOamF4Entry
+ 	MAX-ACCESS  not-accessible
+ 	STATUS  current
+ 	DESCRIPTION
+             	"The table ontains objects that define ATM VP
+		 loop back tests."
+  	::= { rnetProtocolAtmOam 1 }
+
+rnetProtocolAtmOamF4Entry OBJECT-TYPE
+ 	SYNTAX  RnetProtocolAtmOamF4Entry
+ 	MAX-ACCESS  not-accessible
+ 	STATUS  current
+ 	DESCRIPTION
+          	"An entry in the ATM OAM F4 table."
+	AUGMENTS  { atmVplEntry }
+ 	::= { rnetProtocolAtmOamF4Table 1 }
+
+RnetProtocolAtmOamF4Entry ::=
+  	SEQUENCE {
+     	rnetProtocolAtmOamF4OperStatus
+          	INTEGER,
+		rnetProtocolAtmOamF4ContinuityCheckRx
+            INTEGER,
+		rnetProtocolAtmOamF4ContinuityCheckTx
+            INTEGER,
+		rnetProtocolAtmOamF4PmConfigured
+				TruthValue
+  	}
+
+rnetProtocolAtmOamF4OperStatus     OBJECT-TYPE
+	SYNTAX  INTEGER { 
+			up(1),
+			down(2),
+			unknown(4),
+			loc(6),
+			ais(7),
+			rdi(8)
+	}
+	MAX-ACCESS   read-only
+	STATUS       current
+	DESCRIPTION
+		"The operational ststus of the end point."
+	::= { rnetProtocolAtmOamF4Entry 1 }
+
+rnetProtocolAtmOamF4ContinuityCheckRx OBJECT-TYPE
+   SYNTAX  INTEGER {
+         notActive(0),           
+         endToEnd(1),
+         segmentTerminated(2),
+			segmentTermAndEndToEnd(3)
+   }
+   MAX-ACCESS  read-write
+   STATUS  current
+   DESCRIPTION
+      "Available continuity check test in receive direction."
+        DEFVAL { notActive }
+   ::= { rnetProtocolAtmOamF4Entry 2 }
+
+rnetProtocolAtmOamF4ContinuityCheckTx OBJECT-TYPE
+        SYNTAX  INTEGER {
+         notActive(0),                
+         endToEnd(1),
+         segmentTerminated(2),
+			segmentTermAndEndToEnd(3)
+   }
+   MAX-ACCESS  read-write
+   STATUS  current
+   DESCRIPTION
+      "Available continuity check test in transmit direction."
+        DEFVAL { notActive }
+   ::= { rnetProtocolAtmOamF4Entry 3 }
+
+rnetProtocolAtmOamF4PmConfigured        OBJECT-TYPE
+        SYNTAX  TruthValue
+        MAX-ACCESS read-only
+        STATUS     current
+        DESCRIPTION
+                "If true, this VPL has a PM test configured for it.
+                  The PM test configuration is saved in the
+                  corresponding rnetAtmOamPmF4Table table
+                  row. This variable is automatically set by the
+                  agent when the corresponding row in
+                 rnetAtmOamPmF4Table is created / deleted."
+        ::= { rnetProtocolAtmOamF4Entry 4 }
+
+-- --------------------------------------------------------------
+--  The ATM AOM F5 table.
+--
+-- This group is necessary to perform different tests on the
+-- same interface and on multiple VCs over the same interface.
+-- --------------------------------------------------------------
+
+rnetProtocolAtmOamF5Table OBJECT-TYPE
+ 	SYNTAX  SEQUENCE OF RnetProtocolAtmOamF5Entry
+ 	MAX-ACCESS  not-accessible
+ 	STATUS  current
+ 	DESCRIPTION
+             	"The table contains objects that define ATM VC
+		 loop back tests."
+  	::= { rnetProtocolAtmOam 2 }
+
+rnetProtocolAtmOamF5Entry OBJECT-TYPE
+ 	SYNTAX  RnetProtocolAtmOamF5Entry
+ 	MAX-ACCESS  not-accessible
+ 	STATUS  current
+ 	DESCRIPTION
+          	"An entry in the ATM OAM F5 table."
+	AUGMENTS  { atmVclEntry }
+ 	::= { rnetProtocolAtmOamF5Table 1 }
+
+RnetProtocolAtmOamF5Entry ::=
+  	SEQUENCE {
+	rnetProtocolAtmOamF5Surveillance
+	   	INTEGER,
+   rnetProtocolAtmOamF5OperStatus
+        	INTEGER,
+	rnetProtocolAtmOamF5ContinuityCheckRx
+			INTEGER,
+	rnetProtocolAtmOamF5ContinuityCheckTx
+			INTEGER,
+	rnetProtocolAtmOamF5PmConfigured
+			TruthValue
+	}
+
+rnetProtocolAtmOamF5Surveillance     OBJECT-TYPE
+	SYNTAX  INTEGER { 
+			supported(1),
+			not-supported(2)
+	}
+	MAX-ACCESS   read-write
+	STATUS       current
+	DESCRIPTION
+		"."
+	::= { rnetProtocolAtmOamF5Entry 1 }
+
+rnetProtocolAtmOamF5OperStatus     OBJECT-TYPE
+	SYNTAX  INTEGER { 
+			up(1),
+			down(2),
+			unknown(4),
+			loc(6),
+			ais(7),
+			rdi(8)
+	}
+	MAX-ACCESS   read-write
+	STATUS       current
+	DESCRIPTION
+		"The operational ststus of the end point."
+	::= { rnetProtocolAtmOamF5Entry 2 }
+
+rnetProtocolAtmOamF5ContinuityCheckRx OBJECT-TYPE
+        SYNTAX  INTEGER {
+                        notActive(0),           
+         					endToEnd(1),
+                        segmentTerminated(2),
+								segmentTermAndEndToEnd(3)
+   }
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+                "Available continuity check test in receive direction."
+        DEFVAL { notActive }
+   ::= { rnetProtocolAtmOamF5Entry 3 }
+
+rnetProtocolAtmOamF5ContinuityCheckTx  OBJECT-TYPE
+   SYNTAX  INTEGER {
+        	notActive(0),                
+         endToEnd(1),
+         segmentTerminated(2),
+			segmentTermAndEndToEnd(3)
+   }
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+                "Available continuity check test in transmit direction."
+        DEFVAL { notActive }
+        ::= { rnetProtocolAtmOamF5Entry 4 }
+
+rnetProtocolAtmOamF5PmConfigured        OBJECT-TYPE
+        SYNTAX  TruthValue
+        MAX-ACCESS read-only
+        STATUS     current
+        DESCRIPTION
+                "If true, this VCL has a PM test configured for it.
+                  The PM test configuration is saved in the
+                  corresponding rnetAtmOamPmF5Table table
+                  row. This variable is automatically set by the
+                  agent when the corresponding row in
+                 rnetAtmOamPmF5Table is created / deleted."
+        ::= { rnetProtocolAtmOamF5Entry 5 }
+
+
+-- --------------------------------------------------------------
+-- ATM IP Channel Group. The group defines IP Channel over VCL 
+-- end points
+-- --------------------------------------------------------------
+
+rnetAtmIpChannelIndexNext	OBJECT-TYPE
+	SYNTAX	   INTEGER  (0..80)
+	MAX-ACCESS read-only
+	STATUS	   current
+	DESCRIPTION
+		"This object contains an appropriate value to be used for 
+		 rnetAtmIpChannelIndex when creating entries in the 
+		 rnetAtmIpChannelTable. The value 0 indicates that no 
+		 unassigned entries are available. To obtain the 
+		 rnetAtmIpChannelIndex value for a new entry, the manager 
+		 issues a management protocol retrieval operation to obtain 
+		 the current value of this object. After each retrieval, the 
+		 agent should modify the value to the next unassigned index."
+	::= { rnetProtocolAtmIp 1 }
+
+-- --------------------------------------------------------------
+--  The ATM IP Channel table.
+--
+-- Each row in the table represents an IP Channel
+-- --------------------------------------------------------------
+
+rnetAtmIpChannelTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetAtmIpChannelEntry
+	MAX-ACCESS not-accessible
+	STATUS	   current
+	DESCRIPTION
+		"The table contains information about management channels 
+		 for in-band IP access via ATM"
+	::= { rnetProtocolAtmIp 2 }
+
+rnetAtmIpChannelEntry	OBJECT-TYPE
+	SYNTAX	    RnetAtmIpChannelEntry
+	MAX-ACCESS  not-accessible
+	STATUS	    current
+	DESCRIPTION
+		"An entry that adds columns to the ATM IP Management 
+		 Channel Table"
+	INDEX	{ rnetAtmIpChannelIndex,
+		  rnetAtmIpChannelIfIndex,
+		  rnetAtmIpChannelVpi,
+		  rnetAtmIpChannelVci }
+	::= { rnetAtmIpChannelTable 1 }
+
+RnetAtmIpChannelEntry ::= SEQUENCE {
+	rnetAtmIpChannelIndex
+		INTEGER,
+	rnetAtmIpChannelIfIndex
+		IfIndex,
+	rnetAtmIpChannelVpi
+		INTEGER,
+	rnetAtmIpChannelVci
+		INTEGER,
+	rnetAtmIpChannelOperStatus
+		INTEGER,
+	rnetAtmIpChannelLastChange
+		TimeStamp,
+	rnetAtmIpChannelBusSelection
+		INTEGER,
+	rnetAtmIpChannelAdminStatus
+		INTEGER,
+	rnetAtmIpChannelRowStatus
+		RowStatus
+}
+			
+rnetAtmIpChannelIndex	OBJECT-TYPE
+	SYNTAX	    INTEGER (1..80)
+	MAX-ACCESS  not-accessible
+	STATUS	    current
+	DESCRIPTION
+		"A unique value to identify this ATM IP management channel."
+	::= { rnetAtmIpChannelEntry 1 }
+
+rnetAtmIpChannelIfIndex	OBJECT-TYPE
+	SYNTAX	    IfIndex
+	MAX-ACCESS  not-accessible
+	STATUS	    current
+	DESCRIPTION
+		"The value of this object is equal to MIB II's ifIndex 
+		 value of the ATM interface port for this ATM IP management 
+		 channel."
+	::= { rnetAtmIpChannelEntry 2 }
+
+rnetAtmIpChannelVpi	OBJECT-TYPE
+	SYNTAX	    INTEGER (0..4095)
+	MAX-ACCESS  not-accessible
+	STATUS	    current
+	DESCRIPTION
+		"The value of this object is equal to the VPI value at the 
+		 ATM interface associated with the ATM IP management channel 
+		 that is identified by rnetAtmIpChannelIfIndex.
+		 The VPI value cannot exceed the number supported by the 
+		 atmInterfaceMaxVpiBits at the ATM interface port."
+	::= { rnetAtmIpChannelEntry 3 }
+
+rnetAtmIpChannelVci	OBJECT-TYPE
+	SYNTAX	INTEGER	(0..65535)
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"The value of this object is equal to the VCI value at the 
+		 ATM interface associated with the ATM IP management channel 
+		 that is identified by rnetAtmIpChannelIfIndex.
+		 The VCI value cannot exceed the number supported by the 
+		 atmInterfaceMaxVciBits at the ATM interface port."
+	::= { rnetAtmIpChannelEntry 4 }
+
+rnetAtmIpChannelOperStatus	OBJECT-TYPE
+	SYNTAX	INTEGER	{
+			up(1),
+			down(2),
+			unknown(3),
+			loc(6),
+			ais(7),
+			rdi(8)
+	}
+	MAX-ACCESS  read-only
+	STATUS	    current
+	DESCRIPTION
+		"The operational status of the management channel."
+	::= {	rnetAtmIpChannelEntry 5 }
+
+rnetAtmIpChannelLastChange	OBJECT-TYPE
+	SYNTAX	    TimeStamp
+	MAX-ACCESS  read-only
+	STATUS	    current
+	DESCRIPTION
+                "The value of MIB II's sysUpTime object
+                 at the time this channel entered its current
+                 operational state.  If the current state was
+                 entered prior to the last re-initialization of the
+                 agent, then this object contains a zero value."
+	::= {	rnetAtmIpChannelEntry 6 }
+
+rnetAtmIpChannelBusSelection	OBJECT-TYPE
+	SYNTAX	INTEGER	{
+			first(1),
+			second(2),
+			automatic(3)
+		}
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		"The internal cell bus identifier that will be used for 
+		 the transfer of the cells of the channel. If 'automatic' 
+		 is configured, the agent will select a cell-bus according 
+		 to internal logic."
+	DEFVAL { automatic }
+	::= {	rnetAtmIpChannelEntry 7 }
+
+rnetAtmIpChannelAdminStatus	OBJECT-TYPE
+	SYNTAX	INTEGER	{
+			up(1),
+			down(2)
+		}
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		"The value of this object identifies the desired 
+		 administrative status of the management channel. 
+		 The up and down states indicate that the traffic 
+		 flow is enabled nd disabled respectively on this 
+		 IP ATM management channel."
+	::= {	rnetAtmIpChannelEntry 8 }
+
+rnetAtmIpChannelRowStatus	OBJECT-TYPE
+	SYNTAX	    RowStatus
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		"The status of this entry in the rnetAtmIpChannelTable. 
+		 This object is used to create an ATM IP management channel 
+		 for in-band IP access to the agent, or to change or delete 
+		 an existing management channel. This object must be 
+		 initially set to 'createAndWait' or 'createAndGo'. This 
+		 object cannot be set to 'active' unless the following 
+		 columnar object exists in this row: 
+		 rnetAtmIpChannelAdminStatus."
+	DEFVAL	{notReady}
+	::= {	rnetAtmIpChannelEntry 9 }
+
+rnetProtocolDefaultIpChannelVpi	OBJECT-TYPE
+	SYNTAX	    INTEGER (0..4095)
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		"The default VPI of default management channels."
+	::= { rnetProtocolAtmIp 3 }
+
+rnetProtocolDefaultIpChannelVci	OBJECT-TYPE
+	SYNTAX	    INTEGER (0..65535)
+	MAX-ACCESS  read-create
+	STATUS	    current
+	DESCRIPTION
+		"The default VCI of default management channels."
+	::= { rnetProtocolAtmIp 4 }
+END
+

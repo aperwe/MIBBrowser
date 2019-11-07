@@ -1,0 +1,260 @@
+-- @(#)rnet_gen_if.mib
+-- ----------------------------------------------------------------------
+-- RADNET general interface MIB
+-- Copyright (c) 1995 RADNET Ltd.
+-- ----------------------------------------------------------------------
+--
+-- MIB Module :   RADNET-GEN-INTERFACE-MIB
+--
+-- Revision   :   V2.07
+--
+-- Description:   Definition of all the interfaces in the device.
+--                The definition includes the following details:
+--                    - More details about all the interfaces, that are
+--                      not covered by RFC1573 mib;
+--		      - Relationships between different interfaces 
+--			(Logical to logical mapping);
+--		      - Relationships between interfaces and Physical 
+--			entities (Logical to Physical mapping).
+-- ----------------------------------------------------------------------
+RADNET-GEN-INTERFACE-MIB DEFINITIONS ::= BEGIN
+
+	IMPORTS
+       		OBJECT-TYPE, Integer32, Gauge32, MODULE-IDENTITY,
+				TimeTicks
+                               		FROM SNMPv2-SMI
+
+		ifEntry, ifIndex	FROM RFC1213-MIB
+
+		RowStatus		FROM SNMPv2-TC
+
+		rnetGen 		FROM RADNET-PRIVATE-MIB;
+
+
+rnetInterface	MODULE-IDENTITY
+                    LAST-UPDATED "9709021300Z"
+                    ORGANIZATION "RADNET"
+                    CONTACT-INFO
+                      "          Eitan Mardiks
+                        Postal:  RADNET Ltd.
+				24 Raul Wallenberg St.
+				Tel-Aviv 69719, Israel.
+                        Tel:     +972 3 6455700
+                        Fax:     +972 3 6480582
+                        E-Mail:  eitan@gate.radnet.co.il"
+
+                    DESCRIPTION
+                    "Definition of all the interfaces in the device.
+					      The definition includes the following details:
+				      	 - More details about all the interfaces, that are
+          					not covered by RFC1573 mib;
+				          - Relationships between different interfaces
+				       		(Logical to logical mapping);
+				          - Relationships between interfaces and Physical
+					       entities (Logical to Physical mapping)."
+                    ::= { rnetGen 3 }
+
+
+rnetIfExpansion 	OBJECT IDENTIFIER ::= { rnetInterface 1 }
+rnetIfMapping		OBJECT IDENTIFIER ::= { rnetInterface 2 }
+rnetIfConnector		OBJECT IDENTIFIER ::= { rnetInterface 3 }
+
+-- --------------------------------------------------------------
+-- RADNET Interface Expansion Objects
+-- The objects adds more columns to the standard RFC1573 
+-- Interface table.
+-- --------------------------------------------------------------
+
+rnetIfIndexNext   OBJECT-TYPE
+        SYNTAX INTEGER (1..2147483647)
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                     "The next available value of ifIndex,
+		      when creating entries in the standard ifTable.
+		      To obtain the ifIndex value for a new 
+		      entry, the manager performs a READ operation to 
+		      obtain the current value of this object. After each 
+		      READ operation of this object, the agent must 
+		      modify it to the next available value. "
+	::= { rnetIfExpansion 1 }
+
+-- --------------------------------------------------------------
+--  RADNET private interface table. This table adds more columns to
+--  the RFC1573 ifTable.
+-- --------------------------------------------------------------
+
+rnetIfTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetIfEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+               "A list of interface entries.  The number of entries
+                is given by the value of ifNumber.  This table
+                contains additional objects for the interface table."
+	::= { rnetIfExpansion 2 }
+
+
+rnetIfEntry	OBJECT-TYPE
+	SYNTAX	RnetIfEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+               "An entry containing additional management information
+                applicable to a particular interface."
+	AUGMENTS	{ ifEntry }
+	::= { rnetIfTable 1 }
+
+RnetIfEntry ::= SEQUENCE {
+	
+	rnetIfRowStatus
+		RowStatus,
+   rnetIfSpeed                 
+		Gauge32
+	}
+
+rnetIfRowStatus   OBJECT-TYPE
+        SYNTAX RowStatus
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"This object is used to create
+                 a new row or modify or delete an
+                 existing row in this table."
+	::= { rnetIfEntry 1 }
+
+   rnetIfSpeed OBJECT-TYPE
+       SYNTAX      Gauge32
+       MAX-ACCESS  read-create
+       STATUS      current
+       DESCRIPTION
+               "An estimate of the interface's current bandwidth in
+               bits per second.  For interfaces which do not vary in
+               bandwidth or for those where no accurate estimation
+               can be made, this object should contain the nominal
+               bandwidth.  If the bandwidth of the interface is
+               greater than the maximum value reportable by this
+               object then this object should report its maximum
+               value (4,294,967,295) and ifHighSpeed must be used to
+               report the interace's speed.  For a sub-layer which
+               has no concept of bandwidth, this object should be
+               zero."
+       ::= { rnetIfEntry 2 }
+
+rnetIfTableLastChange OBJECT-TYPE
+              SYNTAX  TimeTicks
+              MAX-ACCESS  read-only
+              STATUS  current
+              DESCRIPTION
+                      ""
+              ::= { rnetIfExpansion 3 }
+
+-- --------------------------------------------------------------
+--  RADNET "inverse" interface stack table (ifStackTable).
+-- --------------------------------------------------------------
+
+rnetIfInverseStackTable  OBJECT-TYPE
+        SYNTAX        SEQUENCE OF RnetIfInverseStackEntry
+        MAX-ACCESS    not-accessible
+        STATUS        current
+        DESCRIPTION
+               "The table containing information on the relationships
+                between the multiple sub-layers of network interfaces.
+                In particular, it contains information on which sub-
+                layer runs 'below' which other sub-layers.  Each
+                sub-layer corresponds to a conceptual row in the
+                ifTable. This table, together with the RFC1573
+	        ifStackTable, provides complete information about the 
+	        relationships between sub-layers in the system"
+        ::= { rnetIfMapping 1 }
+
+
+rnetIfInverseStackEntry  OBJECT-TYPE
+        SYNTAX        RnetIfInverseStackEntry
+        MAX-ACCESS    not-accessible
+        STATUS        current
+        DESCRIPTION
+               "Information on a particular relationship between two
+                sub-layers, specifying that one sub-layer runs 'below'
+	        the other sub-layer.  Each sub-layer
+                corresponds to a conceptual row in the ifTable."
+        INDEX {rnetIfInverseStackLowerLayer ,
+			rnetIfInverseStackHigherLayer }
+        ::= { rnetIfInverseStackTable 1 }
+
+
+RnetIfInverseStackEntry ::=
+       SEQUENCE {
+	rnetIfInverseStackLowerLayer 	
+	    	Integer32,
+        rnetIfInverseStackHigherLayer  	
+	    	Integer32
+        }
+
+
+rnetIfInverseStackLowerLayer  OBJECT-TYPE
+        SYNTAX        Integer32
+        MAX-ACCESS    not-accessible
+        STATUS        current
+        DESCRIPTION
+               "The value of ifIndex corresponding to the lower sub-
+                layer of the relationship, i.e., the sub-layer which
+                runs 'below' the sub-layer identified by the
+                corresponding instance of rnetIfInverseStackHigherLayer."
+        ::= { rnetIfInverseStackEntry 1 }
+
+
+rnetIfInverseStackHigherLayer  OBJECT-TYPE
+        SYNTAX        Integer32
+        MAX-ACCESS    read-only
+        STATUS        current
+        DESCRIPTION
+               "The value of ifIndex corresponding to the higher
+                sub-layer of the relationship, i.e., the sub-layer
+                which runs on 'top' of the sub-layer identified by the
+                corresponding instance of rnetIfInverseStackLowerLayer.  
+	        If there is no higher sub-layer (below the internetwork 
+	        layer), then this object has the value 0."
+        ::= { rnetIfInverseStackEntry 2 }
+
+
+-- --------------------------------------------------------------
+--  RADNET connector interface table 
+-- --------------------------------------------------------------
+
+rnetIfConnectorTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetIfConnectorEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+               "A list of interface entries, containing only interfaces
+	        that have a physical connectors."
+	::= { rnetIfConnector 1 }
+
+
+rnetIfConnectorEntry	OBJECT-TYPE
+	SYNTAX	RnetIfConnectorEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+               "An entry containing additional management information
+                applicable to a physical interface."
+	INDEX	{ ifIndex }
+	::= { rnetIfConnectorTable 1 }
+
+RnetIfConnectorEntry ::= SEQUENCE {
+	rnetIfConnectorPhyEntity
+		Integer32
+	}
+
+rnetIfConnectorPhyEntity   OBJECT-TYPE
+        SYNTAX Integer32
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                "Associates the interface to an entry in the 
+		 physical entity table."
+	::= { rnetIfConnectorEntry 1 }
+
+
+END

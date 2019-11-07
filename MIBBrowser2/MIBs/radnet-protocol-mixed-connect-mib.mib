@@ -1,0 +1,1684 @@
+-- @(#)rnet_mix_connect.mib
+-- ----------------------------------------------------------------------
+-- RADNET MIXED CONNECTION MIB
+-- Copyright (c) 1996 RADNET Ltd.
+-- ----------------------------------------------------------------------
+--
+-- MIB Module :   RADNET-PROTOCOL-MIXED-CONNECT-MIB
+--
+-- Revision   :   V2.101
+--
+-- Description:   Definition of Connection between two end points of
+--		  different types.
+--		  The connection defined in the module are:
+--		  - ATM to CES connection.
+--		  - ATM to Frame Relay connection.
+--                - ATM to SMDS connection.
+--
+-- ----------------------------------------------------------------------
+RADNET-PROTOCOL-MIXED-CONNECT-MIB DEFINITIONS ::= BEGIN
+
+	IMPORTS
+       		OBJECT-TYPE, MODULE-IDENTITY,
+		OBJECT-IDENTITY,
+		Integer32, Counter32            	FROM SNMPv2-SMI
+	
+		InterfaceIndex		FROM IF-MIB
+	            
+--      AtmAddr         FROM ATM-TC-MIB
+
+		DisplayString,
+		RowStatus, TruthValue,
+		TimeStamp,
+		TEXTUAL-CONVENTION	FROM SNMPv2-TC
+
+		rnetProtocol		
+				FROM RADNET-PROTOCOL-MIB;
+
+
+rnetProtocolMixedConnections MODULE-IDENTITY
+                    LAST-UPDATED "9709021300Z"
+                    ORGANIZATION "RADNET"
+                    CONTACT-INFO
+                      "          Eitan Mardiks
+                        Postal:  RADNET Ltd.
+				24 Raul Wallenberg St.
+				Tel-Aviv 69719, Israel.
+                        Tel:     +972 3 6455700
+                        Fax:     +972 3 6480582
+                        E-Mail:  eitan@gate.radnet.co.il"
+
+                    DESCRIPTION
+                    "Definition of Connection between two end points of
+					      different types.
+					      The connection defined in the module are:
+					      - ATM to CES connection.
+					      - ATM to Frame Relay connection.
+							- ATM to SMDS connection.
+							- ATM to LAN connection."
+                    ::= { rnetProtocol 5 }
+
+		
+-- --------------------------------------------------------------
+-- RADNET Connections Objects
+-- --------------------------------------------------------------
+
+rnetProtocolAtmCeConnection	
+		OBJECT IDENTIFIER ::= { rnetProtocolMixedConnections 1 }
+rnetProtocolAtmFrConnection	
+		OBJECT IDENTIFIER ::= { rnetProtocolMixedConnections 2 }
+rnetProtocolAtmSmdsConnection   
+      OBJECT IDENTIFIER ::= { rnetProtocolMixedConnections 3 }
+rnetProtocolAtmLanConnection   
+      OBJECT IDENTIFIER ::= { rnetProtocolMixedConnections 4 }
+
+
+AtmAddr ::= TEXTUAL-CONVENTION
+--			DISPLAY_HINT "1x"
+			STATUS  current
+			DESCRIPTION
+								""
+			SYNTAX  OCTET  STRING (SIZE(0|8|20))
+
+
+
+-- --------------------------------------------------------------
+-- RADNET ATM to CE endpoints Connections group
+-- --------------------------------------------------------------
+	
+rnetProtocolAtmCeConnectIndexNext   OBJECT-TYPE
+        SYNTAX INTEGER (1..2147483647)
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+               "The next available value of rnetProtocolAtmCeConnectIndex,
+		when creating entries in the rnetProtocolAtmCeConnectTable.
+		To obtain the rnetProtocolAtmCeConnectIndex value for a new 
+		entry, the manager performs a READ operation to 
+		obtain the current value of this object. After each 
+		READ operation of this object, the agent must 
+		modify it to the next available value. "
+	::= { rnetProtocolAtmCeConnection 1 }
+
+
+-- --------------------------------------------------------------
+--  RADNET ATM to CES connection table.
+-- --------------------------------------------------------------
+
+rnetProtocolAtmCeConnectTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetProtocolAtmCeConnectEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"This table defines virtual connections between an ATM 
+		 end point and a CES interface." 
+	::= { rnetProtocolAtmCeConnection 2 }
+
+
+rnetProtocolAtmCeConnectEntry	OBJECT-TYPE
+	SYNTAX	RnetProtocolAtmCeConnectEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry defines a virtual connection between an ATM 
+		 end point and a CES interface." 
+	INDEX	{ rnetProtocolAtmCeConnectIndex,
+		  rnetProtocolAtmCeConnectProtocolIndex,
+		  rnetProtocolAtmCeConnectAtmVpi,
+		  rnetProtocolAtmCeConnectAtmVci,
+		  rnetProtocolAtmCeConnectCeIfIndex }
+	::= { rnetProtocolAtmCeConnectTable 1 }
+
+RnetProtocolAtmCeConnectEntry ::= SEQUENCE {
+	rnetProtocolAtmCeConnectIndex
+		INTEGER,
+	rnetProtocolAtmCeConnectProtocolIndex
+		InterfaceIndex,
+	rnetProtocolAtmCeConnectAtmVpi
+		INTEGER,
+	rnetProtocolAtmCeConnectAtmVci
+		INTEGER,
+	rnetProtocolAtmCeConnectCeIfIndex
+		InterfaceIndex,
+	rnetProtocolAtmCeConnectAdminStatus
+		INTEGER,
+	rnetProtocolAtmCeConnectAtm2CeOperStatus
+		INTEGER,
+	rnetProtocolAtmCeConnectCe2AtmOperStatus
+		INTEGER,
+	rnetProtocolAtmCeConnectAtm2CeLastChange
+		TimeStamp,
+	rnetProtocolAtmCeConnectCe2AtmLastChange
+		TimeStamp,
+	rnetProtocolAtmCeConnectBusSelection
+		INTEGER,
+	rnetProtocolAtmCeConnectRowStatus
+		RowStatus,
+    rnetProtocolAtmCeConnectCbrService                 
+		INTEGER,
+    rnetProtocolAtmCeConnectCbrClockMode               
+		INTEGER,
+    rnetProtocolAtmCeConnectCas                        
+		INTEGER,
+    rnetProtocolAtmCeConnectPartialFill                
+		INTEGER,
+    rnetProtocolAtmCeConnectBufMaxSize                 
+		INTEGER,
+    rnetProtocolAtmCeConnectCdvRxT                     
+		INTEGER,
+    rnetProtocolAtmCeConnectCellLossIntegrationPeriod  
+		INTEGER,
+    rnetProtocolAtmCeConnectConnType                   
+		INTEGER,
+    rnetProtocolAtmCeConnectLocalAddr                  
+		AtmAddr
+	}
+
+rnetProtocolAtmCeConnectIndex   OBJECT-TYPE
+        SYNTAX INTEGER (1..2147483647)
+	MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+		"The index of this table."
+	::= { rnetProtocolAtmCeConnectEntry 1 }
+
+rnetProtocolAtmCeConnectProtocolIndex OBJECT-TYPE
+        SYNTAX InterfaceIndex
+	MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+		"The ifIndex associated to the ATM interface."
+	::= { rnetProtocolAtmCeConnectEntry 2 }
+
+rnetProtocolAtmCeConnectAtmVpi   OBJECT-TYPE
+        SYNTAX INTEGER (1..4095)
+	MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+		"The Vpi number of the ATM end point."
+	::= { rnetProtocolAtmCeConnectEntry 3 }
+
+rnetProtocolAtmCeConnectAtmVci   OBJECT-TYPE
+        SYNTAX INTEGER (0..65535)
+	MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+		"The Vci number of the ATM end point."
+	::= { rnetProtocolAtmCeConnectEntry 4 }
+
+rnetProtocolAtmCeConnectCeIfIndex   OBJECT-TYPE
+        SYNTAX InterfaceIndex
+	MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+		"The ifIndex associated to the CES interface."
+	::= { rnetProtocolAtmCeConnectEntry 5 }
+
+rnetProtocolAtmCeConnectAdminStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+         up(1),
+			down(2)
+	}
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The desired state of the ATM to CES connection."
+	::= { rnetProtocolAtmCeConnectEntry 6 }
+
+rnetProtocolAtmCeConnectAtm2CeOperStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+			up(1),
+			down(2),
+			unknown(3)
+	}
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The current operational state of the ATM to CES
+		 connection."
+	::= { rnetProtocolAtmCeConnectEntry 7 }
+
+rnetProtocolAtmCeConnectCe2AtmOperStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+			up(1),
+			down(2),
+			unknown(3)
+	}
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The current operational state of the CES to ATM
+		 connection."
+	::= { rnetProtocolAtmCeConnectEntry 8 }
+
+rnetProtocolAtmCeConnectAtm2CeLastChange   OBJECT-TYPE
+	SYNTAX TimeStamp
+	MAX-ACCESS read-only
+	STATUS current
+	DESCRIPTION
+		"The value of sysUpTime at the time the ATM to CES
+                 connection entered its current operational state.  If 
+	         the current state was entered prior to the last 
+	         re-initialization of the local network management 
+	         subsystem, then this object contains a zero value."
+	::= { rnetProtocolAtmCeConnectEntry 9 }
+
+rnetProtocolAtmCeConnectCe2AtmLastChange   OBJECT-TYPE
+        SYNTAX TimeStamp
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The value of sysUpTime at the time the CES to ATM
+                 connection entered its current operational state.  If 
+	         the current state was entered prior to the last 
+	         re-initialization of the local network management 
+	         subsystem, then this object contains a zero value."
+	::= { rnetProtocolAtmCeConnectEntry 10 }
+
+rnetProtocolAtmCeConnectBusSelection   OBJECT-TYPE
+        SYNTAX INTEGER {
+			first(1),
+			second(2),
+			automatic(3)
+	}
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"An internal bus entry."
+        DEFVAL { automatic }
+	::= { rnetProtocolAtmCeConnectEntry 11 }
+
+rnetProtocolAtmCeConnectRowStatus   OBJECT-TYPE
+        SYNTAX RowStatus
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"This object is used to create
+		 a new row or modify or delete an
+		 existing row in this table."
+	::= { rnetProtocolAtmCeConnectEntry 12 }
+
+
+rnetProtocolAtmCeConnectCbrService       OBJECT-TYPE
+    SYNTAX        INTEGER {
+                      unstructured(1),
+                      structured(2)
+                      }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Define if DSx/Ex service isas structured or unstructurednot. A
+         structured(2) interface is some nx64kbKbps. An unstructured
+         (1) interface is 1.544Mbps, 2.048Mbps, 6.312Mbps, 44.736 Mbps,
+         or 34.368 Mbps. unstructured(1) passes all bits through the
+         ATM network.  strucutured(2) passes data bits through the
+         ATM network, and may also pass signalling bits
+         
+         At this time, only unstructured mode is defined for the
+         44.736 Mbps and 34.368 Mbps services.
+
+			The same parameter is defined in the rnetProtocolDSX1ConfigTable  with read			-create access"
+    ::= { rnetProtocolAtmCeConnectEntry 13 }
+
+rnetProtocolAtmCeConnectCbrClockMode     OBJECT-TYPE
+    SYNTAX        INTEGER {
+                      synchronous(1),
+                      srts(2),
+                      adaptive(3)
+                      }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Define if DSx/Ex service clocking mode. This maps into
+         transmit clock source of CBR interface.
+
+         For structured modes this value, if present, must be set to
+         synchronous(1).
+			
+			The same parameter is defined in the rnetProtocolDSX1ConfigTable with read			-create access"
+    DEFVAL { synchronous } 
+    ::= { rnetProtocolAtmCeConnectEntry 14 }
+
+rnetProtocolAtmCeConnectCas      OBJECT-TYPE
+    SYNTAX        INTEGER {
+                      basic(1),
+                      e1Cas(2),
+                      ds1SfCas(3),
+                      ds1EsfCas(4),
+                      j2Cas(5)
+                      }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This parameter selects which AAL1 Format should be used:
+         Basic does not carry CAS bits, and uses a single 125 usec frame.
+         e1Cas, ds1SfCas, dS1EsfCas and j2Cas carry CAS bits in a
+         multiframe structure for E1, DS1 SF, DS1 ESF and J2 
+         respectively.
+         This applies to structured interfaces only. Default is
+         basic (1). For unstructured interfaces this value, if present,
+         must be set to the default of basic (1).
+
+			
+			The same parameter is defined in the rnetProtocolDSX1ConfigTable with read			-create access."
+    DEFVAL { basic } 
+    ::= { rnetProtocolAtmCeConnectEntry 15 }
+
+rnetProtocolAtmCeConnectPartialFill     OBJECT-TYPE
+    SYNTAX        INTEGER (0 .. 47)
+    MAX-ACCESS    read-create
+    STATUS        current
+    DESCRIPTION
+        "If partial cell fill is used, the number of user octets per
+         cell must be set with this parameter.  Setting this parameter
+         to zero disables partial cell fill, and causes all cells to
+         be completely filled before they are sent."
+    DEFVAL { 0 } -- Partial Cell Fill not used
+    ::= { rnetProtocolAtmCeConnectEntry 16 }
+
+rnetProtocolAtmCeConnectBufMaxSize      OBJECT-TYPE
+    SYNTAX        INTEGER  (1..65536)
+    UNITS         "10 usec"
+    MAX-ACCESS    read-create
+    STATUS        current
+    DESCRIPTION
+         "Define maximum size in 10 microsecond increments of the
+          reassembly buffer. Some implementations may want allow the
+          maximum buffer size to be programmed to a size less than the
+          physical limit to reduce the maximum delay through a circuit."
+    DEFVAL { 210 } 
+    ::= { rnetProtocolAtmCeConnectEntry 17 }
+
+rnetProtocolAtmCeConnectCdvRxT         OBJECT-TYPE
+    SYNTAX        INTEGER  (1..65535)
+    UNITS         "10 usec"
+    MAX-ACCESS    read-create
+    STATUS        current
+    DESCRIPTION
+        "The maximum cell arrival jitter in 10 usec increments that 
+         the reassembly process will tolerate in the cell stream
+         without producing errors on the CBR service interface."
+    DEFVAL { 100 } 
+    ::= { rnetProtocolAtmCeConnectEntry 18 }
+
+rnetProtocolAtmCeConnectCellLossIntegrationPeriod   OBJECT-TYPE
+    SYNTAX        INTEGER  (1000 .. 65535)
+    UNITS         "msec"
+    MAX-ACCESS    read-create
+    STATUS        current
+    DESCRIPTION
+        "The time in milliseconds for the cell loss integration period. 
+         If a cells are continuously lost for this period of time,
+         rnetProtocolAtmCeConnectCellLossStatus is set to loss (2). The
+         default definition is 2500."
+    DEFVAL { 2500 } 
+    ::= { rnetProtocolAtmCeConnectEntry 19 }
+
+rnetProtocolAtmCeConnectConnType              OBJECT-TYPE
+    SYNTAX        INTEGER {
+                      other(1),
+                      pvc(2),
+                      activeSvc(3),
+                      passiveSvc(4)
+                      }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "The type of ATM connectivity between associated CES IWF's.
+         Valid values are:
+            other      - none of the types specified below
+            pvc        - supporting connectivity is a permanent
+                         virtual connection
+            activeSvc  - attempt calls whenever none established
+            passiveSvc - accept calls"
+    ::= { rnetProtocolAtmCeConnectEntry 20 }
+
+rnetProtocolAtmCeConnectLocalAddr              OBJECT-TYPE
+    SYNTAX        AtmAddr
+    MAX-ACCESS    read-create
+    STATUS        current
+    DESCRIPTION
+        "The ATM address of the local CES IWF process. This address
+         may be used by the automatic SVC establishment procedures to
+         identify the intended recipient CES IWF of an incoming automatic
+         SVC call request. Optionally, the MAX-ACCESS of this object
+         may be read-only, for those implementations where it is
+         not desired to manually configure this address. 
+			This field is currently N/A."
+    ::= { rnetProtocolAtmCeConnectEntry 21 }
+
+
+-- CES Statistics Table
+
+rnetProtocolAtmCeStatsTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF RnetProtocolAtmCeStatsEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "The CES AAL1 statistical data table."
+    ::= { rnetProtocolAtmCeConnection 3 }
+
+rnetProtocolAtmCeStatsEntry    OBJECT-TYPE
+    SYNTAX        RnetProtocolAtmCeStatsEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "An entry in the CES AAL1 Stats table.  There is one
+         entry in this table corresponding to each entry in the
+         rnetProtocolAtmCeConnectConfTable."
+    AUGMENTS  { rnetProtocolAtmCeConnectEntry }
+    ::= { rnetProtocolAtmCeStatsTable 1 }
+
+RnetProtocolAtmCeStatsEntry ::= SEQUENCE  {
+    rnetProtocolAtmCeStatsReassCells           Counter32,
+    rnetProtocolAtmCeStatsHdrErrors            Counter32,
+    rnetProtocolAtmCeStatsPointerReframes      Counter32,
+    rnetProtocolAtmCeStatsPointerParityErrors  Counter32,
+    rnetProtocolAtmCeStatsAal1SeqErrors        Counter32,
+    rnetProtocolAtmCeStatsLostCells            Counter32,
+    rnetProtocolAtmCeStatsMisinsertedCells     Counter32,
+    rnetProtocolAtmCeStatsBufUnderflows        Counter32,
+    rnetProtocolAtmCeStatsBufOverflows         Counter32,
+    rnetProtocolAtmCeStatsCellLossStatus       INTEGER
+    }
+
+rnetProtocolAtmCeStatsReassCells         OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This count gives the number of cells played out to the
+         CES Service Interface. It excludes cells that were
+         discarded for any reason, including cells that were not used
+         due to being declared misinserted, or discarded while the
+         reassembler was waiting to achieve synchronization."
+    ::= { rnetProtocolAtmCeStatsEntry 1 }
+
+rnetProtocolAtmCeStatsHdrErrors         OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "The count of the number of AAL1 header errors detected,
+         including those corrected.  Header errors include correctable
+         and uncorrectable CRC, plus bad parity."
+    ::= { rnetProtocolAtmCeStatsEntry 2 }
+
+rnetProtocolAtmCeStatsPointerReframes    OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This records the count of the number of events in which the
+         AAL1 reassembler found that an SDT pointer is not where it is
+         expected, and the pointer must be reacquired. This count is
+         only meaningful for structured CES modes, as unstructured CES
+         modes do not use pointers. For unstructured CES modes, this
+         count, if present, should indicate zero."
+    ::= { rnetProtocolAtmCeStatsEntry 3 }
+
+rnetProtocolAtmCeStatsPointerParityErrors    OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This records the count of the number of events in which the
+         AAL1 reassembler detects a parity check failure at the point
+         where a structured data pointer is expected. This count is only
+         meaningful for structured CES modes, as unstructured CES modes
+         do not use pointers. For unstructured CES modes, this count, if
+         present, should indicate zero."
+    ::= { rnetProtocolAtmCeStatsEntry 4 }
+
+rnetProtocolAtmCeStatsAal1SeqErrors      OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Number of times that the sequence number of an incoming AAL1
+         Type 1 SAR-PDU causes a transition from the 'sync' state to
+         the 'out of sequence' state, as defined by ITU-T I.363.1."
+    ::= { rnetProtocolAtmCeStatsEntry 5 }
+
+rnetProtocolAtmCeStatsLostCells   OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Number of lost cells, as detected by the AAL1 sequence number
+         processing, for example. This records the count of the number
+         of cells detected as lost in the network prior to the
+         destination CES IWF AAL1 layer processing."
+    ::= { rnetProtocolAtmCeStatsEntry 6 }
+
+rnetProtocolAtmCeStatsMisinsertedCells   OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Number of AAL1 sequence violations which the AAL Convergence
+         sublayer interprets as a misinserted cell, as defined by
+         ITU-T I.363.1."
+    ::= { rnetProtocolAtmCeStatsEntry 7 }
+
+rnetProtocolAtmCeStatsBufUnderflows      OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Number of buffer underflows. This records the count of the
+         number of times the CES reassembly buffer underflows. In the
+         case of a continuous underflow caused by a loss of ATM cell
+         flow, a single buffer underflow should be counted. If the CES
+         IWF is implemented with multiple buffers (such as a cell level
+         buffer and a bit level buffer), then either buffer underflow
+         will cause this count to be incremented."
+    ::= { rnetProtocolAtmCeStatsEntry 8 }
+
+rnetProtocolAtmCeStatsBufOverflows      OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Number of buffer overflows. This records the count of the
+         number of times the CES reassembly buffer overflows. If the CES
+         IWF is implemented with multiple buffers (such as a cell level
+         buffer and a bit level buffer, then either buffer overflow will
+         cause this count to be incremented "
+    ::= { rnetProtocolAtmCeStatsEntry 9 }
+
+rnetProtocolAtmCeStatsCellLossStatus      OBJECT-TYPE
+    SYNTAX        INTEGER {
+                     noLoss(1),
+                     loss(2)
+                     }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "When cells are continuously lost for the number of milliseconds
+         specified by rnetProtocolAtmCeStatsCellLossIntegrationPeriod, the value is set
+         to loss (2). When cells are no longer lost, the value is set 
+         to noLoss (1)."
+    ::= { rnetProtocolAtmCeStatsEntry 10 }
+
+
+-- --------------------------------------------------------------
+-- RADNET ATM to Frame Relay endpoints Connections group
+-- --------------------------------------------------------------
+
+RnetProtocolAtmFrConnectDescrIndex ::= TEXTUAL-CONVENTION
+	STATUS     current
+	DESCRIPTION
+		"The value of this object identifies the row
+		 in the rnetProtocolAtmFrConnectDescrTable."
+	SYNTAX     Integer32
+
+	
+rnetProtocolAtmFrConnectDescriptor	
+		OBJECT IDENTIFIER ::= { rnetProtocolAtmFrConnection 1 }
+
+
+-- --------------------------------------------------------------
+--  RADNET ATM to Frame Relay connection types group
+--  The group contains ATM to Frame Relay connection modes,
+--  defining the connection parameters.
+-- --------------------------------------------------------------
+
+rnetProtocolAtmFrConnectNetwork OBJECT-IDENTITY
+	STATUS     current
+	DESCRIPTION
+		"This connection descriptor is network connection
+		 mode.  The use of the parameter vector for this type:
+
+                      Parameter 1: ATM CLP to Frame Relay DE mapping
+			mode. The following values are allowed:
+			1- If one or more ATM cells belonging to a
+			   frame has its CLP bit set, or the DE field 
+			   of the FR-SSCS PDU is set, then the DE bit
+			   of the Q.922 core frame is set.
+			2- The DE bit of the FR-SSCS PDU is copied Q.922
+			   DE field.
+
+                      Parameter 2: Frame Relay DE to ATM CLP mapping
+		      	mode. The following values are allowed:
+			1- The Q.922 DE bit is mapped to every CLP bit.
+			2- CLP bit is always 1.
+			3- CLP bit is always 0.
+
+                      Parameter 3: ATM EFCI to Frame Relay FECN mapping
+			mode. The following values are allowed:
+			1- If the EFCI field of the last ATM cell is
+			set, or FECN field of the received FR-SSCS PDU
+			is set, then the FECN of the Q.922 core frame
+			is set.
+
+                      Parameter 4: Frame Relay FECN to ATM EFCI mapping
+		      	mode. The following values are allowed:
+			1- EFCI bit is always 0.
+
+                      Parameter 5: ATM EFCI to Frame Relay BECN mapping
+			mode. The following values are allowed:
+			1- If the EFCI field of the last ATM cell is
+			set, or BECN field of the received FR-SSCS PDU
+			is set, then the BECN of the Q.922 core frame
+			is set.
+
+                      Parameter 6: Frame Relay BECN to ATM EFCI mapping
+		      	mode. The following values are allowed:
+			1- .
+			2- .
+
+                      Parameter 7: Not used
+		"
+	::= { rnetProtocolAtmFrConnectDescriptor 1}
+
+rnetProtocolAtmFrConnectService OBJECT-IDENTITY
+	STATUS     current
+	DESCRIPTION
+		"This connection descriptor is service connection
+		 mode.  The use of the parameter vector for this type:
+
+                      Parameter 1: ATM CLP to Frame Relay DE mapping
+			mode. The following values are allowed:
+			1- If one or more ATM cells belonging to a
+			   frame has its CLP bit set, then the DE bit
+			   of the Q.922 core frame is set.
+			2- The DE bit is always 1.
+			3- The DE bit is always 0.
+
+                      Parameter 2: Frame Relay DE to ATM CLP mapping
+		      	mode. The following values are allowed:
+			1- The DE bit is mapped to every CLP bit.
+			2- CLP bit is always 1
+			3- CLP bit is always 0
+
+                      Parameter 3: ATM EFCI to Frame Relay FECN mapping
+			mode. The following values are allowed:
+			1- The Frame Relay FECN field gets the value of
+			   the EFCI field of the last ATM cell.
+
+                      Parameter 4: Frame Relay FECN to ATM EFCI mapping
+		      	mode. The following values are allowed:
+			1- The FECN bit is mapped to every EFCI bit.
+			2- EFCI bit is always 0.
+
+                      Parameter 5: ATM EFCI to Frame Relay BECN mapping
+			mode. The following values are allowed:
+			1- BECN bit is always 0.
+
+                      Parameter 6: Frame Relay BECN to ATM EFCI mapping
+		      	mode. The following values are allowed:
+			1- EFCI bit is always 0.
+
+                      Parameter 7: Upper Layer mapping mode.
+		      	The following values are allowed:
+			1- trasparent
+			2- translation
+			"
+	::= { rnetProtocolAtmFrConnectDescriptor 2 }
+
+-- --------------------------------------------------------------
+--  RADNET ATM to Frame Relay connection descriptor table.
+-- --------------------------------------------------------------
+rnetProtocolAtmFrIWFDescrTable    OBJECT-TYPE
+	SYNTAX      SEQUENCE OF RnetProtocolAtmFrIWFDescrEntry
+	MAX-ACCESS   not-accessible
+	STATUS       current
+	DESCRIPTION
+		"This table contains information on ATM to FR Connection
+		 descriptor types, and their associated parameters."
+	::= { rnetProtocolAtmFrConnection 2 }
+
+rnetProtocolAtmFrIWFDescrEntry    OBJECT-TYPE
+	SYNTAX           RnetProtocolAtmFrIWFDescrEntry
+	MAX-ACCESS       not-accessible
+	STATUS           current
+	DESCRIPTION
+                     "This list contains ATM to FR Connection descriptor
+                      type, and its associated parameters."
+        INDEX  {rnetProtocolAtmFrIWFDescrIndex}
+	::= { rnetProtocolAtmFrIWFDescrTable 1}
+
+RnetProtocolAtmFrIWFDescrEntry    ::= SEQUENCE  {
+	rnetProtocolAtmFrIWFDescrIndex   
+		RnetProtocolAtmFrConnectDescrIndex,
+	rnetProtocolAtmFrIWFDescrType         
+		OBJECT IDENTIFIER,
+	rnetProtocolAtmFrIWFDescrUseIndication       
+		INTEGER,
+	rnetProtocolAtmFrIWFDescrAlias
+		DisplayString,
+	rnetProtocolAtmFrIWFDescrParam1       
+		Integer32,
+	rnetProtocolAtmFrIWFDescrParam2       
+		Integer32,
+	rnetProtocolAtmFrIWFDescrParam3       
+		Integer32,
+	rnetProtocolAtmFrIWFDescrParam4       
+		Integer32,
+	rnetProtocolAtmFrIWFDescrParam5       
+		Integer32,
+	rnetProtocolAtmFrIWFDescrParam6       
+		Integer32,
+	rnetProtocolAtmFrIWFDescrParam7
+		Integer32,
+	rnetProtocolAtmFrIWFDescrRowStatus    
+		RowStatus
+	}
+
+rnetProtocolAtmFrIWFDescrIndex  OBJECT-TYPE
+	SYNTAX		RnetProtocolAtmFrConnectDescrIndex
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION
+		"This object is used to identify the row index of
+		 the ATM to FR connection descriptor table."
+	::= { rnetProtocolAtmFrIWFDescrEntry 1 }
+
+rnetProtocolAtmFrIWFDescrType  OBJECT-TYPE
+	SYNTAX		OBJECT IDENTIFIER
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"The value of this object identifies the type
+		 of the ATM to FR Connection descriptor.
+		 The type may indicate Network connection descriptor 
+		 or a Service connection descriptor with one or more 
+		 parameters.
+		 These parameters are specified as a parameter
+		 vector, in the corresponding instances of the
+		 objects:
+                          rnetProtocolAtmFrIWFDescrParam1
+                          rnetProtocolAtmFrIWFDescrParam2
+                          rnetProtocolAtmFrIWFDescrParam3
+                          rnetProtocolAtmFrIWFDescrParam4
+                          rnetProtocolAtmFrIWFDescrParam5
+                          rnetProtocolAtmFrIWFDescrParam6
+                          rnetProtocolAtmFrIWFDescrParam7."
+	::= { rnetProtocolAtmFrIWFDescrEntry 2 }
+
+rnetProtocolAtmFrIWFDescrUseIndication     OBJECT-TYPE
+	SYNTAX       INTEGER { 
+			not-in-use(1),
+			in-use(2)
+	}
+	MAX-ACCESS   read-create
+	STATUS       current
+	DESCRIPTION
+		"This objects shows whether this traffic descriptor is
+		 used by one of the IWFions."
+	::= { rnetProtocolAtmFrIWFDescrEntry 3 }
+
+rnetProtocolAtmFrIWFDescrAlias     OBJECT-TYPE
+	SYNTAX       DisplayString
+	MAX-ACCESS   read-create
+	STATUS       current
+	DESCRIPTION
+		"."
+	::= { rnetProtocolAtmFrIWFDescrEntry 4 }
+
+rnetProtocolAtmFrIWFDescrParam1    OBJECT-TYPE
+	SYNTAX		Integer32
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"The first parameter of the ATM to FR Connection
+		 descriptor used according to the value of
+		 rnetProtocolAtmFrIWFDescrType."
+	::= { rnetProtocolAtmFrIWFDescrEntry 5 }
+
+rnetProtocolAtmFrIWFDescrParam2    OBJECT-TYPE
+	SYNTAX		Integer32
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"The second parameter of the ATM to FR Connection
+		 descriptor used according to the value of
+		 rnetProtocolAtmFrIWFDescrType."
+	::= { rnetProtocolAtmFrIWFDescrEntry 6 }
+
+rnetProtocolAtmFrIWFDescrParam3    OBJECT-TYPE
+	SYNTAX		Integer32
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"The third parameter of the ATM to FR Connection
+		 descriptor used according to the value of
+		 rnetProtocolAtmFrIWFDescrType."
+	::= { rnetProtocolAtmFrIWFDescrEntry 7 }
+
+rnetProtocolAtmFrIWFDescrParam4    OBJECT-TYPE
+	SYNTAX		Integer32
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"The fourth parameter of the ATM to FR Connection
+		 descriptor used according to the value of
+		 rnetProtocolAtmFrIWFDescrType."
+	::= { rnetProtocolAtmFrIWFDescrEntry 8 }
+
+rnetProtocolAtmFrIWFDescrParam5    OBJECT-TYPE
+	SYNTAX		Integer32
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"The fifth parameter of the ATM to FR Connection
+		 descriptor used according to the value of
+		 rnetProtocolAtmFrIWFDescrType."
+	::= { rnetProtocolAtmFrIWFDescrEntry 9 }
+
+rnetProtocolAtmFrIWFDescrParam6    OBJECT-TYPE
+	SYNTAX		Integer32
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"The sixth parameter of the ATM to FR Connection
+		 descriptor used according to the value of
+		 rnetProtocolAtmFrIWFDescrType."
+	::= { rnetProtocolAtmFrIWFDescrEntry 10 }
+
+rnetProtocolAtmFrIWFDescrParam7    OBJECT-TYPE
+	SYNTAX		Integer32
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"The seventh parameter of the ATM to FR Connection
+		 descriptor used according to the value of
+		 rnetProtocolAtmFrIWFDescrType."
+	::= { rnetProtocolAtmFrIWFDescrEntry 11 }
+
+rnetProtocolAtmFrIWFDescrRowStatus       OBJECT-TYPE
+	SYNTAX		RowStatus
+	MAX-ACCESS	read-create
+	STATUS		current
+	DESCRIPTION
+		"This object is used to create,
+		 modify or delete a row in this table."
+	::= { rnetProtocolAtmFrIWFDescrEntry 12 }
+
+
+
+-- --------------------------------------------------------------
+--  RADNET ATM to Frame Relay connection table group
+-- --------------------------------------------------------------
+
+rnetProtocolAtmFrConnectIndexNext   OBJECT-TYPE
+        SYNTAX INTEGER (1..2147483647)
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The next available value of rnetProtocolAtmFrConnectIndex,
+		 when creating entries in the rnetProtocolAtmFrConnectTable.
+		 To obtain the rnetProtocolAtmFrConnectIndex value for a new 
+		 entry, the manager performs a READ operation to 
+		 obtain the current value of this object. After each 
+		 READ operation of this object, the agent must 
+		 modify it to the next available value. "
+	::= { rnetProtocolAtmFrConnection 3 }
+
+
+--  RADNET ATM to Frame Relay connection table.
+
+rnetProtocolAtmFrConnectTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetProtocolAtmFrConnectEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"This table defines virtual connections between ATM and
+		 Frame Relay endpoints." 
+	::= { rnetProtocolAtmFrConnection 4 }
+
+
+rnetProtocolAtmFrConnectEntry	OBJECT-TYPE
+	SYNTAX	RnetProtocolAtmFrConnectEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry defines virtual connection between ATM and 
+		 Frame Relay endpoint." 
+	INDEX	{ rnetProtocolAtmFrConnectIndex,
+		  rnetProtocolAtmFrConnectAtmIndex,
+		  rnetProtocolAtmFrConnectAtmVpi,
+		  rnetProtocolAtmFrConnectAtmVci,
+		  rnetProtocolAtmFrConnectFrIfIndex,
+		  rnetProtocolAtmFrConnectFrDlci }
+	::= { rnetProtocolAtmFrConnectTable 1 }
+
+RnetProtocolAtmFrConnectEntry ::= SEQUENCE {
+	rnetProtocolAtmFrConnectIndex
+		INTEGER,
+	rnetProtocolAtmFrConnectAtmIndex
+		InterfaceIndex,
+	rnetProtocolAtmFrConnectAtmVpi
+		INTEGER,
+	rnetProtocolAtmFrConnectAtmVci
+		INTEGER,
+	rnetProtocolAtmFrConnectFrIfIndex
+		InterfaceIndex,
+	rnetProtocolAtmFrConnectFrDlci
+		Integer32,
+	rnetProtocolAtmFrConnectAdminStatus
+		INTEGER,
+	rnetProtocolAtmFrConnectAtm2FrOperStatus
+		INTEGER,
+	rnetProtocolAtmFrConnectFr2AtmOperStatus
+		INTEGER,
+	rnetProtocolAtmFrConnectAtm2FrLastChange
+		TimeStamp,
+	rnetProtocolAtmFrConnectFr2AtmLastChange
+		TimeStamp,
+	rnetProtocolAtmFrConnectBusSelection
+		INTEGER,
+	rnetProtocolAtmFrConnectCastType
+		INTEGER,
+	rnetProtocolAtmFrConnectDescriptorIndex
+		RnetProtocolAtmFrConnectDescrIndex,
+	rnetProtocolAtmFrConnectRowStatus
+		RowStatus
+	}
+
+rnetProtocolAtmFrConnectIndex   OBJECT-TYPE
+        SYNTAX INTEGER (1..2147483647)
+	MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+		"The index of this table."
+	::= { rnetProtocolAtmFrConnectEntry 1 }
+
+rnetProtocolAtmFrConnectAtmIndex OBJECT-TYPE
+        SYNTAX InterfaceIndex
+	MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+		"The ifIndex associated to the ATM interface."
+	::= { rnetProtocolAtmFrConnectEntry 2 }
+
+rnetProtocolAtmFrConnectAtmVpi   OBJECT-TYPE
+        SYNTAX INTEGER (1..4095)
+	MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+		"The Vpi number of the ATM end point."
+	::= { rnetProtocolAtmFrConnectEntry 3 }
+
+rnetProtocolAtmFrConnectAtmVci   OBJECT-TYPE
+        SYNTAX INTEGER (0..65535)
+	MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+		"The Vci number of the ATM end point."
+	::= { rnetProtocolAtmFrConnectEntry 4 }
+
+rnetProtocolAtmFrConnectFrIfIndex   OBJECT-TYPE
+        SYNTAX InterfaceIndex
+	MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+		"The ifIndex associated to the Frame Relay
+		 interface."
+	::= { rnetProtocolAtmFrConnectEntry 5 }
+
+rnetProtocolAtmFrConnectFrDlci   OBJECT-TYPE
+        SYNTAX Integer32
+	MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+		"The DLCI number of the FR end point."
+	::= { rnetProtocolAtmFrConnectEntry 6 }
+
+rnetProtocolAtmFrConnectAdminStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+			up(1),
+			down(2)
+	}                            
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The desired state of the ATM to FR connection."
+	::= { rnetProtocolAtmFrConnectEntry 7 }
+
+rnetProtocolAtmFrConnectAtm2FrOperStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+			up(1),
+			down(2),
+			unknown(3)
+	}
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The current operational state of the ATM to FR
+		 connection."
+	::= { rnetProtocolAtmFrConnectEntry 8 }
+
+rnetProtocolAtmFrConnectFr2AtmOperStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+			up(1),
+			down(2),
+			unknown(3)
+	}
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The current operational state of the FR to ATM
+		 connection."
+	::= { rnetProtocolAtmFrConnectEntry 9 }
+
+rnetProtocolAtmFrConnectAtm2FrLastChange   OBJECT-TYPE
+        SYNTAX TimeStamp
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The value of sysUpTime at the time the ATM to FR
+                 connection entered its current operational state.  If 
+	         the current state was entered prior to the last 
+	         re-initialization of the local network management 
+	         subsystem, then this object contains a zero value."
+	::= { rnetProtocolAtmFrConnectEntry 10 }
+
+rnetProtocolAtmFrConnectFr2AtmLastChange   OBJECT-TYPE
+        SYNTAX TimeStamp
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The value of sysUpTime at the time the FR to ATM
+                 connection entered its current operational state.  If 
+	         the current state was entered prior to the last 
+	         re-initialization of the local network management 
+	         subsystem, then this object contains a zero value."
+		        ::= { rnetProtocolAtmFrConnectEntry 11 }
+
+rnetProtocolAtmFrConnectBusSelection   OBJECT-TYPE
+        SYNTAX INTEGER {
+			first(1),
+			second(2),
+			automatic(3)
+	}
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"An internal bus entry."
+        DEFVAL { automatic }
+	::= { rnetProtocolAtmFrConnectEntry 12 }
+
+rnetProtocolAtmFrConnectCastType   OBJECT-TYPE
+        SYNTAX INTEGER {
+			point-to-point(1),
+			multicast-low-if-root(2),
+			multicast-high-if-root(3)
+	}
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The connection type of the rnetProtocolAtmFrConnectIndex."
+	::= { rnetProtocolAtmFrConnectEntry 13 }
+
+rnetProtocolAtmFrConnectDescriptorIndex    OBJECT-TYPE
+	SYNTAX             RnetProtocolAtmFrConnectDescrIndex
+	MAX-ACCESS         read-create
+	STATUS             current
+	DESCRIPTION
+		"The value of this object identifies the row
+		 in the rnetProtocolAtmFrIWFDescrTable."
+	::= { rnetProtocolAtmFrConnectEntry 14 }
+
+rnetProtocolAtmFrConnectRowStatus   OBJECT-TYPE
+        SYNTAX RowStatus
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+                "This object is used to create
+		 a new row or modify or delete an
+                 existing row in this table."
+	::= { rnetProtocolAtmFrConnectEntry 15 }
+
+
+
+-- --------------------------------------------------------------
+-- RADNET ATM to SMDS endpoints Connections group
+-- --------------------------------------------------------------
+        
+rnetProtocolAtmSmdsConnectIndexNext   OBJECT-TYPE
+        SYNTAX INTEGER (1..2147483647)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+               "The next available value of rnetProtocolAtmSmdsConnectIndex,
+                when creating entries in the rnetProtocolAtmSmdsConnectTable.
+                To obtain the rnetProtocolAtmSmdsConnectIndex value for a new 
+                entry, the manager performs a READ operation to 
+                obtain the current value of this object. After each 
+                READ operation of this object, the agent must 
+                modify it to the next available value. "
+        ::= { rnetProtocolAtmSmdsConnection 1 }
+
+
+-- --------------------------------------------------------------
+--  RADNET ATM to SMDS connection table.
+-- --------------------------------------------------------------
+
+rnetProtocolAtmSmdsConnectTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF RnetProtocolAtmSmdsConnectEntry
+        MAX-ACCESS      not-accessible
+        STATUS  current
+        DESCRIPTION
+                "This table defines virtual connections between an ATM 
+                 end point and a SMDS interface." 
+        ::= { rnetProtocolAtmSmdsConnection 2 }
+
+
+rnetProtocolAtmSmdsConnectEntry OBJECT-TYPE
+        SYNTAX  RnetProtocolAtmSmdsConnectEntry
+        MAX-ACCESS      not-accessible
+        STATUS  current
+        DESCRIPTION
+                "An entry defines a virtual connection between an ATM 
+                 end point and a SMDS interface." 
+        INDEX   { rnetProtocolAtmSmdsConnectIndex,
+                  rnetProtocolAtmSmdsConnectProtocolIndex,
+                  rnetProtocolAtmSmdsConnectAtmVpi,
+                  rnetProtocolAtmSmdsConnectAtmVci,
+                  rnetProtocolAtmSmdsConnectSmdsIfIndex }
+        ::= { rnetProtocolAtmSmdsConnectTable 1 }
+
+RnetProtocolAtmSmdsConnectEntry ::= SEQUENCE {
+        rnetProtocolAtmSmdsConnectIndex
+                INTEGER,
+        rnetProtocolAtmSmdsConnectProtocolIndex
+                InterfaceIndex,
+        rnetProtocolAtmSmdsConnectAtmVpi
+                INTEGER,
+        rnetProtocolAtmSmdsConnectAtmVci
+                INTEGER,
+        rnetProtocolAtmSmdsConnectSmdsIfIndex
+                InterfaceIndex,
+        rnetProtocolAtmSmdsConnectAdminStatus
+                INTEGER,
+        rnetProtocolAtmSmdsConnectAtm2SmdsOperStatus
+                INTEGER,
+        rnetProtocolAtmSmdsConnectSmds2AtmOperStatus
+                INTEGER,
+        rnetProtocolAtmSmdsConnectAtm2SmdsLastChange
+                TimeStamp,
+        rnetProtocolAtmSmdsConnectSmds2AtmLastChange
+                TimeStamp,
+        rnetProtocolAtmSmdsConnectBusSelection
+                INTEGER,
+    rnetProtocolAtmSmdsConnectConnType                   
+                INTEGER,
+        rnetProtocolAtmSmdsConnectRowStatus
+                RowStatus
+        }
+
+rnetProtocolAtmSmdsConnectIndex   OBJECT-TYPE
+        SYNTAX INTEGER (1..2147483647)
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+                "The index of this table."
+        ::= { rnetProtocolAtmSmdsConnectEntry 1 }
+
+rnetProtocolAtmSmdsConnectProtocolIndex OBJECT-TYPE
+        SYNTAX InterfaceIndex
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+                "The ifIndex associated to the ATM interface."
+        ::= { rnetProtocolAtmSmdsConnectEntry 2 }
+
+rnetProtocolAtmSmdsConnectAtmVpi   OBJECT-TYPE
+        SYNTAX INTEGER (1..4095)
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+                "The Vpi number of the ATM end point."
+        ::= { rnetProtocolAtmSmdsConnectEntry 3 }
+
+rnetProtocolAtmSmdsConnectAtmVci   OBJECT-TYPE
+        SYNTAX INTEGER (0..65535)
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+                "The Vci number of the ATM end point."
+        ::= { rnetProtocolAtmSmdsConnectEntry 4 }
+
+rnetProtocolAtmSmdsConnectSmdsIfIndex   OBJECT-TYPE
+        SYNTAX InterfaceIndex
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+                "The ifIndex associated to the SMDS interface."
+        ::= { rnetProtocolAtmSmdsConnectEntry 5 }
+
+rnetProtocolAtmSmdsConnectAdminStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+         up(1),
+                        down(2)
+        }
+        MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+                "The desired state of the ATM to SMDS connection."
+        ::= { rnetProtocolAtmSmdsConnectEntry 6 }
+
+rnetProtocolAtmSmdsConnectAtm2SmdsOperStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+                        up(1),
+                        down(2),
+                        unknown(3)
+        }
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                "The current operational state of the ATM to SMDS
+                 connection."
+        ::= { rnetProtocolAtmSmdsConnectEntry 7 }
+
+rnetProtocolAtmSmdsConnectSmds2AtmOperStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+                        up(1),
+                        down(2),
+                        unknown(3)
+        }
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                "The current operational state of the SMDS to ATM
+                 connection."
+        ::= { rnetProtocolAtmSmdsConnectEntry 8 }
+
+rnetProtocolAtmSmdsConnectAtm2SmdsLastChange   OBJECT-TYPE
+        SYNTAX TimeStamp
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                "The value of sysUpTime at the time the ATM to SMDS
+                 connection entered its current operational state.  If 
+                 the current state was entered prior to the last 
+                 re-initialization of the local network management 
+                 subsystem, then this object contains a zero value."
+        ::= { rnetProtocolAtmSmdsConnectEntry 9 }
+
+rnetProtocolAtmSmdsConnectSmds2AtmLastChange   OBJECT-TYPE
+        SYNTAX TimeStamp
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                "The value of sysUpTime at the time the SMDS to ATM
+                 connection entered its current operational state.  If 
+                 the current state was entered prior to the last 
+                 re-initialization of the local network management 
+                 subsystem, then this object contains a zero value."
+        ::= { rnetProtocolAtmSmdsConnectEntry 10 }
+
+rnetProtocolAtmSmdsConnectBusSelection   OBJECT-TYPE
+        SYNTAX INTEGER {
+                        first(1),
+                        second(2),
+                        automatic(3)
+        }
+        MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+                "An internal bus entry."
+        DEFVAL { automatic }
+        ::= { rnetProtocolAtmSmdsConnectEntry 11 }
+
+rnetProtocolAtmSmdsConnectConnType              OBJECT-TYPE
+    SYNTAX        INTEGER {
+                      other(1),
+                      pvc(2),
+                      activeSvc(3),
+                      passiveSvc(4)
+                      }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "The type of ATM connectivity between associated SMDS IWF's.
+         Valid values are:
+            other      - none of the types specified below
+            pvc        - supporting connectivity is a permanent
+                         virtual connection
+            activeSvc  - attempt calls whenever none established
+            passiveSvc - accept calls"
+    ::= { rnetProtocolAtmSmdsConnectEntry 12 }
+
+rnetProtocolAtmSmdsConnectRowStatus   OBJECT-TYPE
+        SYNTAX RowStatus
+        MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+                "This object is used to create
+                 a new row or modify or delete an
+                 existing row in this table."
+        ::= { rnetProtocolAtmSmdsConnectEntry 13 }
+
+
+rnetProtocolAtmSmdsStatsTable    OBJECT-TYPE
+    SYNTAX        SEQUENCE OF RnetProtocolAtmSmdsStatsEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "The SMDS AAL3/4 statistical data table."
+    ::= { rnetProtocolAtmSmdsConnection 3 }
+
+rnetProtocolAtmSmdsStatsEntry    OBJECT-TYPE
+    SYNTAX        RnetProtocolAtmSmdsStatsEntry
+    MAX-ACCESS    not-accessible
+    STATUS        current
+    DESCRIPTION
+        "An entry in the SMDS AAL3/4 Stats table. There is one
+         entry in this table corresponding to each entry in the
+         ifTable."
+    AUGMENTS  { rnetProtocolAtmSmdsConnectEntry }
+    ::= { rnetProtocolAtmSmdsStatsTable 1 }
+
+RnetProtocolAtmSmdsStatsEntry ::= SEQUENCE  {
+   rnetProtocolAtmSmdsStatsIngressFrames        Counter32,
+   rnetProtocolAtmSmdsStatsEgressFrames         Counter32,
+   rnetProtocolAtmSmdsStatsTotalErrorCount      Counter32,
+   rnetProtocolAtmSmdsStatsInvalidLength        Counter32,
+   rnetProtocolAtmSmdsStatsSequenceErrors       Counter32,
+   rnetProtocolAtmSmdsStatsTimeouts             Counter32,
+   rnetProtocolAtmSmdsStatsAbortRequests        Counter32,
+   rnetProtocolAtmSmdsStatsUnexpectedMID        Counter32,
+   rnetProtocolAtmSmdsStatsLengthExceeded       Counter32,
+   rnetProtocolAtmSmdsStatsCRCError             Counter32
+  }
+
+rnetProtocolAtmSmdsStatsIngressFrames        OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This counter counts the total number of frames that 
+         are transmitted to the ATM fabric from the 
+         DXI interface"
+    ::= { rnetProtocolAtmSmdsStatsEntry 1 }
+
+rnetProtocolAtmSmdsStatsEgressFrames         OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This counter counts the total number of frames 
+         received on the ATM fabric to be transmitted onto
+         the DXI interface"
+    ::= { rnetProtocolAtmSmdsStatsEntry 2 }
+
+rnetProtocolAtmSmdsStatsTotalErrorCount         OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This counter counts the total number of errors
+         detected on the end point"
+    ::= { rnetProtocolAtmSmdsStatsEntry 3 }
+
+rnetProtocolAtmSmdsStatsInvalidLength         OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This counter counts the number of AAL3/4 frames
+         received with invalid length indication"
+    ::= { rnetProtocolAtmSmdsStatsEntry 4 }
+
+rnetProtocolAtmSmdsStatsSequenceErrors         OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This counter counts the number of AAL3/4 frames 
+         received for a specific MID from the ATM backplane, 
+         in which the received sequence number does not equal 
+         the expected sequence number for the AAL3//4 connection."
+    ::= { rnetProtocolAtmSmdsStatsEntry 5 }
+
+rnetProtocolAtmSmdsStatsTimeouts         OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This counter counts the number of reassembly attempts
+         that are aborted due to a SAR timer timeout."
+    ::= { rnetProtocolAtmSmdsStatsEntry 6 }
+
+rnetProtocolAtmSmdsStatsAbortRequests         OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This counter counts the number of ABORT frames
+         recieved."
+    ::= { rnetProtocolAtmSmdsStatsEntry 7 }
+
+rnetProtocolAtmSmdsStatsUnexpectedMID         OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This counter is increamented when for a
+         specific MID :
+         1. a PDU is being reassambled and an AAL3/4 
+            cell is received with BOM segment type,
+         2. a received AAL3/4 cell with a COM or EOM 
+            segment  type for a MID currently not 
+           reassembling a PDU (BOM missing)."
+    ::= { rnetProtocolAtmSmdsStatsEntry 8 }
+
+rnetProtocolAtmSmdsStatsLengthExceeded        OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This counter counts the number of reassembly
+         processes which are aborted when the allowed 
+         amounts of reassembled segments exceedes the 
+         allowed aount."
+    ::= { rnetProtocolAtmSmdsStatsEntry 9 }
+
+rnetProtocolAtmSmdsStatsCRCError         OBJECT-TYPE
+    SYNTAX        Counter32
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This counter counts the number of AAL3/4 frames that 
+         are found to have an invalid CRC in the AAL3/4 Payload."
+    ::= { rnetProtocolAtmSmdsStatsEntry 10 }
+
+-- --------------------------------------------------------------
+-- RADNET ATM to LAN endpoints Connections group
+-- --------------------------------------------------------------
+        
+rnetProtocolAtmLanConnectIndexNext   OBJECT-TYPE
+        SYNTAX INTEGER (1..2147483647)
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+               "The next available value of rnetProtocolAtmLanConnectIndex,
+                when creating entries in the rnetProtocolAtmLanConnectTable.
+                To obtain the rnetProtocolAtmLanConnectIndex value for a new 
+                entry, the manager performs a READ operation to 
+                obtain the current value of this object. After each 
+                READ operation of this object, the agent must 
+                modify it to the next available value. "
+        ::= { rnetProtocolAtmLanConnection 1 }
+
+-- --------------------------------------------------------------
+--  RADNET ATM to LAN connection table.
+-- --------------------------------------------------------------
+
+rnetProtocolAtmLanConnectTable OBJECT-TYPE
+        SYNTAX  SEQUENCE OF RnetProtocolAtmLanConnectEntry
+        MAX-ACCESS      not-accessible
+        STATUS  current
+        DESCRIPTION
+                "This table defines virtual connections between an ATM 
+                 end point and a Bridge Group of LAN ports." 
+        ::= { rnetProtocolAtmLanConnection 2 }
+
+
+rnetProtocolAtmLanConnectEntry OBJECT-TYPE
+        SYNTAX  RnetProtocolAtmLanConnectEntry
+        MAX-ACCESS      not-accessible
+        STATUS  current
+        DESCRIPTION
+                "An entry defines a virtual connection between an ATM 
+                 end point and a Bridge Group of LAN ports." 
+        INDEX   { rnetProtocolAtmLanConnectIndex,
+                  rnetProtocolAtmLanConnectProtocolIndex,
+                  rnetProtocolAtmLanConnectAtmVpi,
+                  rnetProtocolAtmLanConnectAtmVci,
+                  rnetProtocolAtmLanConnectBridgeGroupIndex }
+        ::= { rnetProtocolAtmLanConnectTable 1 }
+
+RnetProtocolAtmLanConnectEntry ::= SEQUENCE {
+        rnetProtocolAtmLanConnectIndex
+                INTEGER,
+        rnetProtocolAtmLanConnectProtocolIndex
+                InterfaceIndex,
+        rnetProtocolAtmLanConnectAtmVpi
+                INTEGER,
+        rnetProtocolAtmLanConnectAtmVci
+                INTEGER,
+        rnetProtocolAtmLanConnectBridgeGroupIndex
+                InterfaceIndex,
+        rnetProtocolAtmLanConnectAdminStatus
+                INTEGER,
+        rnetProtocolAtmLanConnectAtm2LanOperStatus
+                INTEGER,
+        rnetProtocolAtmLanConnectLan2AtmOperStatus
+                INTEGER,
+        rnetProtocolAtmLanConnectAtm2LanLastChange
+                TimeStamp,
+        rnetProtocolAtmLanConnectLan2AtmLastChange
+                TimeStamp,
+		  rnetProtocolAtmLanConnect1483Support                   
+                INTEGER,
+        rnetProtocolAtmLanConnectRowStatus
+                RowStatus
+        }
+
+rnetProtocolAtmLanConnectIndex   OBJECT-TYPE
+        SYNTAX INTEGER (1..2147483647)
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+                "The index of this table."
+        ::= { rnetProtocolAtmLanConnectEntry 1 }
+
+rnetProtocolAtmLanConnectProtocolIndex OBJECT-TYPE
+        SYNTAX InterfaceIndex
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+                "The ifIndex associated to the ATM interface."
+        ::= { rnetProtocolAtmLanConnectEntry 2 }
+
+rnetProtocolAtmLanConnectAtmVpi   OBJECT-TYPE
+        SYNTAX INTEGER (1..4095)
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+                "The Vpi number of the ATM end point."
+        ::= { rnetProtocolAtmLanConnectEntry 3 }
+
+rnetProtocolAtmLanConnectAtmVci   OBJECT-TYPE
+        SYNTAX INTEGER (0..65535)
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+                "The Vci number of the ATM end point."
+        ::= { rnetProtocolAtmLanConnectEntry 4 }
+
+rnetProtocolAtmLanConnectBridgeGroupIndex   OBJECT-TYPE
+        SYNTAX InterfaceIndex
+        MAX-ACCESS not-accessible
+        STATUS current
+        DESCRIPTION
+                "The interface index associated to a Bridge Group of 
+					  LAN ports."
+        ::= { rnetProtocolAtmLanConnectEntry 5 }
+
+rnetProtocolAtmLanConnectAdminStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+        					  up(1),
+       					  down(2)
+        }
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+                "The desired state of the ATM to LAN connection."
+        ::= { rnetProtocolAtmLanConnectEntry 6 }
+
+rnetProtocolAtmLanConnectAtm2LanOperStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+         			      up(1),
+                        down(2)
+        }
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                "The current operational state of the ATM to LAN
+                 connection."
+        ::= { rnetProtocolAtmLanConnectEntry 7 }
+
+rnetProtocolAtmLanConnectLan2AtmOperStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+                        up(1),
+                        down(2)
+        }
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                "The current operational state of the LAN to ATM
+                 connection."
+        ::= { rnetProtocolAtmLanConnectEntry 8 }
+
+rnetProtocolAtmLanConnectAtm2LanLastChange   OBJECT-TYPE
+        SYNTAX TimeStamp
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                "The value of sysUpTime at the time the ATM to LAN
+                 connection entered its current operational state.  If 
+                 the current state was entered prior to the last 
+                 re-initialization of the local network management 
+                 subsystem, then this object contains a zero value."
+        ::= { rnetProtocolAtmLanConnectEntry 9 }
+
+rnetProtocolAtmLanConnectLan2AtmLastChange   OBJECT-TYPE
+        SYNTAX TimeStamp
+        MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+                "The value of sysUpTime at the time the LAN to ATM
+                 connection entered its current operational state.  If 
+                 the current state was entered prior to the last 
+                 re-initialization of the local network management 
+                 subsystem, then this object contains a zero value."
+        ::= { rnetProtocolAtmLanConnectEntry 10 }
+
+rnetProtocolAtmLanConnect1483Support   OBJECT-TYPE
+    SYNTAX        INTEGER {
+            transparent(1),
+            ethernet-bridging(2)
+        }
+    MAX-ACCESS    read-create
+    STATUS        current
+    DESCRIPTION
+        "If the rfc 1483 is supported"
+    DEFVAL { transparent }
+    ::= { rnetProtocolAtmLanConnectEntry 11 }
+
+rnetProtocolAtmLanConnectRowStatus   OBJECT-TYPE
+        SYNTAX RowStatus
+        MAX-ACCESS read-write
+        STATUS current
+        DESCRIPTION
+                "This object is used to create
+                 a new row or modify or delete an
+                 existing row in this table."
+        ::= { rnetProtocolAtmLanConnectEntry 12 }
+
+END

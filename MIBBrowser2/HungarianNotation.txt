@@ -1,0 +1,18 @@
+Prefix		Meaning									Example
+
+---------------------------------------------------------------------------------
+
+a			Array									apShape []
+b			bool									bButtonDown
+by			BYTE unsigned							byXHistory
+c			char									cStatus
+dw			DWORD (4 bytes)							dwStyle
+e			Enum type (of int's)					eElementTypes
+h			Handle									hCursor
+l			Long integer							lParam
+m_			Class member							m_pMainWnd
+n			int										nBeeps
+p			Pointer									pPen
+s			string of chars							m_sTitle
+sz			Null terminated string					lpszClassName
+w			unsigned word (2 bytes)					wParam

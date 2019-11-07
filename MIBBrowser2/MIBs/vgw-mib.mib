@@ -1,0 +1,3784 @@
+-- ***************************************************************************
+-- LAST-UPDATED       "01-06-15"
+-- ORGANIZATION       "Siemens AG, ICN AS AN"
+-- CONTACT-INFO
+--                    "Dirk Koelbel
+--                     Siemens AG, ICN AS AN E21
+--                     phone:  +49-3834 555 773
+--                     e-mail: dirk.koelbel@icn.siemens.de"
+--
+-- DESCRIPTION
+--   "This module defines the management information base (MIB) for managing
+--    of the LES CO-IWFs. It is meant to be used in connection with the
+--    XLD-MIB. The MIB consists of three parts:
+--      - V5 objects
+--      - AAL2 objects
+--      - version control group
+--    All attributes of the MIB are read only. Only the attributes of the
+--    control groups can be written. Thus, the creation and the change of
+--    items is only possible by means of the use of the control group. The
+--    management system has to write the data which belong to an command
+--    which should be execute. Then the command can be written. The result of
+--    the command is reported in an attribute or by means of a trap. Created
+--    and changed table items are reported by means of traps.
+--    The notification about alarms is not part of this MIB. Alarms are
+--    reported in the way it is defined by the XLD-MIB."
+--
+-- ***************************************************************************
+-- Date      Change                                               Author
+-- ***************************************************************************
+-- 00-11-22  -Change of all names (vgwV5...).                     Dirk Koelbel
+--           -Type definition for all used attributes.
+--            The indexes have defined value ranges now.
+--           -New allowed value of FlagMonResultType:
+--            unknown. If the V5-interface is disabled
+--            the flag monitoring can or need not be
+--            checked.
+--           -Change of value for vgwV5PcLinkTimeSlotType.
+--            The values allowed have the same values
+--            like the number of the timeslot.
+--           -vgwV5ControlGroup added
+--           -traps added
+--           -vgwMibVersionControl added
+--           -change of comments (to solve MIB-compiler
+--            problems
+--           -Change of lower and upper case spellings according
+--            requirements of the MIB compiler.
+--           -Remove of multiple use of - in comments. The
+--            MIB-compiler has problems with it :-(
+-- 00-11-28  -AAL2-MIB added                                      Banovic
+--                                                                Galovic
+-- 00-11-29  -V5-profiles added                                   Dirk Koelbel
+-- 00-11-30  -UserPortNo -> UserPortId                            Dirk Koelbel
+-- 00-12-12  -alarm traps removed -> they are reported via        Dirk Koelbel
+--            XLD-MIB now
+--           -V5 variant number: 0...127
+--           -variant-id -> variant number always
+--           -general type for AlarmState attributes
+--           -vgwV5IfAlarmState added
+--           -vgwV5LiAlarmState added
+--           -...AlarmSeverityIndex added
+--           -operational state of user port has no value
+--            'unknwon' any longer.
+--           -VgwV5PhyComChanIndexType: 0...672
+--           -traps: vgwV5TrPstnUserPortCreated and
+--            vgwV5TrIsdnUserPortCreated assembled to one
+--            trap vgwV5TrUserPortCreated
+--           -vgwV5PcFlagMonResult -> vgwV5PcAlarmState
+--           -no separate commands for create different
+--            user port types any longer
+-- 00-12-15  -change of vgwV5IfAlarmState-values                  Dirk Koelbel
+-- 00-12-18  -vgwV5CgAlarmSeverityIndex added                     Dirk Koelbel
+-- 00-12-21  -vgwV5ChangePrimSec removed                          Dirk Koelbel
+--           -vgwV5LinkIdCheck added
+-- 01-01-12  -vgwAAL2AlarmState added                             Dirk Koelbel
+--           -AAL2 alarms are reported as bit mask now because
+--            they can be reproted at the same time
+-- 01-03-06  -Functions for SNMP-agent are implemented.
+--            For each control group there are set of four
+--            function (GET, GET NEXT, SET, TEST). For AAL2
+--            and V5 tables there are two functions defined
+--            (GET, GET NEXT).
+--           -One change has been made in part of authors
+--            description in manner of mib attributes access
+--            rights (All attributes of the MIB are read only)  Lidija Ilic Pocuca
+-- 01-03-07  - error code vgwV5ErrProfileDep added
+--           - supported CID for ISDN user ports are 2048 now
+--             (supported IADs (AAL2 interfaces) are still 1024)
+--           - import of xldv20Traps (used as enterprise)
+--               -> V5 traps start now at TrapID 1000
+--               -> AAL2 traps start at TrapID 1030                Ute Weidner
+-- 01-03-07  - V5 traps start with 1000, not with 1001             Ute Weidner
+-- 01-03-09  - spelling errors in V5 trapIDs corrected             Ute Weidner
+-- 01-03-23  - spelling error in command vgwV5DeleteInterface
+--           - corrected (vgwV5DeleteInferface)                    Ute Weidner
+-- 01-03-26  - SNMP functions for vgwV5CgAlarmSeverityIndex
+--             added                                            Lidija Ilic Pocuca
+-- 01-04-09  - test and set functions added for
+--             vgwAAL2CgControlReqResult                        Lidija Ilic Pocuca
+-- 01-04-18  - name of access functions for user port table
+--             corrected                                        Drazen Grasovec
+-- 01-04-23  - new error code vgwV5ErrInternal added                Ute Weidner
+-- 01-04-25  - corrected test and set functions for
+--             vgwAAL2CgControlReq, vgwAAL2CgControlReqResult,
+--             vgwAAL2CgControlStatus                           Lidija Ilic Pocuca
+-- 01-04-25  - vgwAAL2TrIfCreated and vgwAAL2TrIfDeleted
+--             corrected                                           Igor Banovic
+-- 01-05-09  - index to V5 tables corrected                         Ute Weidner
+-- 01-06-15  - trap variables in vgwV5TrInterfaceCreated corrected  Ute Weidner
+
+-- ***************************************************************************
+--
+-- ***************************************************************************
+
+
+VGW-MIB DEFINITIONS ::= BEGIN
+
+  IMPORTS
+    OBJECT-TYPE
+      FROM RFC-1212
+    TRAP-TYPE
+      FROM RFC-1215
+    onu
+      FROM AN-MIB
+    xldv20Traps
+      FROM XLDV20-MIB;
+
+  vgw OBJECT IDENTIFIER
+  ::= { onu 9 }
+
+
+
+  -- *************************************************************************
+  -- *************************************************************************
+  -- *************************************************************************
+  -- *************************************************************************
+  -- VGW-MIB Version Control
+  -- *************************************************************************
+  -- *************************************************************************
+  -- *************************************************************************
+  -- *************************************************************************
+  vgwMibVersionControl OBJECT IDENTIFIER ::= { vgw 3 }
+
+  vgwMibVersion OBJECT-TYPE
+    SYNTAX  INTEGER
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The version of the VGW-MIB
+       - 1: first version with V5.2 and AAL2 for VGW V2.0"
+  ::= { vgwMibVersionControl 1 }
+
+
+
+  -- *************************************************************************
+  -- *************************************************************************
+  -- *************************************************************************
+  -- *************************************************************************
+  -- V5 Objects
+  -- *************************************************************************
+  -- *************************************************************************
+  -- *************************************************************************
+  -- All configuration objects which manage V5 related data can be found
+  -- under this node.
+  vgwV5Objects OBJECT IDENTIFIER ::= { vgw 1 }
+
+  -- *** general used types **************************************************
+  -- Limiting the value ranges of the table indexes, we define the number of
+  -- interfaces which can be part of a VGW. Normally this is not done in a MIB.
+  -- But the XLD system, which is the base of the VGW, requires the definition
+  -- of all dimensions. The data base, which contain all described data, has
+  -- a size according the ranges defined here.
+  -- The following limitations doe exist:
+  --   - max. 14 SU_VGWs
+  --   - max. 2 V5.2 interfaces per SU_VGW
+  --   - max. 4096 user ports per SU_VGW
+  --   - max. 2048 communication channels (ISDN-D-channel and ELCP) per SU_VGW
+  -- A change of the system requirements requires a change of the MIB.
+  -- The MIB defines already values for later steps of the VGW which are
+  -- not used in VGW V2.0
+
+  -- The index of the vgwV5InterfaceTable[]
+  -- (14 slots) * (2 V5-interfaces) = 28
+  VgwV5InterfaceIndexType ::= INTEGER (1..28)
+
+  -- The index of the vgwV5LinkTable[]
+  -- (14 slots) * (16 links) = 224
+  VgwV5LinkIndexType ::= INTEGER (1..224)
+
+  -- The index of the vgwV5PhyComChanTable[]
+  -- (14 slots) * (16 links) * (3 timeslots) = 672
+  -- Note, 0 is used if a logical C-channel is not assigned to a physical
+  -- C-channel. This can happen after protection switch during normal
+  -- operation.
+  VgwV5PhyComChanIndexType ::= INTEGER (0..672)
+
+  -- The index of the vgwV5LogComChanTable[]
+  -- (number of physical C-channels) - (14 slots)*(4 standby) = 616
+  -- The maximal value can only be reached if only one V5 interface is
+  -- configured per PIU.
+  -- Note, 0 is used in vgwV5?TypeChanIndex if these items are not in use.
+  VgwV5LogComChanIndexType ::= INTEGER (0..616)
+
+  -- The index of the vgwV5ComPathTable[]
+  -- (6 C-paths) * (2 V5-interfaces) * (14 slots) = 168
+  -- The maximal value can only by reached if two V5 interfaces are configured
+  -- per SU_VGW.
+  VgwV5ComPathIndexType ::= INTEGER (1..168)
+
+  -- The index of the vgwV5UserPortTable[]
+  -- (14 slots) * (4096 user ports) = 57334
+  VgwV5UserPortIndexType ::= INTEGER (1..57334)
+
+  -- The index of the vgwV5ProfileTable[]
+  -- (one profile for each V5.2 interface possible)
+  -- Note, 0 is used in vgwV5IfProfileIndex if no profile is selected.
+  VgwV5ProfileIndexType ::= INTEGER (0..28)
+
+
+  -- The V5-interface-id of a V5 interface (24 bits)
+  VgwV5InterfaceIdType ::= INTEGER (0..16777215)
+
+  -- The V5 variant number of a V5 interface
+  VgwV5VariantNoType ::= INTEGER (0..127)
+
+  -- The link-id of a logical link
+  VgwV5LinkIdType ::= INTEGER (0..255)
+
+  -- The index of the xldv20IfTable[] used by V5 objects
+  VgwV5PhyLineIndexType ::= INTEGER
+
+  -- The index of the xldv20HwUnitTable[] used by V5 objects
+  VgwV5HwUnitIndexType ::= INTEGER
+
+  -- The channel-id of the logical C-channel (16 bits)
+  VgwV5CChannelIdType ::= INTEGER (0..65535)
+
+  -- The administrative state of a V5-interface
+  VgwV5InterfaceAdminStateType ::= INTEGER
+                                   {
+                                     unlocked (1),
+                                     locked (2)
+                                   }
+
+  -- The operational state of a V5-interface
+  VgwV5InterfaceOperStateType ::= INTEGER
+                                  {
+                                    enabled (1),
+                                    disabled (2)
+                                  }
+
+  -- The type of a V5-interface
+  VgwV5InterfaceTypeType ::= INTEGER
+                             {
+                               v51 (1),
+                               v52 (2)
+                             }
+
+  -- The alarm state of a V5 interface. Each bit represents an alarm.
+  -- The alarm is active if the bit is set.
+  --  -bit 0: interface error (wrong interface-id, wrong variant number)
+  --  -bit 1: restart timeout exchange
+  VgwV5InterfaceAlarmStateType ::= INTEGER (0..3)
+
+  -- The administrative state of a logical link
+  VgwV5LinkAdminStateType ::= INTEGER
+                              {
+                                unlocked (1),
+                                locked (2),
+                                shutdown (3)
+                              }
+
+  -- The operational state of a logical link
+  VgwV5LinkOperStateType ::= INTEGER
+                             {
+                               enabled (1),
+                               disabled (2)
+                             }
+
+  -- The timeslot used by the physical C-channel
+  VgwV5TimeSlotType ::= INTEGER
+                        {
+                          ts16 (16),
+                          ts15 (15),
+                          ts31 (31)
+                        }
+
+  -- The type of a C-channel
+  VgwV5CChannelTypeType ::= INTEGER
+                            {
+                              active (1),
+                              standby (2)
+                            }
+
+  -- The protection group to which a C-channel belongs
+  VgwV5ProtectionGroupType ::= INTEGER
+                               {
+                                 protGroup1 (1),
+                                 protGroup2 (2)
+                               }
+
+  -- The types of a C-path
+  VgwV5ComPathTypeType ::= INTEGER
+                           {
+                             common (1),
+                             pstn (2),
+                             bcc (3),
+                             link (4),
+                             prot1 (5),
+                             prot2 (6)
+                           }
+
+  -- The address of a user port. This can be a L3 address (PSTN subscriber)
+  -- or an EFA (ISDN subscriber).
+  VgwV5UserPortAddrType ::= INTEGER (0..32767)
+
+  -- The administrative state of a user port
+  VgwV5UserPortAdminStateType ::= INTEGER
+                                  {
+                                    unlocked (1),
+                                    locked (2)
+                                  }
+
+  -- The operational state of a user port
+  VgwV5UserPortOperStateType ::= INTEGER
+                                 {
+                                   enabled (1),
+                                   disabled (2)
+                                 }
+
+  -- The additional state of a user port at AN- and LE-side.
+  VgwV5UserPortAddStateType ::= INTEGER (0..255)
+
+  -- The index of the selected interface table where the user port
+  -- really exist (AN side)
+  VgwV5UserPortTableIndexType ::= INTEGER
+
+  -- The id of the user port (AN side).
+  VgwV5UserPortIdType ::= INTEGER (1..255)
+
+  -- The type of the interface where the user port is located (AN side)
+  VgwV5UserPortInterfaceTypeType ::= INTEGER
+                                     {
+                                       aal2 (1)
+                                     }
+
+  -- The user port types
+  VgwV5TypeOfPortType ::= INTEGER
+                          {
+                            pstn (1),
+                            isdn-ba (2),
+                            isdn-plc (3)
+                          }
+
+  -- The state of a reported alarm
+  VgwV5AlarmStateType ::= INTEGER
+                          {
+                            noAlarm (0),
+                            alarm (1)
+                          }
+
+  -- The description of a profile
+  VgwV5ProfileDescrType ::= OCTET STRING (SIZE (0..255))
+
+  -- The V5-profile number (16 bits)
+  VgwV5ProfileNoType ::= INTEGER (0..65535)
+
+  -- The index of the xldv20AlarmSeverityTable[]. It is used by table items
+  -- which can report alarms.
+  VgwV5AlarmSeverityIndexType ::= INTEGER
+
+
+  -- *************************************************************************
+  -- *************************************************************************
+  -- vgwV5InterfaceTable
+  -- *************************************************************************
+  -- *************************************************************************
+  vgwV5InterfaceTable OBJECT-TYPE
+    SYNTAX  SEQUENCE OF VgwV5InterfaceEntry
+    ACCESS  not-accessible
+    STATUS  mandatory
+	DESCRIPTION
+      "This table contains information about the configuration of the
+	   V5 interfaces at the CO-IWF."
+
+	          
+        --DEFAULT next-function-async     fsnV5InterfaceEntryNext
+        --DEFAULT get-function-async      fsnV5InterfaceEntryGet
+
+  ::= { vgwV5Objects 1 }
+
+  vgwV5InterfaceEntry OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceEntry
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "An entry in the V5InterfaceTable[] that represents a single V5 interface."
+    INDEX { vgwV5IfInterfaceIndex }
+  ::= { vgwV5InterfaceTable 1 }
+
+  VgwV5InterfaceEntry ::=
+    SEQUENCE
+    {
+      vgwV5IfInterfaceIndex      VgwV5InterfaceIndexType,
+      vgwV5IfInterfaceId         VgwV5InterfaceIdType,
+      vgwV5IfVariantNo           VgwV5VariantNoType,
+      vgwV5IfHwUnitIndex         VgwV5HwUnitIndexType,
+      vgwV5IfAdminState          VgwV5InterfaceAdminStateType,
+      vgwV5IfOperState           VgwV5InterfaceOperStateType,
+      vgwV5IfInterfaceType       VgwV5InterfaceTypeType,
+      vgwV5IfAlarmState          VgwV5InterfaceAlarmStateType,
+      vgwV5IfAlarmSeverityIndex  VgwV5AlarmSeverityIndexType,
+      vgwV5IfProfileIndex        VgwV5ProfileIndexType
+    }
+
+  -- *************************************************************************
+  -- The items of a vgwV5InterfaceEntry
+  -- *************************************************************************
+  vgwV5IfInterfaceIndex OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceIndexType
+	ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the V5 interface in the vgwV5InterfaceTable[]."
+  ::= { vgwV5InterfaceEntry 1 }
+
+  vgwV5IfInterfaceId OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceIdType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The interface-id of the V5 interface."
+  ::= { vgwV5InterfaceEntry 2 }
+
+  vgwV5IfVariantNo OBJECT-TYPE
+    SYNTAX  VgwV5VariantNoType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The number of the V5 variant."
+  ::= { vgwV5InterfaceEntry 3 }
+
+  vgwV5IfHwUnitIndex OBJECT-TYPE
+    SYNTAX  VgwV5HwUnitIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The index in the xldv20HwUnitTable[] on which the V5 interface is
+       located.
+       -VGW V2.0: the selected PIU must be a SU_VGW."
+  ::= { vgwV5InterfaceEntry 4 }
+
+  vgwV5IfAdminState OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceAdminStateType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The administrative state of the V5 interface."
+  ::= { vgwV5InterfaceEntry 5 }
+
+  vgwV5IfOperState OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceOperStateType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The operative state of the V5 interface."
+  ::= { vgwV5InterfaceEntry 6 }
+
+  vgwV5IfInterfaceType OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceTypeType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The type of the V5 interface.
+       -VGW V2.0: only v52 is possible."
+  ::= { vgwV5InterfaceEntry 7 }
+
+  vgwV5IfAlarmState OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceAlarmStateType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The current alarm state of the V5 interface. Each possible alarm is
+       represented by one bit:
+       -bit 0: interface error (wrong interface-id, wrong variant number)
+       -bit 1: restart timeout exchange"
+  ::= { vgwV5InterfaceEntry 8 }
+
+  vgwV5IfAlarmSeverityIndex OBJECT-TYPE
+    SYNTAX  VgwV5AlarmSeverityIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "This index selects an item in the xldv20AlarmSeverityTable[]. It is
+       used to assign the reported alarm to a severity."
+  ::= { vgwV5InterfaceEntry 9 }
+
+  vgwV5IfProfileIndex OBJECT-TYPE
+    SYNTAX  VgwV5ProfileIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "This is an index in the VgwV5ProfileTable[]. It selects one item which
+       contains a V5-profile. Such a profile contains special settings for
+       the V5 interface (e.g. adaptions for a LE type).
+       If no V5-profile is selected, this attribute has the value 0.
+       In this case default values are used by the V5 protocol implementation."
+  ::= { vgwV5InterfaceEntry 10 }
+
+
+  -- *************************************************************************
+  -- *************************************************************************
+  -- vgwV5LinkTable
+  -- *************************************************************************
+  -- *************************************************************************
+  vgwV5LinkTable OBJECT-TYPE
+    SYNTAX  SEQUENCE OF VgwV5LinkEntry
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "This table contains information about the configuration of the
+       V5 links at the CO-IWF (logical links)."
+
+        --DEFAULT next-function-async     fsnV5LinkEntryNext
+        --DEFAULT get-function-async      fsnV5LinkEntryGet
+
+  ::= { vgwV5Objects 2 }
+
+  vgwV5LinkEntry OBJECT-TYPE
+    SYNTAX  VgwV5LinkEntry
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "An entry in the vgwV5LinkTable[] that represents a single V5 link."
+    INDEX { vgwV5LiLinkIndex }
+  ::= { vgwV5LinkTable 1 }
+
+  VgwV5LinkEntry ::=
+    SEQUENCE
+    {
+      vgwV5LiLinkIndex           VgwV5LinkIndexType,
+      vgwV5LiLinkId              VgwV5LinkIdType,
+      vgwV5LiV5InterfaceIndex    VgwV5InterfaceIndexType,
+      vgwV5LiPhyLineIndex        VgwV5PhyLineIndexType,
+      vgwV5LiAdminState          VgwV5LinkAdminStateType,
+      vgwV5LiOperState           VgwV5LinkOperStateType,
+      vgwV5LiAlarmState          VgwV5AlarmStateType,
+      vgwV5LiAlarmSeverityIndex  VgwV5AlarmSeverityIndexType
+    }
+
+  -- *************************************************************************
+  -- The items of a vgwV5LinkEntry
+  -- *************************************************************************
+  vgwV5LiLinkIndex OBJECT-TYPE
+    SYNTAX  VgwV5LinkIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index in the vgwV5LinkTable[]."
+  ::= { vgwV5LinkEntry 1 }
+
+  vgwV5LiLinkId OBJECT-TYPE
+    SYNTAX  VgwV5LinkIdType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The identifier of the V5 link (link-id). The identifier has to be
+       unambiguous for the V5 interface."
+    ::= { vgwV5LinkEntry 2 }
+
+  vgwV5LiV5InterfaceIndex OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the V5 interface in the vgwV5InterfaceTable[]
+       to which the logical link belongs."
+  ::= { vgwV5LinkEntry 3 }
+
+  vgwV5LiPhyLineIndex OBJECT-TYPE
+    SYNTAX  VgwV5PhyLineIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the physical E1 link in the xldv20IfTable[] which is
+       used by this logical link."
+  ::= { vgwV5LinkEntry 4 }
+
+  vgwV5LiAdminState OBJECT-TYPE
+    SYNTAX  VgwV5LinkAdminStateType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The administrative state of the V5 logical link."
+    ::= { vgwV5LinkEntry 5 }
+
+  vgwV5LiOperState OBJECT-TYPE
+    SYNTAX  VgwV5LinkOperStateType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The operative state of the V5 link."
+  ::= { vgwV5LinkEntry 6 }
+
+  vgwV5LiAlarmState OBJECT-TYPE
+    SYNTAX  VgwV5AlarmStateType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The current alarm state of the logical link. If the alarm is on,
+       a link check failure is reported (wrong link-id)."
+  ::= { vgwV5LinkEntry 7 }
+
+  vgwV5LiAlarmSeverityIndex OBJECT-TYPE
+    SYNTAX  VgwV5AlarmSeverityIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "This index selects an item in the xldv20AlarmSeverityTable[]. It is
+       used to assign the reported alarm to a severity."
+  ::= { vgwV5LinkEntry 8 }
+
+
+  -- *************************************************************************
+  -- *************************************************************************
+  -- vgwV5PhyComChanTable
+  -- *************************************************************************
+  -- *************************************************************************
+  vgwV5PhyComChanTable OBJECT-TYPE
+    SYNTAX  SEQUENCE OF VgwV5PhyComChanEntry
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "This table contains information about the configured physical
+        communication channels at the CO-IWF."
+
+        --DEFAULT next-function-async     fsnV5PhyComChanEntryNext
+        --DEFAULT get-function-async      fsnV5PhyComChanEntryGet
+
+
+  ::= { vgwV5Objects 3 }
+
+  vgwV5PhyComChanEntry OBJECT-TYPE
+    SYNTAX  VgwV5PhyComChanEntry
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "An entry in the vgwV5PhyComChanTable[] that represents a single
+       physical communication channel."
+    INDEX { vgwV5PcPhyComChanIndex }
+  ::= { vgwV5PhyComChanTable 1 }
+
+  VgwV5PhyComChanEntry ::=
+    SEQUENCE
+    {
+       vgwV5PcPhyComChanIndex     VgwV5PhyComChanIndexType,
+       vgwV5PcProtectionGroup     VgwV5ProtectionGroupType,
+       vgwV5PcLinkIndex           VgwV5LinkIndexType,
+       vgwV5PcLinkTimeSlot        VgwV5TimeSlotType,
+       vgwV5PcAlarmState          VgwV5AlarmStateType,
+       vgwV5PcV5InterfaceIndex    VgwV5InterfaceIndexType,
+       vgwV5PcAlarmSeverityIndex  VgwV5AlarmSeverityIndexType
+     }
+
+  -- *************************************************************************
+  -- The items of a vgwV5PhyComChanEntry
+  -- *************************************************************************
+  vgwV5PcPhyComChanIndex OBJECT-TYPE
+    SYNTAX  VgwV5PhyComChanIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the physical communication channel in the
+      vgwV5PhyComChanTable[]."
+  ::= { vgwV5PhyComChanEntry 1 }
+
+  vgwV5PcProtectionGroup OBJECT-TYPE
+    SYNTAX  VgwV5ProtectionGroupType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The protection group of the physical communication channel."
+  ::= { vgwV5PhyComChanEntry 3 }
+
+  vgwV5PcLinkIndex OBJECT-TYPE
+    SYNTAX  VgwV5LinkIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the logical link in the vgwV5LinkTable[]  which is used
+       by this physical C-channel."
+  ::= { vgwV5PhyComChanEntry 4 }
+
+  vgwV5PcLinkTimeSlot OBJECT-TYPE
+    SYNTAX  VgwV5TimeSlotType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The used timeslot on the assigned V5 link.
+       If the physical C-channel belongs to protection group 1 only the timeslot
+       16 is allowed."
+  ::= { vgwV5PhyComChanEntry 5 }
+
+  vgwV5PcAlarmState OBJECT-TYPE
+    SYNTAX  VgwV5AlarmStateType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The state of the flag monitoring at the physical communication channel.
+       An alarm 'loss of flags' is reported if no flags are detected. Note,
+       the loss of flags reporting can be disabled by V5-profile if an LE
+       does not send flags."
+  ::= { vgwV5PhyComChanEntry 6 }
+
+  vgwV5PcV5InterfaceIndex OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the V5 interface in the vgwV5InterfaceTable[]
+       to which the physical C-channel belongs."
+  ::= { vgwV5PhyComChanEntry 7 }
+
+  vgwV5PcAlarmSeverityIndex OBJECT-TYPE
+    SYNTAX  VgwV5AlarmSeverityIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "This index selects an item in the xldv20AlarmSeverityTable[]. It is
+       used to assign the reported alarm to a severity."
+  ::= { vgwV5PhyComChanEntry 8 }
+
+
+  -- *************************************************************************
+  -- *************************************************************************
+  -- vgwV5LogComChanTable
+  -- *************************************************************************
+  -- *************************************************************************
+  vgwV5LogComChanTable OBJECT-TYPE
+    SYNTAX  SEQUENCE OF VgwV5LogComChanEntry
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "This table contains information about the configuration of the
+       logical communication channels at the CO-IWF."
+        
+        --DEFAULT next-function-async     fsnV5LogComChanEntryNext
+        --DEFAULT get-function-async      fsnV5LogComChanEntryGet
+
+  ::= { vgwV5Objects 4 }
+
+  vgwV5LogComChanEntry OBJECT-TYPE
+    SYNTAX  VgwV5LogComChanEntry
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "An entry in the vgwV5LogComChanTable[] that represents a single
+       logical communication channel."
+    INDEX { vgwV5LcLogComChanIndex }
+  ::= { vgwV5LogComChanTable 1 }
+
+  VgwV5LogComChanEntry ::=
+    SEQUENCE
+    {
+      vgwV5LcLogComChanIndex        VgwV5LogComChanIndexType,
+      vgwV5LcCChannelId             VgwV5CChannelIdType,
+      vgwV5LcPhyComChanIndexProv    VgwV5PhyComChanIndexType,
+      vgwV5LcPhyComChanIndexCurrent VgwV5PhyComChanIndexType,
+      vgwV5LcV5InterfaceIndex       VgwV5InterfaceIndexType
+    }
+
+  -- *************************************************************************
+  -- The items of a vgwV5LogComChanEntry
+  -- *************************************************************************
+  vgwV5LcLogComChanIndex OBJECT-TYPE
+    SYNTAX  VgwV5LogComChanIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the logical communication channel in the
+       vgwV5LogComChanTable[]."
+  ::= { vgwV5LogComChanEntry 1 }
+
+  vgwV5LcCChannelId OBJECT-TYPE
+    SYNTAX  VgwV5CChannelIdType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The identifier of the logical communication channel (channel-id).
+       The identifier has to be unambiguous for the V5 interface."
+  ::= { vgwV5LogComChanEntry 2 }
+
+  vgwV5LcPhyComChanIndexProv OBJECT-TYPE
+    SYNTAX  VgwV5PhyComChanIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the provisioned physical communication channel
+       (index of vgwV5PhyComChanTable[])."
+  ::= { vgwV5LogComChanEntry 3 }
+
+  vgwV5LcPhyComChanIndexCurrent OBJECT-TYPE
+    SYNTAX  VgwV5PhyComChanIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the physical communication channel which is currently used
+       (index of vgwV5PhyComChanTable[]). Only in case of protection switch
+       this value is not identical with vgwV5LcPhyComChanIndexProv. If it
+       was not possible to assign the logical C-channel to a physical
+       C-channel the value can be 0."
+  ::= { vgwV5LogComChanEntry 4 }
+
+  vgwV5LcV5InterfaceIndex OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the V5 interface in the vgwV5InterfaceTable[]
+       to which the logical C-channel belongs."
+  ::= { vgwV5LogComChanEntry 5 }
+
+
+  -- *************************************************************************
+  -- *************************************************************************
+  -- vgwV5ComPathTable
+  -- *************************************************************************
+  -- *************************************************************************
+  vgwV5ComPathTable OBJECT-TYPE
+    SYNTAX  SEQUENCE OF VgwV5ComPathEntry
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "This table contains information about the configuration of the
+       V5 communication paths at the CO-IWF."
+
+        
+        --DEFAULT next-function-async     fsnV5ComPathEntryNext
+        --DEFAULT get-function-async      fsnV5ComPathEntryGet
+
+  ::= { vgwV5Objects 5 }
+
+  vgwV5ComPathEntry OBJECT-TYPE
+    SYNTAX  VgwV5ComPathEntry
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "An entry in the vgwV5ComPathTable[] that represents a single
+       V5 communication path."
+    INDEX { vgwV5CpComPathIndex }
+  ::= { vgwV5ComPathTable 1 }
+
+  -- The index for the C-channel (logical or physical)
+  VgwV5CpComChanIndexType ::= INTEGER
+
+  VgwV5ComPathEntry ::=
+    SEQUENCE
+    {
+      vgwV5CpComPathIndex        VgwV5ComPathIndexType,
+      vgwV5CpComChannelIndex     VgwV5CpComChanIndexType,
+      vgwV5CpComPathType         VgwV5ComPathTypeType,
+      vgwV5CpAlarmState          VgwV5AlarmStateType,
+      vgwV5CpV5InterfaceIndex    VgwV5InterfaceIndexType,
+      vgwV5CpAlarmSeverityIndex  VgwV5AlarmSeverityIndexType
+    }
+
+  -- *************************************************************************
+  -- The items of a vgwV5ComPathEntry
+  -- *************************************************************************
+  vgwV5CpComPathIndex OBJECT-TYPE
+    SYNTAX  VgwV5ComPathIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the V5 communication path in the vgwV5ComPathTable[]."
+  ::= { vgwV5ComPathEntry 1 }
+
+  vgwV5CpComChannelIndex OBJECT-TYPE
+    SYNTAX  VgwV5CpComChanIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the assigned physical or logical communication channel.
+       Communication paths of type Control, PSTN, BCC and Link are assigned
+       to a logical communication channel (index of vgwV5LogComChanTable[]).
+       Prot1 and Prot2 are assigned to a physical communication channel
+       (index of vgwV5PhyComChanTable[])."
+  ::= { vgwV5ComPathEntry 2 }
+
+  vgwV5CpComPathType OBJECT-TYPE
+    SYNTAX  VgwV5ComPathTypeType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The type of communication path."
+  ::= { vgwV5ComPathEntry 3 }
+
+  vgwV5CpAlarmState OBJECT-TYPE
+    SYNTAX  VgwV5AlarmStateType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "This item reports the alarm state of the C-path (loss of data link)."
+  ::= { vgwV5ComPathEntry 4 }
+
+  vgwV5CpV5InterfaceIndex OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the V5 interface in the vgwV5InterfaceTable[]
+       to which the C-path belongs."
+  ::= { vgwV5ComPathEntry 5 }
+
+  vgwV5CpAlarmSeverityIndex OBJECT-TYPE
+    SYNTAX  VgwV5AlarmSeverityIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "This index selects an item in the xldv20AlarmSeverityTable[]. It is
+       used to assign the reported alarm to a severity."
+  ::= { vgwV5ComPathEntry 6 }
+
+  -- *************************************************************************
+  -- *************************************************************************
+  -- vgwV5UserPortTable
+  -- *************************************************************************
+  -- *************************************************************************
+  vgwV5UserPortTable OBJECT-TYPE
+    SYNTAX  SEQUENCE OF VgwV5UserPortEntry
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "This table contains information about the configuration of the
+      V5 user ports at the CO-IWF."
+    
+        --DEFAULT next-function-async     fsnV5UserPortEntryNext
+        --DEFAULT get-function-async      fsnV5UserPortEntryGet
+
+  ::= { vgwV5Objects 6 }
+
+  vgwV5UserPortEntry OBJECT-TYPE
+    SYNTAX  VgwV5UserPortEntry
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "An entry in the vgwV5UserPortTable[] that represents a single
+       V5 user port."
+    INDEX { vgwV5UpUserPortIndex }
+  ::= { vgwV5UserPortTable 1 }
+
+  VgwV5UserPortEntry ::=
+    SEQUENCE
+    {
+      vgwV5UpUserPortIndex    VgwV5UserPortIndexType,
+      vgwV5UpTypeOfPort       VgwV5TypeOfPortType,
+      vgwV5UpUserPortAddr     VgwV5UserPortAddrType,
+      vgwV5UpOperState        VgwV5UserPortOperStateType,
+      vgwV5UpAdminState       VgwV5UserPortAdminStateType,
+      vgwV5UpDsTypeChanIndex  VgwV5LogComChanIndexType,
+      vgwV5UpFTypeChanIndex   VgwV5LogComChanIndexType,
+      vgwV5UpPTypeChanIndex   VgwV5LogComChanIndexType,
+      vgwV5UpV5InterfaceIndex VgwV5InterfaceIndexType,
+      vgwV5UpInterfaceType    VgwV5UserPortInterfaceTypeType,
+      vgwV5UpTableIndex       VgwV5UserPortTableIndexType,
+      vgwV5UpUserPortId       VgwV5UserPortIdType,
+      vgwV5UpStateAnSide      VgwV5UserPortAddStateType,
+      vgwV5UpStateLeSide      VgwV5UserPortAddStateType
+    }
+
+  -- *************************************************************************
+  -- The items of a vgwV5UserPortEntry
+  -- *************************************************************************
+  vgwV5UpUserPortIndex OBJECT-TYPE
+    SYNTAX  VgwV5UserPortIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the V5 user port in the vgwV5UserPortTable[]."
+  ::= { vgwV5UserPortEntry 1 }
+
+  vgwV5UpTypeOfPort OBJECT-TYPE
+    SYNTAX  VgwV5TypeOfPortType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The type of the V5 user port.
+       -VGW V2.0: only 'pstn' and 'isdn-ba' are possible"
+  ::= { vgwV5UserPortEntry 2 }
+
+  vgwV5UpUserPortAddr OBJECT-TYPE
+    SYNTAX  VgwV5UserPortAddrType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The address of the V5 user port. This address must be unique on the
+       V5 interface and user port type. The possible address range depends
+       on the type of port:
+       PSTN user port:  0..32767
+       ISDN user port:  0..8175."
+  ::= { vgwV5UserPortEntry 3 }
+
+  vgwV5UpOperState OBJECT-TYPE
+    SYNTAX  VgwV5UserPortOperStateType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The operative state of the user port. This attribute delivers no
+       information about the reason why a user port is blocked. A detailed
+       description about the user port state can be found in
+       vgwV5UpStateLeSide and vgwV5UpStateAnSide"
+  ::= { vgwV5UserPortEntry 4 }
+
+  vgwV5UpAdminState OBJECT-TYPE
+    SYNTAX  VgwV5UserPortAdminStateType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The administrative state of the user port. This state can be changed
+       by control group."
+  ::= { vgwV5UserPortEntry 5 }
+
+  vgwV5UpDsTypeChanIndex OBJECT-TYPE
+    SYNTAX  VgwV5LogComChanIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the assigned communication channel for Ds-type messages
+       in case of ISDN subscriber (index of vgwV5LogComChanTable[]).
+       If it is not an ISDN subscriber this attribute contains 0."
+  ::= { vgwV5UserPortEntry 6 }
+
+  vgwV5UpFTypeChanIndex OBJECT-TYPE
+    SYNTAX  VgwV5LogComChanIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the assigned communication channel for f-type messages
+       in case of ISDN subscriber (index of vgwV5LogComChanTable[]).
+       If it is not an ISDN subscriber this attribute contains 0."
+  ::= { vgwV5UserPortEntry 7 }
+
+  vgwV5UpPTypeChanIndex OBJECT-TYPE
+    SYNTAX  VgwV5LogComChanIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the assigned communication channel for p-type messages
+       in case of ISDN subscriber (index of vgwV5LogComChanTable[]).
+       If it is not an ISDN subscriber this attribute contains 0."
+  ::= { vgwV5UserPortEntry 8 }
+
+  vgwV5UpV5InterfaceIndex OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The interface index of the assigned V5 interface
+       (index of vgwV5InterfaceTable[])."
+  ::= { vgwV5UserPortEntry 9 }
+
+  vgwV5UpInterfaceType OBJECT-TYPE
+    SYNTAX  VgwV5UserPortInterfaceTypeType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The table selector of the assigned interface on which the user port
+       will be carried at access network side:
+         aal2   -    assigned interface is AAL2If"
+  ::= { vgwV5UserPortEntry 10 }
+
+  vgwV5UpTableIndex OBJECT-TYPE
+    SYNTAX  VgwV5UserPortTableIndexType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of assigned interface inside the selected table.
+       Which table is selected is defined by vgwV5UpInterfaceType:
+         aal2   -    vgwAAL2InterfaceTable[]"
+ ::= { vgwV5UserPortEntry 11 }
+
+  vgwV5UpUserPortId OBJECT-TYPE
+    SYNTAX  VgwV5UserPortIdType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The user port identifier at the assigned interface. This value is the
+       number of the user port on the IAD. The different user port types
+       are numbered independent of each other."
+  ::= { vgwV5UserPortEntry 12 }
+
+  vgwV5UpStateAnSide OBJECT-TYPE
+    SYNTAX  VgwV5UserPortAddStateType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "This attribute reports the current state of the user port at AN-side.
+       It is intent to be used to find out why a user port is blocked.
+       (see vgwV5UpStateLeSide)"
+ ::= { vgwV5UserPortEntry 13 }
+
+  vgwV5UpStateLeSide OBJECT-TYPE
+    SYNTAX  VgwV5UserPortAddStateType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "This attribute reports the current state of the user port at LE-side.
+       It is intent to be used to find out why a user port is blocked.
+       (see vgwV5UpStateAnSide)"
+ ::= { vgwV5UserPortEntry 14 }
+
+
+  -- *************************************************************************
+  -- *************************************************************************
+  -- vgwV5ProfileTable
+  -- *************************************************************************
+  -- *************************************************************************
+  vgwV5ProfileTable OBJECT-TYPE
+    SYNTAX  SEQUENCE OF VgwV5ProfileEntry
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "This table contains information about the V5 profiles"
+   
+        --DEFAULT next-function-async     fsnV5ProfileEntryNext
+        --DEFAULT get-function-async      fsnV5ProfileEntryGet
+
+  ::= { vgwV5Objects 7 }
+
+  vgwV5ProfileEntry OBJECT-TYPE
+    SYNTAX  VgwV5ProfileEntry
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "An entry in the vgwV5ProfileTable[] that represents a single V5-profile."
+    INDEX { vgwV5PrProfileIndex }
+  ::= { vgwV5ProfileTable 1 }
+
+  VgwV5ProfileEntry ::=
+    SEQUENCE
+    {
+      vgwV5PrProfileIndex  VgwV5ProfileIndexType, 
+      vgwV5PrProfileNo     VgwV5ProfileNoType,
+      vgwV5PrProfileDescr  VgwV5ProfileDescrType
+    }
+
+  -- *************************************************************************
+  -- The items of a vgwV5ProfileEntry
+  -- *************************************************************************
+  vgwV5PrProfileIndex OBJECT-TYPE
+    SYNTAX  VgwV5ProfileIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index of the V5-profile in the vgwV5ProfileTable[]."
+  ::= { vgwV5ProfileEntry 1 }
+
+  vgwV5PrProfileNo OBJECT-TYPE
+    SYNTAX  VgwV5ProfileNoType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The number of the loaded profile."
+  ::= { vgwV5ProfileEntry 2 }
+
+  vgwV5PrProfileDescr OBJECT-TYPE
+    SYNTAX  VgwV5ProfileDescrType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "A short description of the loaded profile."
+  ::= { vgwV5ProfileEntry 3 }
+
+
+  -- *************************************************************************
+  -- *************************************************************************
+  -- vgwV5ControlGroup
+  -- *************************************************************************
+  -- *************************************************************************
+  vgwV5ControlGroup OBJECT IDENTIFIER ::= { vgwV5Objects 8 }
+
+  -- The commands and error codes. Note, vgwV5CgControlReq can contain
+  -- a command as well as an error/state code. If it contains an error/state
+  -- code, this value is only delivered in the getResponse. It is only
+  -- allowed to write commands to this attribute.
+  VgwV5CgCommandErrorStateType ::=
+    INTEGER
+    {
+      -- *** states **********************************************************
+      vgwV5NoRequest (1),          -- no request received
+      vgwV5CommExecStarted (5),    -- command started
+      vgwV5CommandSucceeded (16),  -- command executed
+
+      -- *** general error codes *********************************************
+        -- Not enough parameters set for the command to be executed.
+      vgwV5ErrParamFaulty (11),
+        -- Command cannot be executed while another command is still executed.
+      vgwV5ErrRequestBusy (12),
+        -- The command could not be executed because some parameters contain
+        -- invalid values (not allowed in the context of the command)
+      vgwV5ErrSetDataFailed (13),
+        -- Internal error (e.g. loss of communication with SU_VGW)
+      vgwV5ErrAswTimeout (14),
+        -- The requested command is not supported
+      vgwV5ErrCommandFailed (15),
+
+      -- *** command specific errors *****************************************
+        -- The number of V5.2 interfaces exceeds the max. number.
+      vgwV5ErrTooManyV52Interfaces (50),
+        -- The given HwUnitIndex contains an invalid value.
+      vgwV5ErrWrongHwUnitIndex (51),
+        -- The selected PIU is not a SU_VGW.
+      vgwV5ErrWrongHwUnitType (52),
+        -- The given link-id is not unambiguous for the V5.2 interface.
+      vgwV5ErrWrongLinkId (53),
+        -- The given E1 interface index contains an invalid value.
+      vgwV5ErrWrongIfIndex (54),
+        -- The selected interface is not an E1 interface.
+      vgwV5ErrWrongIfType (55),
+        -- The selected E1 interface is located on a wrong PIU.
+      vgwV5ErrWrongIfLocation (56),
+        -- The selected E1 interface is already assigned to another
+        -- V5.2 interface.
+      vgwV5ErrWrongPhyLinkState (57),
+        -- The given V5.2 interface index contains an invalid value.
+      vgwV5ErrWrongV5IfIndex (58),
+        -- The given V5.2 interface is not in the right state
+        -- (activated or deactivated)
+      vgwV5ErrWrongIfState (59),
+        -- There are too many links for the V5.2 interface configured.
+      vgwV5ErrTooManyLinks (60),
+        -- There are still physical C-channels which are using this
+        -- logical link.
+      vgwV5ErrLogLinkDep (61),
+        -- The given index for the logical link contains an invalid value
+      vgwV5ErrWrongLogLinkIndex (62),
+        -- The logical link is in the wrong state (locked/unlocked).
+      vgwV5ErrWrongLogLinkState (63),
+        -- The given value of the timeslot is not allowed.
+      vgwV5ErrWrongTimeSlot (64),
+        -- The selected C-channel is of wrong type.
+      vgwV5ErrWrongChannelType (65),
+        -- The given index for the physical C-channel contains an invalid
+        -- value
+      vgwV5ErrWrongPhyChanIndex (66),
+        -- The physical C-channel is still in use.
+      vgwV5ErrPhyChanDep (67),
+        -- The selected logical link does not belong to the right
+        -- V5.2 interface.
+      vgwV5ErrWrongLinkLocation (68),
+        -- The given index for the logical channel contains an invalid value.
+      vgwV5ErrWrongLogChanIndex (69),
+        -- There is already a PSTN C-path for this V5.2 interface.
+      vgwV5ErrPstnExist (70),
+        -- The given index for the C-path contains an invalid value.
+      vgwV5ErrWrongComPathIndex (71),
+        -- There are too many user ports configured for this SU_VGW.
+        -- (limitation: max. 4096)
+      vgwV5ErrTooManyUserPorts (72),
+        -- There are too many configured SSTED (to many ISDN user ports)
+        -- for this SU_VGW.
+        -- (limitation: max. 2048)
+      vgwV5ErrTooManySSTED (73),
+        -- The L3 address or EFA is invalid (out of range or not
+        -- unambiguous for this V5.2 interface).
+      vgwV5ErrWrongAddress (74),
+        -- The given index for the user port interface (AN side) contains
+        -- an invalid value.
+      vgwV5ErrWrongUserPortIfIndex (75),
+        -- The user port number is out of range or not unambiguous for
+        -- one IAD and user port type.
+      vgwV5ErrWrongUserPortId (76),
+        -- The given index for the user port contains an invalid value.
+      vgwV5ErrWrongUserPortIndex (77),
+        -- The given channel-id is not unambiguous for this V5.2 interface.
+      vgwV5ErrWrongChannelId (78),
+        -- The given user port interface type is not supported.
+      vgwV5ErrWrongUserPortIfType (79),
+        -- The given index for the profile contains an invalid value.
+      vgwV5ErrWrongProfileIndex (80),
+        -- There are too many profiles
+      vgwV5ErrTooManyProfiles (81),
+        -- The given profile string is invalid (not a V5.2 profile or
+        -- wrong checksum)
+      vgwV5ErrWrongProfileString (82),
+        -- The given index for the alarm severity contains an invalid value.
+      vgwV5ErrWrongAlarmSeverityIndex (83),
+        -- The given type of a user port is not supported.
+      vgwV5ErrWrongUserPortType (84),
+        -- The logical link is not in the operational state 'enabled'
+      vgwV5ErrWrongLogLinkOST (85),
+        -- No response from LE.
+      vgwV5ErrTimeoutByLE (86),
+        -- The link ID check cannot be executed because a link ID check
+        -- is still in process.
+      vgwV5ErrLinkIdCheckInProcress (87),
+        -- The link check was rejected by AN or LE side.
+      vgwV5ErrLinkIdCheckRejected (88),
+        -- link ID check detected an error.
+      vgwV5ErrLinkIdCheck (89),
+        -- the PSTN C-path is still in use
+      vgwV5ErrComPathDep (90),
+        -- the interface cannot be removed as long as log. links, C-paths,
+        -- C-channels or user ports configured for this interface
+      vgwV5ErrIfDep (91),
+        -- profile cannot be removed because it is still in use
+        -- by a V5.2 interface
+      vgwV5ErrProfileDep (92),
+        -- internal error in SDT application (e.g. data base read error)
+      vgwV5ErrInternal (93),
+
+      -- *** the commands ****************************************************
+        -- create a new V5.2 interface
+        -- parameters: vgwV5CgInterfaceId, vgwV5CgVariantNo,
+        --             vgwV5CgPrimLinkId, vgwV5CgPrimIfIndex,
+        --             vgwV5CgSecLinkId, vgwV5CgSecIfIndex,
+        --             vgwV5CgChannelId, vgwV5CgHwUnitIndex,
+        --             vgwV5CgProfileIndex
+      vgwV5CreateInterface (101),
+        -- delete a V5.2 interface
+        -- parameters: vgwV5CgV5IfIndex
+      vgwV5DeleteInterface (102),
+        -- activate a V5.2 interface
+        -- parameters: vgwV5CgV5IfIndex
+      vgwV5ActivateInterface (103),
+        -- deactivate a V5.2 interface
+        -- parameters: vgwV5CgV5IfIndex
+      vgwV5DeactivateInterface (104),
+        -- change the data of a V5.2 interface
+        -- parameters: vgwV5CgV5IfIndex, vgwV5CgInterfaceId,
+        --             vgwV5CgVariantNo, vgwV5CgAlarmSeverityIndex,
+        --             vgwV5CgProfileIndex
+      vgwV5ChangeInterfaceData (105),
+        -- add a link to a V5.2 interface
+        -- parameters: vgwV5CgV5IfIndex, vgwV5CgLinkId, vgwV5CgIfIndex,
+        --             vgwV5CgLogLinkAdminState
+      vgwV5AddLogLink (106),
+        -- delete a link from a V5.2 interface
+        -- parameters: vgwV5CgLinkIndex
+      vgwV5DeleteLogLink (107),
+        -- change the data of a logical link
+        -- parameters: vgwV5CgLinkIndex, vgwV5CgLinkId, vgwV5CgIfIndex,
+        --             vgwV5CgAlarmSeverityIndex
+      vgwV5ChangeLogLinkData (108),
+        -- lock a logical link
+        -- parameters: vgwV5CgLinkIndex
+      vgwV5LockLogLink (109),
+        -- unlock a logical link
+        -- parameters: vgwV5CgLinkIndex
+      vgwV5UnlockLogLink (110),
+        -- shutdown a logical link
+        -- parameters: vgwV5CgLinkIndex
+      vgwV5ShutdownLogLink (111),
+        -- link-id check
+        -- parameters: vgwV5CgLinkIndex
+      vgwV5LinkIdCheck (112),
+        -- create a C-channel
+        -- parameters: vgwV5CgLinkIndex, vgwV5CgTimeSlot,
+        --             vgwV5CgCChannelType, vgwV5CgChannelId
+      vgwV5CreateCChannel (113),
+        -- delete a C-channel
+        -- parameters: vgwV5CgPhyChanIndex
+      vgwV5DeleteCChannel (114),
+        -- change the data of a C-channel
+        -- parameters: vgwV5CgPhyChanIndex, vgwV5CgLinkIndex,
+        --             vgwV5CgTimeSlot, vgwV5CgChannelId,
+        --             vgwV5CgAlarmSeverityIndex
+      vgwV5ChangeCCData (115),
+        -- force a protection switch for C-channel (of protection group 2)
+        -- parameters: vgwV5CgLogChanIndex, vgwV5CgPhyChanIndex
+      vgwV5SwitchOver (116),
+        -- create a PSTN C-path
+        -- parameters: vgwV5CpLogChanIndex
+      vgwV5CreatePstnPath (117),
+        -- delete a PSTN C-path
+        -- parameters: vgwV5CgComPathIndex
+      vgwV5DeletePstnPath (118),
+        -- change the data of a C-path
+        -- parameters: vgwV5CgComPathIndex, vgwV5CgLogChanIndex,
+        --             vgwV5CgAlarmSeverityIndex
+      vgwV5ChangeCPathData (119),
+        -- create a user port
+        -- parameters: vgwV5CgV5IfIndex, vgwV5CgTypeOfPort,
+        --             vgwV5CgAddress, vgwV5CgUserPortState,
+        --             vgwV5CgUserPortIfIndex, vgwV5CgUserPortIfType,
+        --             vgwV5CgUserPortId
+        --             and for ISDN user port only...
+        --             vgwV5CgDsTypePath, vgwV5CgPTypePath, vgwV5CgFTypePath
+      vgwV5CreateUserPort (120),
+        -- delete a user port
+        -- parameters: vgwV5CgUserPortIndex
+      vgwV5DeleteUserPort (121),
+        -- lock a user port
+        -- parameters: vgwV5CgUserPortIndex
+      vgwV5LockUserPort (122),
+        -- unlock a user port
+        -- parameters: vgwV5CgUserPortIndex
+      vgwV5UnlockUserPort (123),
+        -- create a new profile
+        -- parameters: vgwV5CgProfileStr
+      vgwV5CreateProfile (124),
+        -- delete a profile
+        -- parameters: vgwV5CgProfileIndex
+      vgwV5DeleteProfile (125)
+    }
+
+  -- The control state of the control group
+  VgwV5CgControlStatusType ::=
+    INTEGER
+    {
+      vgwV5RequestBusy (2),           -- command is just executing
+      vgwV5RequestPassed (3),         -- command executed w/o error
+      vgwV5RequestFailed (4)          -- command executed with error
+    }
+
+  -- The timeout time for a command (in seconds).
+  VgwV5CgControlTimerType ::= INTEGER (1..60)
+
+  -- The V5-profile string
+  VgwV5CgProfileStrType ::= OCTET STRING (SIZE (0..1024))
+
+  -- *************************************************************************
+  -- general items of the vgwV5ControlGroup
+  -- *************************************************************************
+  vgwV5CgControlReq OBJECT-TYPE
+    SYNTAX  VgwV5CgCommandErrorStateType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "User commands for all vgwV5Objects tables."
+
+	    --DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 1 }
+
+  vgwV5CgControlStatus OBJECT-TYPE
+    SYNTAX  VgwV5CgControlStatusType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "Indicates the status of the V5 control group."
+      
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 2 }
+
+  vgwV5CgControlRequestResult OBJECT-TYPE
+    SYNTAX  VgwV5CgCommandErrorStateType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "Delivers the result of the last executed command."
+
+     
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 3 }
+
+  vgwV5CgControlTimer OBJECT-TYPE
+    SYNTAX  VgwV5CgControlTimerType
+    ACCESS  read-only
+    STATUS  mandatory
+    DESCRIPTION
+      "The normal execution time of a long command in seconds."
+        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 4 }
+
+  -- *************************************************************************
+  -- command parameters of the vgwV5ControlGroup
+  -- *************************************************************************
+  vgwV5CgInterfaceId OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceIdType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5CreateInterface:
+         The interface-id of the V5.2 interface which is to be created."
+
+        --DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 5 }
+
+  vgwV5CgVariantNo OBJECT-TYPE
+    SYNTAX  VgwV5VariantNoType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5CreateInterface:
+         The variant number of the V5.2 interface which is to be created."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 6 }
+
+  vgwV5CgPrimLinkId OBJECT-TYPE
+    SYNTAX  VgwV5LinkIdType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5CreateInterface:
+         The link-id of the primary link."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 7 }
+
+  vgwV5CgPrimIfIndex OBJECT-TYPE
+    SYNTAX  VgwV5PhyLineIndexType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5CreateInterface:
+         The index of the xldv20IfTable[] for the physical link which
+         should become the primary link."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 8 }
+
+  vgwV5CgSecLinkId OBJECT-TYPE
+    SYNTAX  VgwV5LinkIdType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5CreateInterface:
+         The link-id of the secondary link."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 9 }
+
+  vgwV5CgSecIfIndex OBJECT-TYPE
+    SYNTAX  VgwV5PhyLineIndexType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5CreateInterface:
+         The index of the xldv20IfTable[] for the physical link which
+         should become the secondary link."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 10 }
+
+  vgwV5CgChannelId OBJECT-TYPE
+    SYNTAX  VgwV5CChannelIdType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5CreateInterface:
+         The channel-id of a logical C-channel which is created automatically.
+        -vgwV5CreateCChannel:
+         The channel-id of the logical C-channel if an active C-channel
+         is to be created.
+        -vgwV5ChangeCCData:
+         The channel-id of the logical C-channel if the data of an active
+         C-channel are changed."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 11 }
+
+  vgwV5CgHwUnitIndex OBJECT-TYPE
+    SYNTAX  VgwV5HwUnitIndexType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5CreateInterface:
+         The PIU (SU_VGW) on which a V5.2 interface is to be located."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 12 }
+
+  vgwV5CgV5IfIndex OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceIndexType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5DeleteInterface:
+         The index of the V5.2 interface to be deleted.
+        -vgwV5ActivateInterface:
+         The index of the V5.2 interface to be activated.
+        -vgwV5DeactivateInterface:
+         The index of the V5.2 interface to be deactivated.
+        -vgwV5ChangeInterfaceData:
+         The index of the V5.2 interface which data are to be changed.
+        -vgwV5AddLogLink:
+         The index of the V5.2 interface to which the link is to be added.
+        -vgwV5CreateUserPort:
+         The index of the V5.2 interface on which the user port
+         is to be created."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 13 }
+
+  vgwV5CgLinkId OBJECT-TYPE
+    SYNTAX  VgwV5LinkIdType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5AddLogLink:
+         The link-id of the logical link which is to be added.
+        -vgwV5ChangeLogLinkData:
+         The new link-id of the logical link."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 14 }
+
+  vgwV5CgIfIndex OBJECT-TYPE
+    SYNTAX  VgwV5PhyLineIndexType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5AddLogLink:
+         The index of the xldv20IfTable[] for the physical link which
+         is to be added.
+        -vgwV5ChangeLogLinkData:
+         The new index of the xldv20IfTable[] for the physical link."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 15 }
+
+  vgwV5CgLogLinkAdminState OBJECT-TYPE
+    SYNTAX  VgwV5LinkAdminStateType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5AddLogLink:
+         The default administrative state of the logical link."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 16 }
+
+  vgwV5CgLinkIndex OBJECT-TYPE
+    SYNTAX  VgwV5LinkIndexType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5AddLogLink:
+         The index of the logical link which is to be added to the
+         V5.2 interface.
+        -vgwV5DeleteLogLink:
+         The index of the logical link which is to be deleted.
+        -vgwV5ChangeLogLinkData:
+         The index of the logical link which data are to be changed.
+        -vgwV5ChangeLockLogLink:
+         The index of the logical link which is to be locked.
+        -vgwV5ChangeUnlockLogLink:
+         The index of the logical link which is to be unlocked.
+        -vgwV5ChangeShutdownLogLink:
+         The index of the logical link which is to be shutdown.
+        -vgwV5CreateCChannel:
+         The index of the logical link to which the C-channel should
+         be assigned.
+        -vgwV5ChangeCCData:
+         The new index of the logical link to which the C-channel belongs.
+        -vgwV5LinkIdCheck:
+         The index of the logical link which link-id is to be checked."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 17 }
+
+  vgwV5CgTimeSlot OBJECT-TYPE
+    SYNTAX  VgwV5TimeSlotType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5CreateCChannel:
+         The timeslot to be used by the C-channel.
+        -vgwChangeCCData:
+         The new timeslot to be used by the C-channel."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 18 }
+
+  vgwV5CgCChannelType OBJECT-TYPE
+    SYNTAX  VgwV5CChannelTypeType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5CreateCChannel:
+         The type of the C-channel which is to be created (active or standby)."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 19 }
+
+  vgwV5CgPhyChanIndex OBJECT-TYPE
+    SYNTAX  VgwV5PhyComChanIndexType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5DeleteCChannel:
+         The index of the physical C-channel which is to be deleted.
+        -vgwV5ChangeCCData:
+         The index of the physical C-channel which data are to be changed.
+        -vgwV5SwitchOver:
+         The index of the physical C-channel (standby protection group 2)
+         which should become the new active C-channel."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 20 }
+
+  vgwV5CgLogChanIndex OBJECT-TYPE
+    SYNTAX  VgwV5LogComChanIndexType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5SwitchOver:
+         The index of the logical C-channel which should be switched to
+         another physical C-channel.
+        -vgwV5CreatePstnPath:
+         The index of the logical C-channel which is to be used by the
+         PSTN C-path.
+        -vgwV5ChangeCPathData:
+         The new index of the logical C-channel for the PSTN C-path."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 21 }
+
+  vgwV5CgComPathIndex OBJECT-TYPE
+    SYNTAX  VgwV5ComPathIndexType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5DeletePstn:
+         The index of the C-path (must be PSTN path) which is to be deleted.
+        -vgwV5ChangeCPathData:
+         The index of the C-path which data are to be
+         changed."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 22 }
+
+  vgwV5CgAddress OBJECT-TYPE
+    SYNTAX  VgwV5UserPortAddrType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+
+
+        -vgwV5CreateUserPort:
+         The EFA of the user port to be created."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 23 }
+
+  vgwV5CgTypeOfPort OBJECT-TYPE
+    SYNTAX  VgwV5TypeOfPortType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5CreateUserPort:
+         The type of the user port which is to be created.
+         -VGW V2.0: pstn and isdn-ba"
+
+	    --DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 24 }
+
+
+  vgwV5CgUserPortState OBJECT-TYPE
+    SYNTAX  VgwV5UserPortAdminStateType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        
+        -vgwV5CreateUserPort:
+         The default administrative state of the user port which is to be
+         created."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 25 }
+
+  vgwV5CgUserPortIfIndex OBJECT-TYPE
+    SYNTAX  VgwV5UserPortTableIndexType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+      
+        -vgwV5CreateUserPort:
+         The index of the AAL2-interface used by the new user port."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 26 }
+
+  vgwV5CgUserPortId OBJECT-TYPE
+    SYNTAX  VgwV5UserPortIdType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+       
+        -vgwV5CreateUserPort:
+         The number of the user port which is to be created."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 27 }
+
+  vgwV5CgDsTypePath OBJECT-TYPE
+    SYNTAX  VgwV5LogComChanIndexType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5CreateUserPort:
+         The index of the logical C-channel which is to be used for Ds-data."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 28 }
+
+  vgwV5CgPTypePath OBJECT-TYPE
+    SYNTAX  VgwV5LogComChanIndexType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5CreateUserPort:
+         The index of the logical C-channel which is to be used for p-data."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 29 }
+
+  vgwV5CgFTypePath OBJECT-TYPE
+    SYNTAX  VgwV5LogComChanIndexType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5CreateUserPort:
+         The index of the logical C-channel which is to be used for f-data."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 30 }
+
+  vgwV5CgUserPortIndex OBJECT-TYPE
+    SYNTAX  VgwV5UserPortIndexType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5DeleteUserPort:
+         The index of the user port which is to be deleted."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 31 }
+
+  vgwV5CgUserPortIfType OBJECT-TYPE
+    SYNTAX  VgwV5UserPortInterfaceTypeType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        
+        -vgwV5CreateUserPort:
+         The type of the interface (AN side) to which the user port belongs."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 32 }
+
+  vgwV5CgProfileStr OBJECT-TYPE
+    SYNTAX  VgwV5CgProfileStrType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5CreateProfile:
+         The V5-profile."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 33 }
+
+  vgwV5CgProfileIndex OBJECT-TYPE
+    SYNTAX  VgwV5ProfileIndexType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5CreateInterface:
+         The index of the V5 profile which is to be used. 0 if no profile is
+         selected.
+        -vgwV5ChangeInterfaceData:
+         The index of the new V5 profile which is to be used now. it can be 0
+         if no profile is selected.
+
+        -vgwV5DeleteProfile:
+         The index of the profile which is to be deleted."
+
+ 		--DEFAULT test-function-async     fsnV5CtrlTest        
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 34 }
+
+  vgwV5CgAlarmSeverityIndex OBJECT-TYPE
+    SYNTAX  VgwV5AlarmSeverityIndexType
+    ACCESS  read-write
+    STATUS  mandatory
+    DESCRIPTION
+      "command parameter for:
+        -vgwV5ChangeInterfaceData:
+        -vgwV5ChangeLogLinkData:
+        -vgwV5ChangeCPathData:
+        -vgwV5ChangeCCData:
+         The alarm severity index which is to be used by the table item."
+
+        --DEFAULT test-function-async     fsnV5CtrlTest
+        --DEFAULT next-function-async     fsnV5CtrlNext
+        --DEFAULT set-function-async      fsnV5CtrlSet
+        --DEFAULT get-function-async      fsnV5CtrlGet
+
+  ::= { vgwV5ControlGroup 35 }
+
+
+
+  -- *************************************************************************
+  -- *************************************************************************
+  -- vgwV5Traps
+  -- *************************************************************************
+  -- *************************************************************************
+  vgwV5Traps OBJECT IDENTIFIER ::= { vgwV5Objects 9 }
+
+
+  -- *************************************************************************
+  -- the trap parameters
+  -- *************************************************************************
+  vgwV5TrapVars OBJECT IDENTIFIER ::= { vgwV5Traps 1 }
+
+  vgwV5TvTimeAndDate OBJECT-TYPE
+    SYNTAX  INTEGER
+    ACCESS  not-accessible
+    STATUS  mandatory
+	DESCRIPTION
+      "The time when a traps is sent. It is a parameter of all traps."
+  ::= { vgwV5TrapVars 1 }
+
+  vgwV5TvInterfaceIndex OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index in the vgwV5InterfaceTable[] of the V5-interface...
+       -vgwV5TrInterfaceCreated:
+        ...which was created.
+       -vgwV5TrInterfaceStateChanged:
+        ...which operation operational state has changed.
+       -vgwV5TrInterfaceDataChanged:
+        ...which data were changed.
+       -vgwV5TrInterfaceDeleted:
+        ...which was deleted.
+       -vgwV5TrLogLinkCreated:
+        ...to which the created logical link belongs.
+       -vgwV5TrPhyCCCrated:
+        ...to which the created physical C-channel belongs.
+       -vgwV5TrLogCCCreated:
+        ...to which the created logical C-channel belongs.
+       -vgwV5TrComPathCreated:
+        ...to which the created C-path belongs.
+       -vgwV5TrUserPortCreated:
+        ...to which the crated user port belongs."
+  ::= { vgwV5TrapVars 2 }
+
+  vgwV5TvInterfaceId OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceIdType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrInterfaceCreated:
+        The interface-id of the created V5-interface.
+       -vgwV5TrInterfaceDataChanged:
+        The new interface-id of the V5-interface."
+  ::= { vgwV5TrapVars 3 }
+
+  vgwV5TvVariantNo OBJECT-TYPE
+    SYNTAX  VgwV5VariantNoType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrInterfaceCreated:
+        The variant number of the created interface.
+       -vgwV5TrInterfaceDataChanged:
+        The new variant number of the V5-interface."
+  ::= { vgwV5TrapVars 4 }
+
+  vgwV5TvHwUnitIndex OBJECT-TYPE
+    SYNTAX  VgwV5HwUnitIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrInterfaceCreated:
+        The index of the xldv20HwUnitTable[] to which the created
+        V5-interface belongs."
+  ::= { vgwV5TrapVars 5 }
+
+  vgwV5TvIfAdminState OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceAdminStateType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrInterfaceCreated:
+        The administrative state of the created V5-interface.
+       -vgwV5TrInterfaceDataChanged:
+        The new administrative state of the V5-interface."
+  ::= { vgwV5TrapVars 6 }
+
+  vgwV5TvIfOperState OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceOperStateType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrInterfaceCreated:
+        The operational state of the created V5-interface.
+       -vgwV5TrInterfaceStateChanged:
+        The new operational state of the V5-interface."
+  ::= { vgwV5TrapVars 7 }
+
+  vgwV5TvTypeOfInterface OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceTypeType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrInterfaceCreated:
+        The type of the created V5 interface."
+  ::= { vgwV5TrapVars 8 }
+
+  vgwV5TvLogLinkIndex OBJECT-TYPE
+    SYNTAX  VgwV5LinkIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index in the vgwV5LinkTable[] of the logical link...
+       -vgwV5TrLogLinkCreated:
+        ...which was created.
+       -vgwV5TrLogLinkStateChanged:
+        ...which operational state was changed.
+       -vgwV5TrLogLinkDataChanged:
+        ...which data was changed.
+       -vgwV5TrLogLinkDeleted:
+        ...which was deleted.
+       -vgwVgwTrPhyCCCreated:
+        ...to which the physical C-channel belongs.
+       -vgwV5TrPhyCCDataChanged:
+        ...to which the physical C-channel belongs now."
+  ::= { vgwV5TrapVars 9 }
+
+  vgwV5TvLinkId OBJECT-TYPE
+    SYNTAX  VgwV5LinkIdType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrLogLinkCreated:
+        The link-id of the created logical link.
+       -vgwV5TrLogLinkDataChanged:
+        The new link-id of the logical link."
+  ::= { vgwV5TrapVars 10 }
+
+  vgwV5TvLineIndex OBJECT-TYPE
+    SYNTAX  VgwV5PhyLineIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index in the xldv20IfTable[] of an E1 link...
+       -vgwV5TrLogLinkCreated:
+        ...which is used by the created logical link.
+       -vgwV5TrLogLinkDataChanged:
+        ...the new link-id of the logical link."
+  ::= { vgwV5TrapVars 11 }
+
+  vgwV5TvLinkAdminState OBJECT-TYPE
+    SYNTAX  VgwV5LinkAdminStateType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrLogLinkCreated:
+        The administrative state of the created logical link.
+       -vgwV5TrlogLinkDataChanged:
+        The new administrative state of the logical link."
+  ::= { vgwV5TrapVars 12 }
+
+  vgwV5TvLinkOperState OBJECT-TYPE
+    SYNTAX  VgwV5LinkOperStateType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrLogLinkCreated:
+        The operational state of the created logical link.
+       -vgwV5TrLogLinkStateChanged:
+        The new operational state of the logical link."
+  ::= { vgwV5TrapVars 13 }
+
+  vgwV5TvPhyChanIndex OBJECT-TYPE
+    SYNTAX  VgwV5PhyComChanIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index in the vgwV5PhyChanTable[] of the physical C-channel...
+       -vgwV5TrPhyCCCrated:
+        ...which was created.
+       -vgwV5TrPhyCCDataChanged:
+        ...which data was changed.
+       -vgwV5TrPhyCCDeleted:
+        ...which was deleted."
+  ::= { vgwV5TrapVars 14 }
+
+  vgwV5TvProtectionGroup  OBJECT-TYPE
+    SYNTAX  VgwV5ProtectionGroupType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrPhyCCCrated:
+        The protection group to which the created logical C-channel belongs."
+  ::= { vgwV5TrapVars 15 }
+
+  vgwV5TvTimeSlot OBJECT-TYPE
+    SYNTAX  VgwV5TimeSlotType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrPhyCCCrated:
+        The timeslot which is used by the created physical C-channel.
+       -vgwV5TrPhyCCDataChanged:
+        The new timeslot which is used by the created physical C-channel."
+  ::= { vgwV5TrapVars 16 }
+
+  vgwV5TvLogChanIndex OBJECT-TYPE
+    SYNTAX  VgwV5LogComChanIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index in the vgwV5LogChanTable[] of the logical C-channel...
+       -vgwV5TrLogCCCreated:
+        ...which was created.
+       -vgwV5TrLogCCDataChanged:
+        ...which data was changed.
+       -vgwV5TrLocCCDeleted:
+        ...which was deleted."
+  ::= { vgwV5TrapVars 17 }
+
+  vgwV5TvChanIndex OBJECT-TYPE
+    SYNTAX  VgwV5PhyComChanIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrComPathCreated:
+       -vgwV5TrComPathDataChanged:
+        The index in the vgwV5LogChanTable[] of the logical C-channel
+        which is assigned to the created C-path. In the case a C-path
+        for protection is created, this is the index in the
+        vgwV5PhyComChanTable[]."
+  ::= { vgwV5TrapVars 18 }
+
+  vgwV5TvPhyChanIndexProv OBJECT-TYPE
+    SYNTAX  VgwV5PhyComChanIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index in the vgwV5PhyChanTable[] of the physical C-channel...
+       -vgwV5TrLogCCCreated:
+        ...which is provisioned by the created logical C-channel."
+  ::= { vgwV5TrapVars 19 }
+
+  vgwV5TvPhyChanIndexCurr OBJECT-TYPE
+    SYNTAX  VgwV5PhyComChanIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index in the vgwV5PhyChanTable[] of the physical C-channel...
+       -vgwV5TrLogCCCreated:
+        ...which is currently used by the created logical C-channel.
+       -vgwV5TrLogCCDataChanged:
+        ..which is currently used by the logical C-channel."
+  ::= { vgwV5TrapVars 20 }
+
+  vgwV5TvChannelId OBJECT-TYPE
+    SYNTAX  VgwV5CChannelIdType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrLogCCCreated:
+        The channel-id of the created logical C-channel.
+       -vgwV5TrLogCCDataChanged:
+        the new channel-id."
+  ::= { vgwV5TrapVars 21 }
+
+  vgwV5TvComPathIndex OBJECT-TYPE
+    SYNTAX  VgwV5ComPathIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index in the vgwV5ComPathTable[] of the C-path...
+       -vgwV5TrComPathCreated:
+        ...which was created.
+       -vgwV5TrComPathDataChanged:
+        ...which data was changed.
+       -vgwV5TrComPathDeleted:
+        ...which was deleted."
+  ::= { vgwV5TrapVars 22 }
+
+ vgwV5TvComPathType OBJECT-TYPE
+    SYNTAX  VgwV5ComPathTypeType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrComPathCreated:
+        The type of the created C-path."
+  ::= { vgwV5TrapVars 23 }
+
+  vgwV5TvUserPortIndex OBJECT-TYPE
+    SYNTAX  VgwV5UserPortIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index in the vgwV5UserPortTable[] of the user port...
+       -vgwV5TrUserPortCreated:
+        ...which was created.
+       -vgwV5TrUserPortDataChanged:
+        ...which data was changed.
+       -vgwV5TrUserPortDeleted:
+        ...which was deleted."
+  ::= { vgwV5TrapVars 24 }
+
+  vgwV5TvUserPortAdr OBJECT-TYPE
+    SYNTAX  VgwV5UserPortAddrType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrUserPortCreated:
+        The address of the created user port."
+  ::= { vgwV5TrapVars 25 }
+
+  vgwV5TvUserPortAdminState OBJECT-TYPE
+    SYNTAX  VgwV5UserPortAdminStateType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrUserPortCreated:
+        The administrative state of the created user port.
+       -vgwV5TrUserPortDataChanged:
+        The new administrative state of the user port."
+  ::= { vgwV5TrapVars 26 }
+
+  vgwV5TvUserPortOperState OBJECT-TYPE
+    SYNTAX  VgwV5UserPortOperStateType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrUserPortCreated:
+        The operational state of the created user port."
+  ::= { vgwV5TrapVars 27 }
+
+  vgwV5TvUserPortIfType OBJECT-TYPE
+    SYNTAX  VgwV5UserPortInterfaceTypeType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrUserPortCreated:
+        It defines in which table the user port interface on AN side is
+        located which was created."
+  ::= { vgwV5TrapVars 28 }
+
+  vgwV5TvTableIndex OBJECT-TYPE
+    SYNTAX  VgwV5UserPortTableIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index in the table where the user port is located (AN side)...
+       -vgwV5TrUserPortCreated:
+        of the created user port."
+  ::= { vgwV5TrapVars 29 }
+
+  vgwV5TvUserPortId OBJECT-TYPE
+    SYNTAX  VgwV5UserPortIdType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrUserPortCreated:
+        The user port id of the created user port."
+  ::= { vgwV5TrapVars 30 }
+
+  vgwV5TvDsTypeChanIndex OBJECT-TYPE
+    SYNTAX  VgwV5LogComChanIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrUserPortCreated:
+        The index in the vgwV5LogComChanTable[] of the logical C-channel
+        which is used for Ds-type data. 0, if the created user port is not
+        an ISDN port."
+  ::= { vgwV5TrapVars 31 }
+
+  vgwV5TvPTypeChanIndex OBJECT-TYPE
+    SYNTAX  VgwV5LogComChanIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrUserPortCreated:
+        The index in the vgwV5LogComChanTable[] of the logical C-channel
+        which is used for p-type data. 0, if the created user port is not
+        an ISDN port."
+  ::= { vgwV5TrapVars 32 }
+
+  vgwV5TvFTypeChanIndex OBJECT-TYPE
+    SYNTAX  VgwV5LogComChanIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrUserPortCreated:
+        The index in the vgwV5LogComChanTable[] of the logical C-channel
+        which is used for f-type data. 0, if the created user port is not
+        an ISDN port."
+  ::= { vgwV5TrapVars 33 }
+
+  vgwV5TvControlResult OBJECT-TYPE
+    SYNTAX  VgwV5CgCommandErrorStateType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The result of the last executed command."
+  ::= { vgwV5TrapVars 34 }
+
+  vgwV5TvAlarmState OBJECT-TYPE
+    SYNTAX  VgwV5AlarmStateType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrLogLinkCreated:
+        The alarm state of the created logical link.
+       -vgwV5TrComPathCreated:
+        The alarm state of the created C-path.
+       -vgwV5TrPhyCCCreated:
+        The alarm state of the created physical C-channel."
+  ::= { vgwV5TrapVars 35 }
+
+  vgwV5TvProfileIndex OBJECT-TYPE
+    SYNTAX  VgwV5ProfileIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index in the vgwV5Profile[] of the V5 profile...
+       -vgwV5TrInterfaceCreated:
+        ...which is used by the V5.2 interface. 0 means no profile is used.
+       -vgwV5TrInterfaceDataChanged:
+        ...which is used by the V5.2 interface now. 0 means no profile is used.
+       -vgwV5TrProfileCreated:
+        ...which was created."
+  ::= { vgwV5TrapVars 36 }
+
+  vgwV5TvProfileNo OBJECT-TYPE
+    SYNTAX  VgwV5ProfileNoType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrProfileCreated:
+        The number of the created profile."
+  ::= { vgwV5TrapVars 37 }
+
+  vgwV5TvProfileDescr OBJECT-TYPE
+    SYNTAX  VgwV5ProfileDescrType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrProfileCreated:
+        A textual description of the created profile."
+  ::= { vgwV5TrapVars 38 }
+
+  vgwV5TvAlarmSeverityIndex OBJECT-TYPE
+    SYNTAX  VgwV5AlarmSeverityIndexType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "The index in the xldv20AlarmSeverityTable[] which defines the
+       severity of the alarm...
+       -vgwV5TrInterfaceCreated:
+        ...'interface error' of the created V5 interface.
+       -vgwV5TrInterfaceDataChanged:
+        ...'interface error' which is used now.
+       -vgwTrV5LogLinkCreated:
+        ...'link-id error' of the created logical link.
+       -vgwTrV5LogLinkDataChanged:
+        ...'link-id error' which is used now.
+       -vgwV5TrPhyCCCreated:
+        ...'no flags' of the created physical C-channel.
+       -vgwV5TrPhyCCDataChanged:
+        ...'no flags' which is used now.
+       -vgwV5TrComPathCreated:
+        ...'loss of data link' of the created C-path.
+       -vgwV5TrComPathDataChanged:
+        ...'loss of data link' which is used now."
+  ::= { vgwV5TrapVars 39 }
+
+  vgwV5TvUserPortStateAnSide OBJECT-TYPE
+    SYNTAX  VgwV5UserPortAddStateType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrUserPortCreated:
+        The default additional state of the created user port at AN-side."
+  ::= { vgwV5TrapVars 40 }
+
+  vgwV5TvUserPortStateLeSide OBJECT-TYPE
+    SYNTAX  VgwV5UserPortAddStateType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrUserPortCreated:
+        The default additional state of the created user port at LE-side."
+  ::= { vgwV5TrapVars 41 }
+
+  vgwV5TvTypeOfPort OBJECT-TYPE
+    SYNTAX  VgwV5TypeOfPortType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrUserPortCreated:
+        The type of the created user port.
+        -VGW V2.0: pstn, isdn-ba"
+  ::= { vgwV5TrapVars 42 }
+
+  vgwV5TvIfAlarmState OBJECT-TYPE
+    SYNTAX  VgwV5InterfaceAlarmStateType
+    ACCESS  not-accessible
+    STATUS  mandatory
+    DESCRIPTION
+      "-vgwV5TrInterfaceCreated:
+        The alarm state of the created V5.2 interface."
+  ::= { vgwV5TrapVars 43 }
+
+
+  -- *************************************************************************
+  -- the traps
+  -- *************************************************************************
+  vgwV5TrControl TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvControlResult
+    }
+    DESCRIPTION
+      "The long command was executed."
+  ::= 1000
+
+  -- *** information about changes of MIB-attributes *************************
+  -- interfaces...
+  vgwV5TrInterfaceCreated TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvInterfaceIndex,
+      vgwV5TvInterfaceId,
+      vgwV5TvVariantNo,
+      vgwV5TvHwUnitIndex,
+      vgwV5TvIfAdminState,
+      vgwV5TvIfOperState,
+      vgwV5TvTypeOfInterface,
+      vgwV5TvIfAlarmState,
+      vgwV5TvAlarmSeverityIndex,
+      vgwV5TvProfileIndex
+    }
+    DESCRIPTION
+      "New V5-interface created (new item in vgwV5InterfaceTable[])."
+  ::= 1001
+
+  vgwV5TrInterfaceStateChanged TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvInterfaceIndex,
+      vgwV5TvIfOperState
+    }
+    DESCRIPTION
+      "The operational state of a V5-interface was changed."
+  ::= 1002
+
+  vgwV5TrInterfaceDataChanged TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvInterfaceIndex,
+      vgwV5TvInterfaceId,
+      vgwV5TvVariantNo,
+      vgwV5TvIfAdminState,
+      vgwV5TvAlarmSeverityIndex,
+      vgwV5TvProfileIndex
+    }
+    DESCRIPTION
+      "Data of V5-interface changed"
+  ::= 1003
+
+  vgwV5TrInterfaceDeleted TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvInterfaceIndex
+    }
+    DESCRIPTION
+      "V5-interface deleted (item removed from vgwV5InterfaceTable[])."
+  ::= 1004
+
+  -- logical links...
+  vgwV5TrLogLinkCreated TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvLogLinkIndex,
+      vgwV5TvLinkId,
+      vgwV5TvInterfaceIndex,
+      vgwV5TvLineIndex,
+      vgwV5TvLinkAdminState,
+      vgwV5TvLinkOperState,
+      vgwV5TvAlarmState,
+      vgwV5TvAlarmSeverityIndex
+    }
+    DESCRIPTION
+      "New logical link created (new item in vgwV5LinkTable[])."
+  ::= 1005
+
+  vgwV5TrLogLinkStateChanged TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvLogLinkIndex,
+      vgwV5TvLinkOperState
+    }
+    DESCRIPTION
+      "The operational state of a logical link was changed."
+  ::= 1006
+
+  vgwV5TrLogLinkDataChanged TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvLogLinkIndex,
+      vgwV5TvLinkId,
+      vgwV5TvLineIndex,
+      vgwV5TvLinkAdminState,
+      vgwV5TvAlarmSeverityIndex
+    }
+    DESCRIPTION
+      "Data of logical link changed."
+  ::= 1007
+
+  vgwV5TrLogLinkDeleted TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvLogLinkIndex
+    }
+    DESCRIPTION
+      "Logical link deleted (item removed from vgwV5LinkTable[])."
+  ::= 1008
+
+  vgwV5TrPhyCCCreated TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvPhyChanIndex,
+      vgwV5TvProtectionGroup,
+      vgwV5TvLogLinkIndex,
+      vgwV5TvTimeSlot,
+      vgwV5TvAlarmState,
+      vgwV5TvAlarmSeverityIndex,
+      vgwV5TvInterfaceIndex
+    }
+    DESCRIPTION
+      "New physical C-channel created (new item in vgwV5PhyComChanTable[])."
+  ::= 1009
+
+  vgwV5TrPhyCCDataChanged TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvPhyChanIndex,
+      vgwV5TvLogLinkIndex,
+      vgwV5TvTimeSlot,
+      vgwV5TvAlarmSeverityIndex
+    }
+    DESCRIPTION
+      "Data of physical C-channel changed."
+  ::= 1010
+
+  vgwV5TrPhyCCDeleted TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvPhyChanIndex
+    }
+    DESCRIPTION
+      "physical C-channel deleted (item removed from vgwV5PhyComChanTable[])."
+  ::= 1011
+
+  vgwV5TrLogCCCreated TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvLogChanIndex,
+      vgwV5TvPhyChanIndexProv,
+      vgwV5TvPhyChanIndexCurr,
+      vgwV5TvChannelId,
+      vgwV5TvInterfaceIndex
+    }
+    DESCRIPTION
+      "New logical C-channel created (new item in vgwV5logComChanTable[])."
+  ::= 1012
+
+  vgwV5TrLogCCDataChanged TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvLogChanIndex,
+      vgwV5TvChannelId,
+      vgwV5TvPhyChanIndexCurr
+    }
+    DESCRIPTION
+      "The data of a logical C-channel changed."
+  ::= 1013
+
+  vgwV5TrLogCCDeleted TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvLogChanIndex
+    }
+    DESCRIPTION
+      "Logical C-channel deleted (item removed from vgwV5LogChanTable[])."
+  ::= 1014
+
+  vgwV5TrComPathCreated TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvComPathIndex,
+      vgwV5TvChanIndex,
+      vgwV5TvComPathType,
+      vgwV5TvAlarmState,
+      vgwV5TvAlarmSeverityIndex,
+      vgwV5TvInterfaceIndex
+    }
+    DESCRIPTION
+      "New C-path created (new item in vgwV5ComPathTable[])."
+  ::= 1015
+
+  vgwV5TrComPathDataChanged TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvComPathIndex,
+      vgwV5TvChanIndex,
+      vgwV5TvAlarmSeverityIndex
+    }
+    DESCRIPTION
+      "The data of a C-path has been changed."
+  ::= 1016
+
+  vgwV5TrComPathDeleted TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvComPathIndex
+    }
+    DESCRIPTION
+      "C-path deleted (item removed from vgwV5ComPathTable[])."
+  ::= 1017
+
+  vgwV5TrUserPortCreated TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvUserPortIndex,
+      vgwV5TvTypeOfPort,
+      vgwV5TvUserPortAdr,
+      vgwV5TvUserPortAdminState,
+      vgwV5TvUserPortOperState,
+      vgwV5TvUserPortStateAnSide,
+      vgwV5TvUserPortStateLeSide,
+      vgwV5TvInterfaceIndex,
+      vgwV5TvDsTypeChanIndex,
+      vgwV5TvPTypeChanIndex,
+      vgwV5TvFTypeChanIndex,
+      vgwV5TvUserPortIfType,
+      vgwV5TvUserPortId
+    }
+    DESCRIPTION
+      "New user port created (new item in vgwV5UserPortTable[])."
+  ::= 1018
+
+  vgwV5TrUserPortDataChanged TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvUserPortIndex,
+      vgwV5TvUserPortAdminState
+    }
+    DESCRIPTION
+      "The administrative state of a user port has been changed."
+  ::= 1019
+
+  vgwV5TrUserPortDeleted TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvUserPortIndex
+    }
+    DESCRIPTION
+      "User port deleted (item in vgwV5UserPortTable[] removed)."
+  ::= 1020
+
+  vgwV5TrProfileCreated TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvProfileIndex,
+      vgwV5TvProfileNo,
+      vgwV5TvProfileDescr
+    }
+    DESCRIPTION
+      "New profile created (new item in vgwV5ProfileTable[])."
+  ::= 1021
+
+  vgwV5TrProfileDeleted TRAP-TYPE
+    ENTERPRISE xldv20Traps
+    VARIABLES {
+      vgwV5TvTimeAndDate,
+      vgwV5TvProfileIndex
+    }
+    DESCRIPTION
+      "Profile deleted (item in vgwV5ProfileTable[] removed)."
+  ::= 1022
+
+
+  -- *************************************************************************
+  -- *************************************************************************
+  -- *************************************************************************
+  -- *************************************************************************
+  -- AAL2 Objects
+  -- *************************************************************************
+  -- *************************************************************************
+  -- *************************************************************************
+  -- *************************************************************************
+
+  -- LAST-UPDATED       "29-11-2000"
+  -- ORGANIZATION       "Siemens AG, Responsibility ICN AS AN E"
+  -- CONTACT-INFO       Responsibility ICN AS AN E
+  --                    Authors:
+  --                    "Banovic, Galovic
+  --                     Siemens AG, PSE EZE MSA2
+  --                     phone:  +43 5 1707 36021
+  --                             +43 5 1707 35395
+  --                     e-mail: igor.banovic@siemens.at
+  --                     e-mail: zeljko.galovic@siemens.at"
+  -- DESCRIPTION
+  --      "This module defines the management information base (MIB) for
+  --       managing of AAL2 interfaces."
+
+  -- **********************************************************************
+  -- general used types
+  -- **********************************************************************
+
+
+  -- The operating state of an entity.
+  VgwAAL2OperState ::=
+     INTEGER {
+        enabled(1),
+        disabled(2)
+     }
+
+  -- The administrative state of an entity.
+  VgwAAL2AdminState ::=
+     INTEGER {
+        unlocked(1),
+        locked(2)
+     }
+
+  PrintString ::= OCTET STRING (SIZE (0..255))
+
+  -- The Index of vgwAAL2IfTable
+  -- (14 SU_VGW) * (1024 AAL2If per SU_VGW) = 14336
+  VgwAAL2IfIndex ::= INTEGER (1..14336)
+
+  -- The index in xldv20VccTpTable, and attribute in vgwAAL2IfTable
+  VgwAAL2VccIndex ::= INTEGER
+
+  -- The index in xldv20HwUnitTable, and attribute in vgwAAL2IfTable
+  VgwAAL2HwUnitIndex ::= INTEGER
+
+  -- Determines the selection algorithm for the used profile entry
+  VgwAAL2SelectionMode ::=
+     INTEGER {
+        independent  (1),
+        master-slave (2)
+     }
+
+  -- Application identifier specifies protocol combinations used between IWFs.
+  -- Value of this object should be one of those values given in the
+  -- administrated list of AppIDs in section 5 of the ATM Forum document
+  -- entitled "ATM Forum Well-known Addresses and Assigned Codes".
+  -- !! For the VGW version 2.0 this value is hardcoded to 0x000a for
+  -- LES using PSTN and DSS1 with ELCP
+  VgwAAL2AppId ::= INTEGER
+
+  -- Maximum CPS-SDU size given in octets.
+  -- !! For the VGW version 2.0 this value is hardcoded to 45.
+  VgwAAL2CPSSDUSize ::=
+     INTEGER {
+        sdusize45 (45),
+        sdusize64 (64)
+     }
+
+  -- Describes method used for multiplexing CPS-Packets into ATM cells.
+  -- There are three optimizing methods:
+  -- single CPS packet per SCP-PDU without overlapping
+  -- multiple CPS packets per CPS-PDU with overlapping
+  -- multiple CPS packets per CPS-PDU without overlapping
+  -- !! For the VGW version 2.0 this value is hardcoded to 1.
+  VgwAAL2Optimization ::=
+     INTEGER {
+        singlePacketNoOverlap (1),
+        multiplePacketsOverlap (2),
+        multiplePacketsNoOverlap (3)
+     }
+
+
+  -- The value of this object identifies the entry in vgwAAL2ProfileTable,
+  -- which determines profile used for specific AAL2 connection.
+  VgwAAL2ProfileIndex ::= INTEGER (1..4)
+
+  -- Name of the organization that defined the profile
+  VgwAAL2ProfileSource ::=
+     INTEGER {
+        atm-forum (1),
+        itu-t (2)
+     }
+
+  -- Number that identify the profile (together with vgwAAL2ProfileSource)
+  VgwAAL2ProfileNumber ::= INTEGER
+
+  -- The state of a reported alarm. Each bit represents an alarm.
+  -- The alarm is active if the bit is set.
+  --  -bit 0: SigCErr: signaling channal error
+  --  -bit 1: LoELCPDL: loss of ELCP data link
+  --  -bit 2: LBC: loss of B-channel
+  VgwAAL2AlarmState ::= INTEGER (0..7)
+
+
+
+  -- **********************************************************************
+  -- **********************************************************************
+  -- vgwAAL2IfTable
+  -- **********************************************************************
+  -- **********************************************************************
+
+  vgwAAL2Objects OBJECT IDENTIFIER ::= { vgw 2 }
+
+  vgwAAL2IfTable OBJECT-TYPE
+         -- info-IMPL:    V2.0->
+         -- info-VERCTRL: -
+         SYNTAX        SEQUENCE OF VgwAAL2IfEntry
+         ACCESS        not-accessible
+         STATUS        mandatory
+         DESCRIPTION
+              "This table contains information about configuration of the
+               AAL2 interfaces at the CO-IWF."
+
+            --DEFAULT next-function-async     fsnAAL2IfEntryNext
+            --DEFAULT get-function-async      fsnAAL2IfEntryGet
+
+         ::= { vgwAAL2Objects 1 }
+
+  vgwAAL2IfEntry OBJECT-TYPE
+         -- info-IMPL:    V2.0->
+         -- info-VERCTRL: -
+         SYNTAX        VgwAAL2IfEntry
+         ACCESS        not-accessible
+         STATUS        mandatory
+         DESCRIPTION
+              "An entry in the vgwAAL2IfTable that represents a single
+               AAL2 interface."
+         INDEX { vgwAAL2IfIndex }
+         ::= { vgwAAL2IfTable 1 }
+
+  VgwAAL2IfEntry ::=
+     SEQUENCE { vgwAAL2IfIndex        VgwAAL2IfIndex,
+                vgwAAL2VccIndex       VgwAAL2VccIndex,
+                vgwAAL2OperState      VgwAAL2OperState,
+                vgwAAL2AdminState     VgwAAL2AdminState,
+                vgwAAL2HwUnitIndex    VgwAAL2HwUnitIndex,
+                vgwAAL2SelectionMode  VgwAAL2SelectionMode,
+                vgwAAL2ProfileIndex   VgwAAL2ProfileIndex,
+                vgwAAL2AppId          VgwAAL2AppId,
+                vgwAAL2CPSSDUSize     VgwAAL2CPSSDUSize,
+                vgwAAL2Optimization   VgwAAL2Optimization,
+                vgwAAL2AlarmState     VgwAAL2AlarmState
+              }
+
+  -- **********************************************************************
+  -- The items of VgwAAL2IfEntry
+  -- **********************************************************************
+
+  vgwAAL2IfIndex OBJECT-TYPE
+     -- info-VALUE:   1..14336
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX        VgwAAL2IfIndex
+     ACCESS        not-accessible
+     STATUS        mandatory
+     DESCRIPTION
+          " A unique value to identify an entry in the vgwAAL2IfTable. "
+     ::= { vgwAAL2IfEntry 1 }
+
+
+  vgwAAL2VccIndex OBJECT-TYPE
+     -- info-VALUE:   INTEGER
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX        VgwAAL2VccIndex
+     ACCESS        read-only
+     STATUS        mandatory
+     DESCRIPTION
+          " A unique value to identify an entry in the VCC TP table, which determines VCC
+            used for AAL2 connection."
+     ::= { vgwAAL2IfEntry 2 }
+
+
+  vgwAAL2OperState OBJECT-TYPE
+     -- info-VALUE:   enabled(1)..disabled(2)
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX        VgwAAL2OperState
+     ACCESS        read-only
+     STATUS        mandatory
+     DESCRIPTION
+          " Identifies whether or not AAL2 interface is capable of
+            performing its normal function."
+     ::= { vgwAAL2IfEntry 3 }
+
+
+  vgwAAL2AdminState OBJECT-TYPE
+     -- info-VALUE:   unlocked(1)..locked(2)
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX        VgwAAL2AdminState
+     ACCESS        read-only
+     STATUS        mandatory
+     DESCRIPTION
+          " This attribute is used to activate (unlock) and deactivate
+            (lock) the AAL2 interface."
+     ::= { vgwAAL2IfEntry 4 }
+
+
+
+  vgwAAL2HwUnitIndex OBJECT-TYPE
+     -- info-VALUE:   INTEGER
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX        VgwAAL2HwUnitIndex
+     ACCESS        read-only
+     STATUS        mandatory
+     DESCRIPTION
+          " A unique value to identify a hardware unit (SU_VGW) on which
+            the AAL2 interface is located (xldv20HwUnitTable)."
+     ::= { vgwAAL2IfEntry 5 }
+
+
+
+  vgwAAL2SelectionMode OBJECT-TYPE
+     -- info-VALUE:   independent(1)..master_slave(2)
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX         VgwAAL2SelectionMode
+     ACCESS         read-only
+     STATUS         mandatory
+     DESCRIPTION
+          " Determines the selection algorithm for the used profile entry (independent mode /
+            master-slave mode)"
+     ::= { vgwAAL2IfEntry 6 }
+
+
+  vgwAAL2ProfileIndex OBJECT-TYPE
+     -- info-VALUE:   1..4
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX        VgwAAL2ProfileIndex
+     ACCESS        read-only
+     STATUS        mandatory
+     DESCRIPTION
+          "  A unique value to identify an entry in the vgwAAL2ProfileTable, which determines
+             AAL2profile used in AAL2 interface."
+     ::= { vgwAAL2IfEntry 7 }
+
+
+  vgwAAL2AppId OBJECT-TYPE
+     -- info-VALUE:   INTEGER
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX        VgwAAL2AppId
+     ACCESS        read-only
+     STATUS        mandatory
+     DESCRIPTION
+              " Application identifier specifies protocol combinations used
+                between IWFs. Value of this object should be one of those
+                values give in the administrated list of AppIDs in section 5
+                of the ATM Forum document entitled: ATM Forum Well-known
+                Addresses and Assigned Codes.
+                !! For the VGW version 2.0 this value is hardcoded to 0x000a
+                for LES using PSTN and DSS1 with ELCP."
+     ::= { vgwAAL2IfEntry 8 }
+
+
+  vgwAAL2CPSSDUSize OBJECT-TYPE
+     -- info-VALUE:   sdusize(45), sdusize(64)
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX        VgwAAL2CPSSDUSize
+     ACCESS        read-only
+     STATUS        mandatory
+     DESCRIPTION
+          " Maximum CPS-SDU size given in octets (45 or 64).
+            !! For the VGW version 2.0 this value is hardcoded to 45."
+     ::= { vgwAAL2IfEntry 9 }
+
+
+  vgwAAL2Optimization OBJECT-TYPE
+     -- info-VALUE: singlePacketNoOverlap (1), multiplePacketsOverlap (2),
+     -- info-VALUE: multiplePacketsNoOverlap (3)
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX        VgwAAL2Optimization
+     ACCESS        read-only
+     STATUS        mandatory
+     DESCRIPTION
+          " Describes method used for multiplexing CPS-Packets into ATM
+            cells.
+            !! For the VGW version 2.0 this value is hardcoded to singlePacketNoOverlap (1)."
+     ::= { vgwAAL2IfEntry 10 }
+
+  vgwAAL2AlarmState OBJECT-TYPE
+     SYNTAX        VgwAAL2AlarmState
+     ACCESS        read-only
+     STATUS        mandatory
+     DESCRIPTION
+          " The current alarm state of the AAL2 interfac2"
+     ::= { vgwAAL2IfEntry 11 }
+
+
+
+  -- **********************************************************************
+  -- **********************************************************************
+  -- vgwAAL2ProfileTable
+  -- **********************************************************************
+  -- **********************************************************************
+
+  vgwAAL2ProfileTable OBJECT-TYPE
+         -- info-IMPL:    V2.0->
+         -- info-VERCTRL: -
+         SYNTAX        SEQUENCE OF VgwAAL2ProfileEntry
+         ACCESS        not-accessible
+         STATUS        mandatory
+         DESCRIPTION
+              "This table contains information about the configured profiles
+               which can be used on each AAL2 interface."
+
+            --DEFAULT next-function-async     fsnAAL2ProfileEntryNext
+            --DEFAULT get-function-async      fsnAAL2ProfileEntryGet
+
+         ::= { vgwAAL2Objects 2 }
+
+  vgwAAL2ProfileEntry OBJECT-TYPE
+         -- info-IMPL:    V2.0->
+         -- info-VERCTRL: -
+         SYNTAX        VgwAAL2ProfileEntry
+         ACCESS        not-accessible
+         STATUS        mandatory
+         DESCRIPTION
+              "An entry in the vgwAAL2ProfileTable that represents a single
+               AAL2 profile."
+         INDEX { vgwAAL2PTProfileIndex }
+         ::= { vgwAAL2ProfileTable 1 }
+
+  VgwAAL2ProfileEntry ::=
+     SEQUENCE { vgwAAL2PTProfileIndex      VgwAAL2ProfileIndex,
+                vgwAAL2ProfileSource       VgwAAL2ProfileSource,
+                vgwAAL2ProfileNumber       VgwAAL2ProfileNumber,
+                vgwAAL2ProfileDescription  PrintString
+              }
+
+  -- **********************************************************************
+  -- The items of VgwAAL2ProfileEntry
+  -- **********************************************************************
+
+  vgwAAL2PTProfileIndex OBJECT-TYPE
+     -- info-VALUE:   VgwAAL2ProfileIndex
+     -- info-ROU:     not-accessible
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX        VgwAAL2ProfileIndex
+     ACCESS        not-accessible
+     STATUS        mandatory
+     DESCRIPTION
+          "  A unique value to identify an entry in the vgwAAL2ProfileTable."
+     ::= { vgwAAL2ProfileEntry 1 }
+
+  vgwAAL2ProfileSource OBJECT-TYPE
+     -- info-VALUE:   atm_forum(1), itu-t(2)
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX         VgwAAL2ProfileSource
+     ACCESS         read-only
+     STATUS         mandatory
+     DESCRIPTION
+          " Contains name of the organization that defined profile."
+     ::= { vgwAAL2ProfileEntry 2 }
+
+  vgwAAL2ProfileNumber OBJECT-TYPE
+     -- info-VALUE:   INTEGER
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX        VgwAAL2ProfileNumber
+     ACCESS        read-only
+     STATUS        mandatory
+     DESCRIPTION
+          " This attribute contains predefined profile identifier."
+     ::= { vgwAAL2ProfileEntry 3 }
+
+  vgwAAL2ProfileDescription OBJECT-TYPE
+     -- info-VALUE:   -
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX        PrintString
+     ACCESS        read-only
+     STATUS        mandatory
+     DESCRIPTION
+          " This attribute contains textual description of the predefined profile ."
+     ::= { vgwAAL2ProfileEntry 4 }
+
+
+  -- **********************************************************************
+  -- **********************************************************************
+  -- vgwAAL2ControlGroup
+  -- **********************************************************************
+  -- **********************************************************************
+
+  -- **********************************************************************
+  --                          Commands
+  -- **********************************************************************
+
+  -- This type contains commands, error codes and states, which are
+  -- used in vgwAAL2CgControlReq and vgwV5CgControlRequestResult.
+
+  VgwAAL2CgCommandErrorStateType ::=
+    INTEGER
+    {
+      -- states of command execution
+      vgwAAL2NoRequest (1),          -- no request received
+      vgwAAL2CommExecStarted (5),    -- command started
+      vgwAAL2CommandSucceeded (16),  -- command executed
+
+      -- general error codes ***********************************************
+        -- Not enough parameters set for the command to be executed.
+      vgwAAL2ErrParamFaulty (11),
+
+        -- Command cannot be executed while another command is still executed.
+      vgwAAL2ErrRequestBusy (12),
+
+        -- The command could not be executed because some parameters contain
+        -- invalid values (not allowed in the context of the command)
+      vgwAAL2ErrSetDataFailed (13),
+
+        -- Internal error (e.g. loss of communication with SU_VGW)
+      vgwAAL2ErrAswTimeout (14),
+
+        -- The requested command is not supported
+      vgwAAL2ErrCommandFailed (15),
+
+      -- command specific errors *******************************************
+
+        -- too many AAL2 interfaces for this SU_VGW 
+        -- the sum of ISDN D-channels and AAL2 interfaces cann be max. 2048
+      vgwAAL2ErrLackOfResources	(50),
+
+        -- specified VccIndex is not valid (out of range, or entry with
+        -- this index does not exist)
+      vgwAAL2ErrWrongVccIndex (51),
+
+        -- specified HwUnitIndex is not valid (out of range, or entry
+        -- with this index does not exist)
+      vgwAAL2ErrWrongHwUnitIndex (52),
+
+        -- selected HwUnit is not SU_VGW
+      vgwAAL2ErrWrongHwUnitType (53),
+
+        -- specified ProfileIndex is out of range
+      vgwAAL2ErrWrongProfileIndex (54),
+
+        -- HwUnit associated to VccTp is not the same to HwUnit specified
+        -- in create operation
+      vgwAAL2ErrVccNotMatchHwUnit (55),
+
+        -- specified AAL2IfIndex is not valid (out of range, or entry with
+        -- this index does not exist)
+      vgwAAL2ErrWrongAAL2IfIndex (56),
+
+        -- try to lock AAL2 interface that is already locked
+      vgwAAL2ErrIfAlreadyLocked (57),
+
+        -- try to unlock AAL2 interface that is already unlocked
+      vgwAAL2ErrIfAlreadyUnlocked (58),
+
+        -- selection mode of AAL2 interface is not valid
+      vgwAAL2ErrWrongSelectionMode (59),
+
+        -- when try to delete AAL2 interface that is use by V5.2
+      vgwAAL2ErrIfInUse (60),
+
+
+      -- commands ********************************************************
+
+        -- create a new AAL2 interface
+        -- parameters: vgwAAL2CgVccIndex, vgwAAL2CgHwUnitIndex,
+        --             vgwAAL2CgProfileIndex, vgwAAL2CgSelectionMode
+      vgwAAL2CreateIf 		        (100),
+
+        -- delete a AAL2 interface
+        -- parameters: vgwAAL2CgIfIndex
+      vgwAAL2DeleteIf 		        (101),
+
+        -- modify a AAL2 interface
+        -- parameters: vgwAAL2CgIfIndex, vgwAAL2CgProfileIndex,
+        --             vgwAAL2CgSelectionMode
+      vgwAAL2ModifyIf                  (102),
+
+        -- lock AAL2 interface
+        -- parameters: vgwAAL2CgIfIndex
+      vgwAAL2LockIf                    (103),
+
+        -- unlock AAL2 interface
+        -- parameters: vgwAAL2CgIfIndex
+      vgwAAL2UnlockIf                  (104)
+
+    }
+
+
+  -- The control state of the control group
+  VgwAAL2CgControlStatusType ::=
+    INTEGER
+    {
+      vgwAAL2RequestBusy (2),           -- command is just executing
+      vgwAAL2Passed (3),                -- command executed w/o error
+      vgwAAL2RequestFailed (4)          -- command executed with error
+    }
+
+  -- The timeout time for a command.
+  VgwAAL2CgControlTimerType ::= INTEGER
+
+  -- **********************************************************************
+  -- general items of the vgwAAL2ControlGroup
+  -- **********************************************************************
+
+  vgwAAL2ControlGroup OBJECT IDENTIFIER ::= { vgwAAL2Objects 3 }
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+  -- This managed entity manages the creation, deletion and modification of
+  -- AAL2 interfaces.
+
+  vgwAAL2CgControlReq OBJECT-TYPE
+     -- info-VALUE:   -
+     -- info-ROU:     GET db SET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+         SYNTAX    VgwAAL2CgCommandErrorStateType
+         ACCESS    read-write
+         STATUS    mandatory
+         DESCRIPTION
+              "User commands for  vgwAAL2IfTable and vgwAAL2ProfileTable."
+		         
+        --DEFAULT test-function-async     fsnAAL2CtrlTest
+        --DEFAULT next-function-async     fsnAAL2CtrlNext 
+        --DEFAULT set-function-async      fsnAAL2CtrlSet
+        --DEFAULT get-function-async      fsnAAL2CtrlGet
+         
+         ::= { vgwAAL2ControlGroup 1 }
+
+  vgwAAL2CgControlStatus OBJECT-TYPE
+     -- info-VALUE:   -
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+         SYNTAX         VgwAAL2CgControlStatusType
+
+         ACCESS         read-only
+         STATUS         mandatory
+         DESCRIPTION
+              "Indicates the status of the AAL2 control group."
+
+        --DEFAULT next-function-async     fsnAAL2CtrlNext 
+        --DEFAULT get-function-async      fsnAAL2CtrlGet
+
+         ::= { vgwAAL2ControlGroup 2 }
+
+  vgwAAL2CgControlReqResult OBJECT-TYPE
+     -- info-VALUE:   -
+     -- info-ROU:     GET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+         SYNTAX    VgwAAL2CgCommandErrorStateType
+         ACCESS    read-only
+         STATUS    mandatory
+         DESCRIPTION
+              "Delivers the result of the last executed command."
+
+       
+        --DEFAULT next-function-async     fsnAAL2CtrlNext
+        --DEFAULT get-function-async      fsnAAL2CtrlGet
+
+         ::= { vgwAAL2ControlGroup 3 }
+
+  vgwAAL2CgControlTimer OBJECT-TYPE
+    SYNTAX      VgwAAL2CgControlTimerType
+
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION
+      "The normal execution time of a long command in seconds."
+	    
+	    --DEFAULT next-function-async     fsnAAL2CtrlNext 
+        --DEFAULT get-function-async      fsnAAL2CtrlGet
+
+  ::= { vgwAAL2ControlGroup 4 }
+
+  -- **********************************************************************
+  -- command parameters of the vgwAAL2ControlGroup
+  -- **********************************************************************
+
+  vgwAAL2CgIfIndex OBJECT-TYPE
+     -- info-VALUE:   1..14336
+     -- info-ROU:     GET db SET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX        VgwAAL2IfIndex
+     ACCESS        read-write
+     STATUS        mandatory
+     DESCRIPTION
+          " Command parameter for commands:
+            vgwAAL2DeleteIf, vgwAAL2ModifyIf, vgwAAL2LockIf, vgwAAL2UnlockIf."
+		
+		--DEFAULT test-function-async     fsnAAL2CtrlTest        
+        --DEFAULT next-function-async     fsnAAL2CtrlNext
+        --DEFAULT set-function-async      fsnAAL2CtrlSet
+        --DEFAULT get-function-async      fsnAAL2CtrlGet
+
+     ::= { vgwAAL2ControlGroup 5 }
+
+
+  vgwAAL2CgVccIndex OBJECT-TYPE
+      -- info-VALUE:   1..16384
+     -- info-ROU:     GET db SET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+      SYNTAX        INTEGER (1..16384)
+     ACCESS        read-write
+     STATUS        mandatory
+     DESCRIPTION
+          " Command parameter for command:
+            vgwAAL2CreateIf"
+
+        --DEFAULT test-function-async     fsnAAL2CtrlTest        
+        --DEFAULT next-function-async     fsnAAL2CtrlNext
+        --DEFAULT set-function-async      fsnAAL2CtrlSet
+        --DEFAULT get-function-async      fsnAAL2CtrlGet
+
+     ::= { vgwAAL2ControlGroup 6 }
+
+
+  vgwAAL2CgHwUnitIndex OBJECT-TYPE
+     -- info-VALUE:   0..65535
+     -- info-ROU:     GET db SET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX        INTEGER (0..65535)
+     ACCESS        read-write
+     STATUS        mandatory
+     DESCRIPTION
+          " Command parameter for command:
+            vgwAAL2CreateIf"
+
+        --DEFAULT test-function-async     fsnAAL2CtrlTest        
+        --DEFAULT next-function-async     fsnAAL2CtrlNext
+        --DEFAULT set-function-async      fsnAAL2CtrlSet
+        --DEFAULT get-function-async      fsnAAL2CtrlGet
+
+     ::= { vgwAAL2ControlGroup 7 }
+
+
+  vgwAAL2CgProfileIndex OBJECT-TYPE
+     -- info-VALUE:   1..4
+     -- info-ROU:     GET db SET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX        VgwAAL2ProfileIndex
+     ACCESS        read-write
+     STATUS        mandatory
+     DESCRIPTION
+          " Command parameter for commands:
+            vgwAAL2CreateIf, vgwAAL2ModifyIf."
+
+        --DEFAULT test-function-async     fsnAAL2CtrlTest        
+        --DEFAULT next-function-async     fsnAAL2CtrlNext
+        --DEFAULT set-function-async      fsnAAL2CtrlSet
+        --DEFAULT get-function-async      fsnAAL2CtrlGet
+
+     ::= { vgwAAL2ControlGroup 8 }
+
+   vgwAAL2CgSelectionMode OBJECT-TYPE
+     -- info-VALUE:   independent(1)..master_slave(2)
+     -- info-ROU:     GET db SET db
+     -- info-IMPL:    V2.0->
+     -- info-VERCTRL: -
+     SYNTAX        VgwAAL2SelectionMode
+     ACCESS        read-write
+     STATUS        mandatory
+     DESCRIPTION
+          " Command parameter for command:
+            vgwAAL2CreateIf, vgwAAL2ModifyIf."
+
+        --DEFAULT test-function-async     fsnAAL2CtrlTest        
+        --DEFAULT next-function-async     fsnAAL2CtrlNext
+        --DEFAULT set-function-async      fsnAAL2CtrlSet
+        --DEFAULT get-function-async      fsnAAL2CtrlGet
+
+     ::= { vgwAAL2ControlGroup 9 }
+
+  -- **********************************************************************
+  -- **********************************************************************
+  -- vgwAAL2Traps
+  -- **********************************************************************
+  -- **********************************************************************
+
+  vgwAAL2Traps OBJECT IDENTIFIER ::= { vgwAAL2Objects 4 }
+
+
+  -- **********************************************************************
+  -- the trap parameters
+  -- **********************************************************************
+  vgwAAL2TrapVars OBJECT IDENTIFIER ::= { vgwAAL2Traps 1 }
+
+  vgwAAL2TvTimeAndDate OBJECT-TYPE
+    SYNTAX      INTEGER
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION
+      "The time when a traps is sent. It is a parameter of all traps."
+  ::= { vgwAAL2TrapVars 1 }
+
+ vgwAAL2TvControlResult OBJECT-TYPE
+   SYNTAX  VgwAAL2CgCommandErrorStateType
+   ACCESS  not-accessible
+   STATUS  mandatory
+   DESCRIPTION
+     "The result of the last executed command."
+ ::= { vgwAAL2TrapVars 2 }
+
+  vgwAAL2TvIfIndex OBJECT-TYPE
+    SYNTAX      VgwAAL2IfIndex
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION
+      "The index in the vgwAAL2IfTAble"
+  ::= { vgwAAL2TrapVars 3 }
+
+  vgwAAL2TvVccIndex OBJECT-TYPE
+    SYNTAX      VgwAAL2VccIndex
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION
+      "The attribute in the VCC-table"
+  ::= { vgwAAL2TrapVars 4 }
+
+  vgwAAL2TvHwUnitIndex OBJECT-TYPE
+    SYNTAX      VgwAAL2HwUnitIndex
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION
+      "The attribute in the vgwAAL2IfTAble"
+  ::= { vgwAAL2TrapVars 5 }
+
+  vgwAAL2TvProfileIndex OBJECT-TYPE
+    SYNTAX      VgwAAL2ProfileIndex
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION
+      "The attribute in the vgwAAL2IfTAble"
+  ::= { vgwAAL2TrapVars 6 }
+
+  vgwAAL2TvAdminState OBJECT-TYPE
+    SYNTAX      VgwAAL2AdminState
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION
+      "The attribute in the vgwAAL2IfTAble"
+  ::= { vgwAAL2TrapVars 7 }
+
+  vgwAAL2TvOperState OBJECT-TYPE
+    SYNTAX      VgwAAL2OperState
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION
+      "The attribute in the vgwAAL2IfTAble"
+  ::= { vgwAAL2TrapVars 8 }
+
+  vgwAAL2TvSelectionMode OBJECT-TYPE
+    SYNTAX      VgwAAL2SelectionMode
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION
+      "The attribute in the vgwAAL2IfTAble"
+  ::= { vgwAAL2TrapVars 9 }
+
+  vgwAAL2TvAppId OBJECT-TYPE
+    SYNTAX      VgwAAL2AppId
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION
+      "The attribute in the vgwAAL2IfTAble"
+  ::= { vgwAAL2TrapVars 10 }
+
+  vgwAAL2TvCPSSDUSize OBJECT-TYPE
+    SYNTAX      VgwAAL2CPSSDUSize
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION
+      "The attribute in the vgwAAL2IfTAble"
+  ::= { vgwAAL2TrapVars 11 }
+
+  vgwAAL2TvOptimization OBJECT-TYPE
+    SYNTAX      VgwAAL2Optimization
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION
+      "The attribute in the vgwAAL2IfTAble"
+  ::= { vgwAAL2TrapVars 12 }
+
+ vgwAAL2TvAlarmState OBJECT-TYPE
+   SYNTAX  VgwAAL2AlarmState
+   ACCESS  not-accessible
+   STATUS  mandatory
+   DESCRIPTION
+     " Alarm state of AAL2 interface (noAlarm, SigCErr, LoELCPDL, LBC)."
+ ::= { vgwAAL2TrapVars 13 }
+
+
+  -- **********************************************************************
+  -- the traps
+  -- **********************************************************************
+
+ vgwAAL2TrControl TRAP-TYPE
+   ENTERPRISE xldv20Traps
+   VARIABLES {
+     vgwAAL2TvTimeAndDate,
+     vgwAAL2TvControlResult
+   }
+   DESCRIPTION
+     "The long command was executed."
+ ::= 1030
+
+
+  vgwAAL2TrIfCreated TRAP-TYPE
+  ENTERPRISE xldv20Traps
+  VARIABLES {
+    vgwAAL2TvTimeAndDate,
+    vgwAAL2TvIfIndex,
+    vgwAAL2TvVccIndex,
+    vgwAAL2TvHwUnitIndex,
+    vgwAAL2TvProfileIndex,
+    vgwAAL2TvAdminState,
+    vgwAAL2TvOperState,
+    vgwAAL2TvSelectionMode,
+    vgwAAL2TvAppId,
+    vgwAAL2TvCPSSDUSize,
+    vgwAAL2TvOptimization,
+    vgwAAL2TvAlarmState
+  }
+  DESCRIPTION
+    "New AAL2 interface is created (new item in vgwAAL2IfTable)."
+  ::= 1031
+
+
+  vgwAAL2TrIfDeleted TRAP-TYPE
+  ENTERPRISE xldv20Traps
+  VARIABLES {
+    vgwAAL2TvTimeAndDate,
+    vgwAAL2TvIfIndex
+  }
+  DESCRIPTION
+      "AAL2 interface is deleted (item in vgwAAL2IfTable)."
+  ::= 1032
+
+  vgwAAL2TrIfModified TRAP-TYPE
+  ENTERPRISE xldv20Traps
+  VARIABLES {
+    vgwAAL2TvTimeAndDate,
+    vgwAAL2TvIfIndex,
+    vgwAAL2TvProfileIndex,
+    vgwAAL2TvSelectionMode
+  }
+  DESCRIPTION
+      "Modification of following parameters of AAL2 interface:
+       - SelectionMode (vgwAAL2ProfileIndex)
+       - ProfileIndex  (vgwAAL2SelectionMode."
+  ::= 1033
+
+  vgwAAL2TrAdminStateChanged TRAP-TYPE
+  ENTERPRISE xldv20Traps
+  VARIABLES {
+    vgwAAL2TvTimeAndDate,
+    vgwAAL2TvIfIndex,
+    vgwAAL2TvAdminState
+  }
+  DESCRIPTION
+      "Administrative state of AAL2 interface is changed (locked / unlocked)
+      (vgwAAL2AdminState attribute in vgwAAL2IfTable)."
+  ::= 1034
+
+
+  vgwAAL2TrOperStateChanged TRAP-TYPE
+  ENTERPRISE xldv20Traps
+  VARIABLES {
+    vgwAAL2TvTimeAndDate,
+    vgwAAL2TvIfIndex,
+    vgwAAL2TvOperState
+  }
+    DESCRIPTION
+      "Operational state of AAL2 interface is changed
+      (vgwAAL2OperState attribute in vgwAAL2IfTable)."
+  ::= 1035
+
+END

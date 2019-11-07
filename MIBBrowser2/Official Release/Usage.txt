@@ -1,0 +1,19 @@
+MIBBrowser, version 1.3.3
+Build date: 2002-01-18
+Author: Artur Perwenis
+IMPORTANT NOTICE: This application employs third party software as part of its functionality,
+therefore its usage is illegal as regards to the rules of Law.
+--------------------------------------------------------------
+
+Copy the contents of this directory (including the MIBBrowser.exe and MIBTools folder)
+onto a local drive (however the application may as well be used from any remote location).
+The MIBTools folder must be located under the same directory in relation to MIBBrowser.exe.
+Otherwise the new 'Utilities' functionality (implemented in version 1.2.2 and above)
+of the program cannot be utilized.
+
+For errors (resolved, and to-be-resolved), see Errors.txt file.
+For enhancements (done and to-be-done), see To do.txt file.
+
+Pleasurable and efficient usage wishes you:
+Artur Perwenis
+

@@ -1,0 +1,754 @@
+SIEMENS-ICN-ACCESSION-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY,
+    OBJECT-TYPE,
+    Unsigned32,
+    Integer32
+           FROM SNMPv2-SMI
+    DisplayString, 
+    DateAndTime,
+    RowStatus
+        FROM SNMPv2-TC
+    PhysicalIndex
+    	FROM ENTITY-MIB
+    siemensICNModules, siemensICNAccessionMIB 
+    	FROM SIEMENS-ICN-GLOBAL-REG;
+
+       
+siemensICNAccessionMibModule MODULE-IDENTITY
+    LAST-UPDATED "200105230000Z"  --    23-May 2001 12:00 EST
+    ORGANIZATION "Siemens ICN, LLC"
+    CONTACT-INFO
+            "    Mounire El Houmaidi
+			Siemens ICN, LLC
+			400 Rinehart Road
+			Lake Mary, FL 32746		
+            USA
+
+            Tel: 	+1-407-942-7361
+            E-mail: mounire.el.houmaidi@icn.siemens.com"
+            
+    DESCRIPTION
+        "This MIB module contains the definitions of objects used 
+        for traps handling, the definitions of the Accession trap PDU 
+        and definitions of the Active Alarms Table"
+     -- Revision History
+    REVISION    "200105230000Z" -- 23-May-2001 12:00 AM EST
+    DESCRIPTION
+        "The initial Revision of this module  	1-March-2001	Mounire 
+         Add new objects in Accession MIB		18-March-2001	Mounire  
+         Index to Active Alarm Table			20-March-2001	Mounire 
+         Reorder entries in Active Alarm Table	04-April-2001	Mounire
+         Trap Log Table							24-April-2001	Mounire
+         Entry name Change and Trap PDU fields  30-April-2001	Mounire
+         Modify Index names-add Integer ranges 	01-May-2001		Mounire
+         MAX-ACCCESS read-only for SequenceNum	23-May-2001		Mounire
+         ATM VPC and VCC connection tables      19-July-2001	Terry"
+            
+    ::= { siemensICNModules 2 }    
+                                            
+-- ********************************************************************
+-- Definition of Objects for the accession alarms
+-- ******************************************************************** 	
+
+accessionObjects		OBJECT IDENTIFIER	::= { siemensICNAccessionMIB 1 }  
+accessionEvents			OBJECT IDENTIFIER	::= { siemensICNAccessionMIB 2 }
+accessionMiscObjects	OBJECT IDENTIFIER	::= { accessionObjects 1 } 
+accessionAlarmObjects	OBJECT IDENTIFIER	::= { accessionObjects 2 }
+accessionTrapLog		OBJECT IDENTIFIER	::= { accessionObjects 3 }
+accessionATMConn		OBJECT IDENTIFIER	::= { accessionObjects 4 }
+   
+-- ********************************************************************
+-- Definition of Accession notifications: Trap PDU format
+-- ******************************************************************** 		
+           
+accessionEventsV2		OBJECT IDENTIFIER	::= { accessionEvents 0 }	  
+
+alarmSequence OBJECT-TYPE
+   SYNTAX  Unsigned32
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "This attribute is a sequence number provided for each trap.
+           This number allows the SNMP Manager determine whether all 
+           messages have been received. 
+           It's not used in the Active Alarm Table"
+   ::= { accessionMiscObjects 1 }    
+   
+-- ******************************
+-- Accession Active Alarms Table 
+--
+-- ******************************
+
+
+accessionActiveAlarmTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF AccessionActiveAlarmEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Table of Active Alarms in the Accession"
+    ::= { accessionAlarmObjects 1 }
+
+accessionActiveAlarmEntry OBJECT-TYPE
+    SYNTAX     AccessionActiveAlarmEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table entry describing an active Alarm"
+    INDEX   { alSlotNumberIndex, alEcbNumberIndex, alAlarmNumberIndex }
+    ::= {accessionActiveAlarmTable 1 }
+
+AccessionActiveAlarmEntry ::= SEQUENCE {   
+	alSlotNumberIndex			Unsigned32,			
+	alEcbNumberIndex			Unsigned32,                                                   
+    alAlarmNumberIndex   		Unsigned32,
+    alPerceivedSeverity			INTEGER,
+    alEventTime					DateAndTime,
+    alAlarmClass				DisplayString,
+    alAlarmInstance				DisplayString,  
+    alEntPhysicalIndex			PhysicalIndex,
+    alAlarmType					INTEGER,
+    alProbableCause				Unsigned32,
+    alLedField					INTEGER,
+    alAmpMessageNumber			INTEGER,
+    alAmpMessageText			DisplayString
+    }        
+    
+alSlotNumberIndex OBJECT-TYPE
+   SYNTAX  Unsigned32
+   MAX-ACCESS  not-accessible
+   STATUS  current
+   DESCRIPTION
+           "This attribute is a part of the  index to the alarm table  
+            slotNumber, ecbNumber, alarmNUmber"
+   ::= { accessionActiveAlarmEntry 1 }   
+        
+alEcbNumberIndex OBJECT-TYPE
+   SYNTAX  Unsigned32
+   MAX-ACCESS  not-accessible
+   STATUS  current
+   DESCRIPTION
+           "This attribute is a part of the  index to the alarm table 
+            slotNumber, ecbNumber, alarmNUmber"
+   ::= { accessionActiveAlarmEntry 2 }   
+
+alAlarmNumberIndex OBJECT-TYPE
+   SYNTAX  Unsigned32
+   MAX-ACCESS  not-accessible
+   STATUS  current
+   DESCRIPTION
+           "This attribute is a part of the  index to the alarm table  
+            slotNumber, ecbNumber, alarmNUmber"
+   ::= { accessionActiveAlarmEntry 3 }
+
+alPerceivedSeverity OBJECT-TYPE
+   SYNTAX  INTEGER  { indeterminate(1),
+                      critical(2),
+                      major(3),
+                      minor(4), 
+                      cleared(6) }
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Severity of the alarm based on the X.721 
+           PerceivedSeverity attribute."
+   ::= { accessionActiveAlarmEntry 4}
+
+alEventTime OBJECT-TYPE
+   SYNTAX  DateAndTime
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Indicates time that alarm was generated" 
+   ::= { accessionActiveAlarmEntry 5 } 
+
+
+alAlarmClass OBJECT-TYPE
+   SYNTAX  DisplayString  
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Name Of the object class describing the behavior of
+           the AlarmInstances "
+   ::= { accessionActiveAlarmEntry 6 }
+
+alAlarmInstance OBJECT-TYPE
+   SYNTAX  DisplayString
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Name of the instance as seen in the alarm containment hierarchy "
+   ::= { accessionActiveAlarmEntry 7 }  
+   
+alEntPhysicalIndex OBJECT-TYPE
+   SYNTAX  PhysicalIndex
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Indicates the entity physical index corresponding to the alarm" 
+   ::= { accessionActiveAlarmEntry 8 } 
+      
+alAlarmType OBJECT-TYPE
+   SYNTAX  INTEGER  { indeterminate(1),
+                      communicationsAlarm(2),
+                      enviromentalAlarm(3),
+                      equipmentAlarm(4),
+                      processingErrorAlarm(10),
+                      qualityOfServiceAlarm(11) }
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Alarm Type: indeterminate,
+                      	communicationsAlarm,
+                      	enviromentalAlarm,
+                      	equipmentAlarm,
+                      	processingErrorAlarm,
+                      	qualityOfServiceAlarm"
+   ::= { accessionActiveAlarmEntry 9 }
+
+alProbableCause OBJECT-TYPE
+   SYNTAX  Unsigned32
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Reason for the alarm based on the X.721 
+           ProbableCause attribute."
+   ::= { accessionActiveAlarmEntry 10 }   
+   
+   
+alLedField OBJECT-TYPE
+   SYNTAX  INTEGER  { charger(5),
+                      heatExchanger(6),
+                      temperature(7),
+                      fan(8),
+                      channelbank(9),
+                      tranmsmission(10),
+                      customer(11),
+                      fuse(12)}
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "This field will indicate which alarm LED is turned on by this alarm. 
+           This can be used by the EMS if it is trying to mirror the Accession 
+           alarm lights on its user interface.
+           LED alarm index: normal, (not provided)
+                      critical,  	(not provided)
+                      major,    	(not provided)
+                      minor,    	(not provided)
+                      charger,
+                      heatExchanger,
+                      temperature,
+                      fan,
+                      channelbank,
+                      tranmsmission,
+                      customer,
+                      fuse"
+   ::= { accessionActiveAlarmEntry 11 }
+
+alAmpMessageNumber OBJECT-TYPE
+   SYNTAX  INTEGER (0..4096)
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Accession message number contained in AlarmText" 
+   ::= { accessionActiveAlarmEntry 12}   
+          
+
+alAmpMessageText OBJECT-TYPE
+   SYNTAX  DisplayString
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Alarm and Message Processing message is a formatted text 
+           string that--provides details of the alarm.  The formatted 
+           text string contains the following: site name, date, time
+           stamp, originating task name, alarm level, Sort Key, and 
+           AMP message format.
+	Where: 
+	SITENAME - Uniquely identifies the Accession system that produced 
+	the alarm. The SITENAME can be up to <TBD> characters long>
+
+	DATE  - The date the error occurred as indicated by the originator 
+	of the alarm. The DATE has the following format: DD-MM-YYYY
+
+	TIME STAMP - The time the error occurred as indicated by the 
+	originator of the alarm. The TIME STAMP has the following format: : 
+	HH:MM:SS
+
+	ORIGINATING TASK - The name of the Vxworks task that originated the 
+	alarm. The ORIGINATING TASK can be up to <TBD> characters long>
+
+	ALARM LEVEL is a two-character identifier in front of all alarms.  
+	These identifiers are defined below.
+	 * -  Minor alarm (space asterisk) 
+	** - Major alarm (two asterisks)
+	*C - Critical alarm (asterisk Capital C)
+
+	SORT KEY is comprised of two fields, a three character message type 
+	field (KEY) and a four digit message identifier field (NNNN).  The 
+	AMP sort key is primarily used for searching for messages in the log 
+	file.  The SORT KEY has the following format: KEY.NNNN.
+	Where:
+	1. KEY (Message Type Field) can be one of the following:
+   	ENV ? for Environmental messages and alarms
+   	IAC ? for Integrated Access Controller alarms
+   	LIN ? for ADSL and POTS line card alarms
+   	SYS ? for System messages alarms 
+	2. NNN (Message Identifier Field) is the AMP number used by the 
+	task to generate the AMP message.
+
+	AMP MESSAGE FORMAT - Message text that provides the reason and the 
+	device that the alarm concerns.
+
+	The following illustrates the layout of an AMP message provided in an 
+	Accession trap:
+	<SITE NAME> <TIME AND DATE> <ORIGINATING TASK NAME>
+	<ALARM LEVEL> <SORT KEY> <MESSAGE TEXT>
+
+	The following is an example a valid AMP message provided in an Accession 
+	trap:
+	IAP_R1_#1  26-APR-2000 14:40:03 IAC CONFIGURATION
+	** IAC.0020:IAC=0-A-OFFLINE, REMOVED FROM SERVICE BY MANUAL REQUEST" 
+   ::= { accessionActiveAlarmEntry 13 }    
+
+-- ******************************
+-- ADDED ON APRIL 24, 2001
+-- ******************************
+
+-- ******************************
+-- Accession Trap Log Table 
+-- ******************************
+ 
+
+accessionTrapLogTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF AccessionTrapLogEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Table of Active Alarms in the Accession"
+    ::= { accessionTrapLog 1  }
+
+accessionTrapLogEntry OBJECT-TYPE
+    SYNTAX     AccessionTrapLogEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A table entry describing a Trap Log Entry"
+    INDEX   { tlAlarmSequence }
+    ::= {accessionTrapLogTable 1 }
+
+AccessionTrapLogEntry ::= SEQUENCE { 
+	tlAlarmSequence   			Unsigned32,
+    tlPerceivedSeverity			INTEGER,
+    tlEventTime					DateAndTime,
+    tlAlarmClass				DisplayString,
+    tlAlarmInstance				DisplayString,  
+    tlEntPhysicalIndex			PhysicalIndex,
+    tlAlarmType					INTEGER,
+    tlProbableCause				Unsigned32,
+    tlLedField					INTEGER,
+    tlClearingType				INTEGER,
+    tlAmpMessageNumber			INTEGER,
+    tlAmpMessageText			DisplayString
+    }        
+    
+tlAlarmSequence OBJECT-TYPE
+   SYNTAX  Unsigned32
+   MAX-ACCESS  not-accessible
+   STATUS  current
+   DESCRIPTION
+           "This attribute is a part of the  index to the alarm table  
+            slotNumber, ecbNumber, alarmNUmber"
+   ::= { accessionTrapLogEntry 1 }
+
+tlPerceivedSeverity OBJECT-TYPE
+   SYNTAX  INTEGER  { indeterminate(1),
+                      critical(2),
+                      major(3),
+                      minor(4), 
+                      cleared(6) }
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Severity of the alarm based on the X.721 
+           PerceivedSeverity attribute."
+   ::= { accessionTrapLogEntry  2 }
+
+tlEventTime OBJECT-TYPE
+   SYNTAX  DateAndTime
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Indicates time that alarm was generated" 
+   ::= { accessionTrapLogEntry 3 } 
+
+
+tlAlarmClass OBJECT-TYPE
+   SYNTAX  DisplayString  
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Name Of the object class describing the behavior of
+           the AlarmInstances "
+   ::= { accessionTrapLogEntry 4 }
+
+tlAlarmInstance OBJECT-TYPE
+   SYNTAX  DisplayString
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Name of the instance as seen in the alarm containment hierarchy "
+   ::= { accessionTrapLogEntry 5 }  
+   
+tlEntPhysicalIndex OBJECT-TYPE
+   SYNTAX  PhysicalIndex
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Indicates the entity physical index corresponding to the alarm" 
+   ::= { accessionTrapLogEntry 6 } 
+      
+tlAlarmType OBJECT-TYPE
+   SYNTAX  INTEGER  { indeterminate(1),
+                      communicationsAlarm(2),
+                      enviromentalAlarm(3),
+                      equipmentAlarm(4),
+                      processingErrorAlarm(10),
+                      qualityOfServiceAlarm(11) }
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Alarm Type: indeterminate,
+                      	communicationsAlarm,
+                      	enviromentalAlarm,
+                      	equipmentAlarm,
+                      	processingErrorAlarm,
+                      	qualityOfServiceAlarm"
+   ::= { accessionTrapLogEntry 7 }
+
+tlProbableCause OBJECT-TYPE
+   SYNTAX  Unsigned32
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Reason for the alarm based on the X.721 
+           ProbableCause attribute."
+   ::= { accessionTrapLogEntry 8 }     
+  
+tlLedField OBJECT-TYPE
+   SYNTAX  INTEGER  { charger(5),
+                      heatExchanger(6),
+                      temperature(7),
+                      fan(8),
+                      channelbank(9),
+                      tranmsmission(10),
+                      customer(11),
+                      fuse(12)}
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "This field will indicate which alarm LED is turned on by this alarm. 
+           This can be used by the EMS if it is trying to mirror the Accession 
+           alarm lights on its user interface.
+           LED alarm index: normal, (not provided)
+                      critical,  	(not provided)
+                      major,    	(not provided)
+                      minor,    	(not provided)
+                      charger,
+                      heatExchanger,
+                      temperature,
+                      fan,
+                      channelbank,
+                      tranmsmission,
+                      customer,
+                      fuse"
+   ::= { accessionTrapLogEntry 9 }        
+   
+tlClearingType OBJECT-TYPE
+   SYNTAX  INTEGER  { oneToOne(1),
+                      pollingRequired(2) }
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "A clearing type field will indicate how the clear is to be 
+           handled by the EMS. The following are the types of clearing:
+			one-to-one:
+				This trap is clearing one alarm. 
+				The message number sent with the original alarm will be 
+				included for correlation. The combination of entity index 
+				and original message number will identify the alarm being 
+				cleared.
+			Poll:
+				This trap is one which will require the EMS to poll the 
+				Accession to determine the current alarm status."
+   ::= { accessionTrapLogEntry 10  }
+
+tlAmpMessageNumber OBJECT-TYPE
+   SYNTAX  INTEGER (0..4096)
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Accession message number contained in AlarmText.
+           For clearing traps, the EMS uses this field to 
+           correlate the alarm clear to the clearing alarm" 
+   ::= { accessionTrapLogEntry 11}   
+          
+
+tlAmpMessageText OBJECT-TYPE
+   SYNTAX  DisplayString
+   MAX-ACCESS  read-only
+   STATUS  current
+   DESCRIPTION
+           "Alarm and Message Processing message is a formatted text 
+           string that--provides details of the alarm.  The formatted 
+           text string contains the following: site name, date, time
+           stamp, originating task name, alarm level, Sort Key, and 
+           AMP message format." 
+   ::= { accessionTrapLogEntry 12 }    
+   
+   
+-- **************************************
+-- Definition of the acccession trap PDU
+-- ***************************************
+
+accessionAlarmPDU NOTIFICATION-TYPE
+   OBJECTS { 
+    		tlAlarmSequence, 		
+    		tlPerceivedSeverity,
+    		tlEventTime,
+    		tlAlarmClass, 		
+   			tlAlarmInstance,
+   			tlEntPhysicalIndex,
+    		tlAlarmType,
+    		tlProbableCause,
+    		tlLedField,
+    		tlClearingType,
+			tlAmpMessageNumber,
+    		tlAmpMessageText
+			}
+   STATUS  current
+   DESCRIPTION
+           "This trap is used to notify SNMP Managers 
+            about alarm conditions in the accession "
+   ::= { accessionEventsV2 1 }
+
+-- **************************************
+-- Definition of the acccession Informational trap PDU
+-- ***************************************
+
+accessionInfoPDU NOTIFICATION-TYPE
+   OBJECTS { 
+    		tlAlarmSequence, 		
+    	 	tlEventTime,
+    	   	tlAmpMessageNumber,
+    		tlAmpMessageText
+			}
+   STATUS  current
+   DESCRIPTION
+           "This Info trap is used to notify SNMP Managers 
+            about conditions in the accession "
+   ::= { accessionEventsV2 2 }
+   
+-- ******************************
+-- ADDED ON JULY 19, 2001
+-- ******************************
+
+-- ******************************
+-- Accession ATM VPC Conn Table 
+-- ******************************
+ 
+accessionVpcConnTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF AccessionVpcConnEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "The Accession VPC Cross Connect table.  
+         An entry in this table models two cross-connected VPCs."
+    ::= { accessionATMConn 1 }
+
+accessionVpcConnEntry OBJECT-TYPE
+    SYNTAX      AccessionVpcConnEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry in the Accession VPC Cross Connect table.
+         This entry is used to model a bi-directional ATM
+         VPC cross-connect cross-connecting two end points."
+    INDEX   { vpcConnLowIfIndex,
+    		  vpcConnLowVpi,
+    		  vpcConnHighIfIndex,
+    		  vpcConnHighVpi }
+
+    ::= {accessionVpcConnTable 1 }
+
+AccessionVpcConnEntry ::= SEQUENCE {                                                      
+    vpcConnLowIfIndex			Integer32,
+    vpcConnLowVpi				INTEGER,
+    vpcConnHighIfIndex			Integer32,
+    vpcConnHighVpi				INTEGER,
+    vpcConnRowStatus			RowStatus
+    } 
+        
+vpcConnLowIfIndex OBJECT-TYPE
+   SYNTAX  		Integer32
+   MAX-ACCESS  	not-accessible
+   STATUS  		current
+   DESCRIPTION
+           "The ifIndex value of the ATM interface for this VP cross-connect.  
+           The term low implies that this ATM interface has the numerically lower 
+           ifIndex value than the other ATM interface identified in the same 
+           accessionVpcConnEntry." 
+   ::= { accessionVpcConnEntry 1 }   
+   
+vpcConnLowVpi OBJECT-TYPE
+   SYNTAX  		INTEGER (0..4095)
+   MAX-ACCESS  	not-accessible
+   STATUS 		 current
+   DESCRIPTION
+           "The VPI value at the ATM interface associated with the VP cross-connect 
+            that is identified by accessionVpcConnLowIfIndex." 
+   ::= { accessionVpcConnEntry 2 }   
+   
+vpcConnHighIfIndex OBJECT-TYPE
+   SYNTAX  		Integer32
+   MAX-ACCESS  	not-accessible
+   STATUS  		current
+   DESCRIPTION
+           "The ifIndex value of the ATM interface for this VP cross-connect.  
+            The term high implies that this ATM interface has the numerically higher 
+            ifIndex value than the other ATM interface identified in the same 
+            accessionVpcConnEntry." 
+   ::= { accessionVpcConnEntry 3 }   
+   
+vpcConnHighVpi OBJECT-TYPE
+   SYNTAX  		INTEGER (0..4095)
+   MAX-ACCESS  	not-accessible
+   STATUS  		current
+   DESCRIPTION
+           "The VPI value at the ATM interface associated with the VP cross-connect 
+            that is identified by accessionVpcConnHighIfIndex."
+   ::= { accessionVpcConnEntry 4 }   
+   
+vpcConnRowStatus OBJECT-TYPE
+   SYNTAX  		RowStatus
+   MAX-ACCESS  	read-create
+   STATUS  		current
+   DESCRIPTION
+           "The status of this entry in the accessionVpcConnTable.  
+            This object is used to create (or remove) a cross-connect VCCs."
+   DEFVAL	{ createAndGo }
+   ::= { accessionVpcConnEntry 5 }   
+   
+-- ******************************
+-- ADDED ON JULY 19, 2001
+-- ******************************
+
+-- ******************************
+-- Accession ATM VCC Conn Table 
+-- ******************************
+    
+accessionVccConnTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF AccessionVccConnEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "The Accession VCC Cross Connect table.
+         An entry in this table models two cross-connected VCCs."
+    ::= { accessionATMConn 2 }
+
+accessionVccConnEntry OBJECT-TYPE
+    SYNTAX      AccessionVccConnEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry in the Accession VCC Cross Connect table.
+         This entry is used to model a bi-directional ATM
+         VCC cross-connect cross-connecting two end points."
+    INDEX   { vccConnLowIfIndex,
+    		  vccConnLowVpi,
+    		  vccConnLowVci,
+    		  vccConnHighIfIndex,
+    		  vccConnHighVpi,
+    		  vccConnHighVci }
+    ::= {accessionVccConnTable 1 }
+
+AccessionVccConnEntry ::= SEQUENCE {                                                      
+    vccConnLowIfIndex			Integer32,
+    vccConnLowVpi				INTEGER,
+    vccConnLowVci				INTEGER,
+    vccConnHighIfIndex			Integer32,
+    vccConnHighVpi				INTEGER,
+    vccConnHighVci				INTEGER,
+    vccConnRowStatus			RowStatus
+    } 
+        
+vccConnLowIfIndex OBJECT-TYPE
+   SYNTAX     	Integer32
+   MAX-ACCESS  	not-accessible
+   STATUS  		current
+   DESCRIPTION
+           "The ifIndex value of the ATM interface for this VC cross-connect.  
+            The term low implies that this ATM interface has the numerically lower 
+            ifIndex value than the other ATM interface identified in the same 
+            accessionVccConnEntry." 
+   ::= { accessionVccConnEntry 1 }   
+   
+vccConnLowVpi OBJECT-TYPE
+   SYNTAX  		INTEGER (0..4095)
+   MAX-ACCESS  	not-accessible
+   STATUS  		current
+   DESCRIPTION
+           "The VPI value at the ATM interface associated with the VC cross-connect 
+            that is identified by accessionVccConnLowIfIndex." 
+   ::= { accessionVccConnEntry 2 }   
+   
+vccConnLowVci OBJECT-TYPE
+   SYNTAX  		INTEGER (0..65535)
+   MAX-ACCESS  	not-accessible
+   STATUS  		current
+   DESCRIPTION
+           "The VCI value at the ATM interface associated with the VC cross-connect 
+            that is identified by accessionVccConnLowIfIndex." 
+   ::= { accessionVccConnEntry 3 }   
+   
+vccConnHighIfIndex OBJECT-TYPE
+   SYNTAX  		Integer32
+   MAX-ACCESS  	not-accessible
+   STATUS  		current
+   DESCRIPTION
+           "The ifIndex value of the ATM interface for this VC cross-connect.  
+            The term high implies that this ATM interface has the numerically higher 
+            ifIndex value than the other ATM interface identified in the same 
+            accessionVccConnEntry." 
+   ::= { accessionVccConnEntry 4 }   
+   
+vccConnHighVpi OBJECT-TYPE
+   SYNTAX  		INTEGER (0..4095)
+   MAX-ACCESS  	not-accessible
+   STATUS  		current
+   DESCRIPTION
+           "The VPI value at the ATM interface associated with the VC cross-connect 
+            that is identified by accessionVccConnHighIfIndex."
+   ::= { accessionVccConnEntry 5 }   
+   
+vccConnHighVci OBJECT-TYPE
+   SYNTAX  		INTEGER (0..65535)
+   MAX-ACCESS  	not-accessible
+   STATUS  		current
+   DESCRIPTION
+           "The VCI value at the ATM interface associated with the VC cross-connect 
+            that is identified by accessionVccConnHighIfIndex."
+   ::= { accessionVccConnEntry 6 }   
+   
+vccConnRowStatus OBJECT-TYPE
+   SYNTAX  		RowStatus
+   MAX-ACCESS  	read-create
+   STATUS  		current
+   DESCRIPTION
+           "The status of this entry in the accessionVccConnTable.  
+            This object is used to create (or remove) a cross-connect VCCs."
+   DEFVAL	{ createAndGo }           
+   ::= { accessionVccConnEntry 7 }   
+
+END

@@ -1,0 +1,471 @@
+-- @(#)rnet_ces.mib
+-- ----------------------------------------------------------------------
+-- RADNET CES MIB
+-- Copyright (c) 1996 RADNET Ltd.
+-- ----------------------------------------------------------------------
+--
+-- MIB Module :   RADNET-PROTOCOL-CES-MIB
+--
+-- Revision   :   V2.06
+--
+-- Description:   Definition of CES protocol, including connection
+--		  definition between two CES interfaces.
+-- ----------------------------------------------------------------------
+RADNET-PROTOCOL-CES-MIB DEFINITIONS ::= BEGIN
+
+	IMPORTS
+      OBJECT-TYPE, MODULE-IDENTITY           	FROM SNMPv2-SMI
+	
+		ifIndex	FROM RFC1213-MIB
+		InterfaceIndex		FROM IF-MIB
+		
+		DisplayString,
+		RowStatus, 
+		TimeStamp		FROM SNMPv2-TC
+		rnetProtocol
+				FROM RADNET-PROTOCOL-MIB;
+			
+
+               rnetProtocolCes MODULE-IDENTITY
+                    LAST-UPDATED "9709021300Z"
+                    ORGANIZATION "RADNET"
+                    CONTACT-INFO
+                      "          Eitan Mardiks
+                        Postal:  RADNET Ltd.
+				24 Raul Wallenberg St.
+				Tel-Aviv 69719, Israel.
+                        Tel:     +972 3 6455700
+                        Fax:     +972 3 6480582
+                        E-Mail:  eitan@gate.radnet.co.il"
+
+                    DESCRIPTION
+                     "Definition of CES protocol, including connection
+      					 definition between two CES interfaces."
+                    ::= { rnetProtocol 8 }
+
+
+-- --------------------------------------------------------------
+-- rnetCes Group
+-- --------------------------------------------------------------
+
+rnetProtocolCesIf		OBJECT IDENTIFIER ::= { rnetProtocolCes 1 }
+rnetProtocolCesConnection	OBJECT IDENTIFIER ::= { rnetProtocolCes 2 }
+
+
+-- --------------------------------------------------------------
+-- RADNET CES-IWF Interface Table
+-- A CES interface table has to be defined here, based on the CES-IS
+-- document. The table will be placed under the object rnetProtocolCes.
+-- --------------------------------------------------------------
+rnetProtocolCesConfigTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetProtocolCesConfigEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"A CES configuration table. The table contains additional 
+		 information about the CES end points." 
+	::= { rnetProtocolCesIf 1 }
+
+rnetProtocolCesConfigEntry	OBJECT-TYPE
+	SYNTAX	RnetProtocolCesConfigEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry that contains information on the CES interface"
+	INDEX	{ ifIndex }
+	::= { rnetProtocolCesConfigTable 1 }
+
+RnetProtocolCesConfigEntry ::= SEQUENCE {
+	rnetProtocolCesConfigAlias
+		DisplayString, 
+	rnetProtocolCesConfigTerm
+		INTEGER, 
+	rnetProtocolCesConfigActivationType
+		INTEGER,
+	rnetProtocolCesConfigActivationTime
+		INTEGER,
+	rnetProtocolCesConfigDeactivationTime
+		INTEGER
+	}
+
+rnetProtocolCesConfigAlias   OBJECT-TYPE
+        SYNTAX DisplayString
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The end point name, as assinged by the user."
+	::= { rnetProtocolCesConfigEntry 1 }
+
+rnetProtocolCesConfigTerm   OBJECT-TYPE
+        SYNTAX INTEGER {
+			terminating (1),
+			non-terminating (2)
+	}
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The object defines the terminating mode of the
+		 end point."
+	::= { rnetProtocolCesConfigEntry 2 }
+
+rnetProtocolCesConfigActivationType   OBJECT-TYPE
+        SYNTAX INTEGER {
+		       normal(1),
+		       impermanent(2),
+		       periodic(3)
+	} 
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The object indication of the requested activation type."
+	::= { rnetProtocolCesConfigEntry 3 }
+
+rnetProtocolCesConfigActivationTime   OBJECT-TYPE
+        SYNTAX INTEGER (1..48)
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The time interval of the desired connection activation 
+		 time."
+	::= { rnetProtocolCesConfigEntry 4 }
+
+rnetProtocolCesConfigDeactivationTime   OBJECT-TYPE
+        SYNTAX INTEGER (1..48)
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The time interval of the desired connection deactivation 
+		 time."
+	::= { rnetProtocolCesConfigEntry 5 }
+
+
+-- --------------------------------------------------------------
+-- RADNET CES to CES endpoints Connections group
+-- --------------------------------------------------------------
+
+rnetProtocolCesConnectIndexNext   OBJECT-TYPE
+        SYNTAX INTEGER (1..2147483647)
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+               "The next available value of rnetProtocolCesConnectIndex,
+		when creating entries in the rnetProtocolCesConnectTable.
+		To obtain the rnetProtocolCesConnectIndex value for a new 
+		entry, the manager performs a READ operation to 
+		obtain the current value of this object. After each 
+		READ operation of this object, the agent must 
+		modify it to the next available value. "
+	::= { rnetProtocolCesConnection 1 }
+
+
+-- --------------------------------------------------------------
+--  RADNET CES to CES connection table.
+-- --------------------------------------------------------------
+
+rnetProtocolCesConnectTable	OBJECT-TYPE
+	SYNTAX	SEQUENCE OF RnetProtocolCesConnectEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+		"This table defines virtual connections between two CES
+		 interfaces." 
+	::= { rnetProtocolCesConnection 2 }
+
+
+rnetProtocolCesConnectEntry	OBJECT-TYPE
+	SYNTAX	RnetProtocolCesConnectEntry
+	MAX-ACCESS	not-accessible
+	STATUS	current
+	DESCRIPTION
+	        "An entry defines a virtual connection between two CES
+		 interfaces."
+	INDEX	{ rnetProtocolCesConnectIndex,
+		  rnetProtocolCesConnectLowIfIndex,
+		  rnetProtocolCesConnectHighIfIndex }
+	::= { rnetProtocolCesConnectTable 1 }
+
+RnetProtocolCesConnectEntry ::= SEQUENCE {
+	rnetProtocolCesConnectIndex
+		INTEGER,
+	rnetProtocolCesConnectLowIfIndex
+		InterfaceIndex,
+	rnetProtocolCesConnectHighIfIndex
+		InterfaceIndex,
+	rnetProtocolCesConnectAdminStatus
+		INTEGER,
+	rnetProtocolCesConnectL2hOperStatus
+		INTEGER,
+	rnetProtocolCesConnectH2lOperStatus
+		INTEGER,
+	rnetProtocolCesConnectL2hLastChange
+		TimeStamp,
+	rnetProtocolCesConnectH2lLastChange
+		TimeStamp,
+	rnetProtocolCesConnectBusSelection
+		INTEGER,
+	rnetProtocolCesConnectRowStatus
+		RowStatus,
+    rnetProtocolCesConnectCbrService                 
+		INTEGER,
+    rnetProtocolCesConnectCbrClockMode               
+		INTEGER,
+    rnetProtocolCesConnectCas                        
+		INTEGER,
+    rnetProtocolCesConnectPartialFill                
+		INTEGER,
+    rnetProtocolCesConnectBufMaxSize                 
+		INTEGER,
+    rnetProtocolCesConnectCdvRxT                     
+		INTEGER,
+    rnetProtocolCesConnectCellLossIntegrationPeriod  
+		INTEGER,
+    rnetProtocolCesConnectConnType                   
+		INTEGER
+	}
+
+rnetProtocolCesConnectIndex   OBJECT-TYPE
+        SYNTAX INTEGER (1..2147483647)
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The index of this table."
+	::= { rnetProtocolCesConnectEntry 1 }
+
+rnetProtocolCesConnectLowIfIndex   OBJECT-TYPE
+        SYNTAX InterfaceIndex
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The ifIndex associated to the CES low interface."
+	::= { rnetProtocolCesConnectEntry 2 }
+
+rnetProtocolCesConnectHighIfIndex   OBJECT-TYPE
+        SYNTAX InterfaceIndex
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The ifIndex associated to the CES high interface."
+	::= { rnetProtocolCesConnectEntry 3 }
+
+rnetProtocolCesConnectAdminStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+                        up(1),
+			down(2)
+	}
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"The desired state of the connection."
+	::= { rnetProtocolCesConnectEntry 4 }
+
+rnetProtocolCesConnectL2hOperStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+			up(1),
+			down(2),
+			unknown(3)
+	}
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The current operational state of the connection, in
+		 the low to high direction."
+	::= { rnetProtocolCesConnectEntry 5 }
+
+rnetProtocolCesConnectH2lOperStatus   OBJECT-TYPE
+        SYNTAX INTEGER {
+			up(1),
+			down(2),
+			unknown(3)
+	}
+	MAX-ACCESS read-only
+        STATUS current
+        DESCRIPTION
+		"The current operational state of the connection, in
+		 the high to low direction."
+	::= { rnetProtocolCesConnectEntry 6 }
+
+rnetProtocolCesConnectL2hLastChange   OBJECT-TYPE
+	SYNTAX TimeStamp
+	MAX-ACCESS read-only
+	STATUS current
+	DESCRIPTION
+		"The value of sysUpTime at the time the connection 
+		 entered its current operational state in the low to
+		 high direction.  If the current state was entered 
+		 prior to the last re-initialization of the local 
+		 network management subsystem, then this object 
+		 contains a zero value."
+	::= { rnetProtocolCesConnectEntry 7 }
+
+rnetProtocolCesConnectH2lLastChange   OBJECT-TYPE
+	SYNTAX TimeStamp
+	MAX-ACCESS read-only
+	STATUS current
+	DESCRIPTION
+		"The value of sysUpTime at the time the connection 
+		 entered its current operational state in the high 
+		 to low direction.  If the current state was entered 
+		 prior to the last re-initialization of the local 
+		 network management subsystem, then this object 
+		 contains a zero value."
+	::= { rnetProtocolCesConnectEntry 8 }
+
+rnetProtocolCesConnectBusSelection   OBJECT-TYPE
+        SYNTAX INTEGER {
+			first(1),
+			second(2),
+			automatic(3)
+	}
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"An internal bus entry."
+        DEFVAL { automatic }
+	::= { rnetProtocolCesConnectEntry 9 }
+
+rnetProtocolCesConnectRowStatus   OBJECT-TYPE
+        SYNTAX RowStatus
+	MAX-ACCESS read-create
+        STATUS current
+        DESCRIPTION
+		"This object is used to create
+		 a new row or modify or delete an
+		 existing row in this table."
+	::= { rnetProtocolCesConnectEntry 10 }
+
+rnetProtocolCesConnectCbrService       OBJECT-TYPE
+    SYNTAX        INTEGER {
+                      unstructured(1),
+                      structured(2)
+                      }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Define if DSx/Ex service isas structured or unstructurednot. A
+         structured(2) interface is some nx64kbKbps. An unstructured
+         (1) interface is 1.544Mbps, 2.048Mbps, 6.312Mbps, 44.736 Mbps,
+         or 34.368 Mbps. unstructured(1) passes all bits through the
+         ATM network.  strucutured(2) passes data bits through the
+         ATM network, and may also pass signalling bits
+         
+         At this time, only unstructured mode is defined for the
+         44.736 Mbps and 34.368 Mbps services.
+
+			The same parameter is defined in the rnetProtocolDSX1ConfigTable  with read			-create access"
+    ::= { rnetProtocolCesConnectEntry 11 }
+
+rnetProtocolCesConnectCbrClockMode     OBJECT-TYPE
+    SYNTAX        INTEGER {
+                      synchronous(1),
+                      srts(2),
+                      adaptive(3)
+                      }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "Define if DSx/Ex service clocking mode. This maps into
+         transmit clock source of CBR interface.
+
+         For structured modes this value, if present, must be set to
+         synchronous(1).
+			
+			The same parameter is defined in the rnetProtocolDSX1ConfigTable with read			-create access"
+    DEFVAL { synchronous } 
+    ::= { rnetProtocolCesConnectEntry 12 }
+
+rnetProtocolCesConnectCas      OBJECT-TYPE
+    SYNTAX        INTEGER {
+                      basic(1),
+                      e1Cas(2),
+                      ds1SfCas(3),
+                      ds1EsfCas(4),
+                      j2Cas(5)
+                      }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "This parameter selects which AAL1 Format should be used:
+         Basic does not carry CAS bits, and uses a single 125 usec frame.
+         e1Cas, ds1SfCas, dS1EsfCas and j2Cas carry CAS bits in a
+         multiframe structure for E1, DS1 SF, DS1 ESF and J2 
+         respectively.
+         This applies to structured interfaces only. Default is
+         basic (1). For unstructured interfaces this value, if present,
+         must be set to the default of basic (1).
+
+			
+			The same parameter is defined in the rnetProtocolDSX1ConfigTable with read			-create access."
+    DEFVAL { basic } 
+    ::= { rnetProtocolCesConnectEntry 13 }
+
+rnetProtocolCesConnectPartialFill     OBJECT-TYPE
+    SYNTAX        INTEGER (0 .. 47)
+    MAX-ACCESS    read-create
+    STATUS        current
+    DESCRIPTION
+        "If partial cell fill is used, the number of user octets per
+         cell must be set with this parameter.  Setting this parameter
+         to zero disables partial cell fill, and causes all cells to
+         be completely filled before they are sent."
+    DEFVAL { 0 } -- Partial Cell Fill not used
+    ::= { rnetProtocolCesConnectEntry 14 }
+
+rnetProtocolCesConnectBufMaxSize      OBJECT-TYPE
+    SYNTAX        INTEGER  (1..65536)
+    UNITS         "10 usec"
+    MAX-ACCESS    read-create
+    STATUS        current
+    DESCRIPTION
+         "Define maximum size in 10 microsecond increments of the
+          reassembly buffer. Some implementations may want allow the
+          maximum buffer size to be programmed to a size less than the
+          physical limit to reduce the maximum delay through a circuit."
+    DEFVAL { 128 } 
+    ::= { rnetProtocolCesConnectEntry 15 }
+
+rnetProtocolCesConnectCdvRxT         OBJECT-TYPE
+    SYNTAX        INTEGER  (1..65535)
+    UNITS         "10 usec"
+    MAX-ACCESS    read-create
+    STATUS        current
+    DESCRIPTION
+        "The maximum cell arrival jitter in 10 usec increments that 
+         the reassembly process will tolerate in the cell stream
+         without producing errors on the CBR service interface."
+    DEFVAL { 100 } 
+    ::= { rnetProtocolCesConnectEntry 16 }
+
+rnetProtocolCesConnectCellLossIntegrationPeriod   OBJECT-TYPE
+    SYNTAX        INTEGER  (1000 .. 65535)
+    UNITS         "msec"
+    MAX-ACCESS    read-create
+    STATUS        current
+    DESCRIPTION
+        "The time in milliseconds for the cell loss integration period. 
+         If a cells are continuously lost for this period of time,
+         rnetProtocolCesConnectCellLossStatus is set to loss (2). The
+         default definition is 2500."
+    DEFVAL { 2500 } 
+    ::= { rnetProtocolCesConnectEntry 17 }
+
+rnetProtocolCesConnectConnType              OBJECT-TYPE
+    SYNTAX        INTEGER {
+                      other(1),
+                      pvc(2),
+                      activeSvc(3),
+                      passiveSvc(4)
+                      }
+    MAX-ACCESS    read-only
+    STATUS        current
+    DESCRIPTION
+        "The type of ATM connectivity between associated CES IWF's.
+         Valid values are:
+            other      - none of the types specified below
+            pvc        - supporting connectivity is a permanent
+                         virtual connection
+            activeSvc  - attempt calls whenever none established
+            passiveSvc - accept calls"
+    ::= { rnetProtocolCesConnectEntry 18 }
+
+
+END

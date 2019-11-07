@@ -1,0 +1,85 @@
+SIEMENS-ICN-GLOBAL-REG DEFINITIONS ::= BEGIN
+
+IMPORTS
+    MODULE-IDENTITY, OBJECT-IDENTITY, enterprises
+        FROM SNMPv2-SMI;
+ 
+
+siemensICNGlobalRegModule MODULE-IDENTITY
+    LAST-UPDATED "200102150000Z"  -- 15-Feb-2001 12:00 AM EST 
+    ORGANIZATION "Siemens ICN, LLC"
+    CONTACT-INFO
+        "  Mounire El Houmaidi
+			Siemens ICN, LLC
+			400 Rinehart Road
+			Lake Mary, FL 32746		
+            USA
+
+            Tel: 	+1-407-942-7361
+            E-mail: mounire.el.houmaidi@icn.siemens.com "
+    DESCRIPTION
+        "Siemens ICN Global Registration Module"
+    -- Revision History
+    REVISION    "200103010000Z" -- 1-March-2001 12:00 AM EST
+    DESCRIPTION
+        "The initial Revision of this module"   
+       ::= { siemensICNModules 1}  
+       
+        
+siemensICN OBJECT-IDENTITY
+    STATUS      current
+    DESCRIPTION
+        "The root of the OID sub-tree assigned to Siemens ICN by the
+        Internet Assigned Numbers Authority (IANA)"
+    ::= { enterprises  1894 }
+
+siemensICNReg  OBJECT-IDENTITY
+    STATUS      current
+    DESCRIPTION
+        "Sub-tree for registration"
+    ::= { siemensICN 1 }
+
+siemensICNModules OBJECT-IDENTITY
+    STATUS      current
+    DESCRIPTION
+        "Sub-tree for modules registration"
+    ::= { siemensICNReg 1 } 
+     
+siemensICNProducts OBJECT-IDENTITY
+    STATUS      current
+    DESCRIPTION
+        "Sub-tree for specific object and event definitions"
+    ::= { siemensICN 2 }   
+    
+convergentDevBusUnitProd OBJECT-IDENTITY
+    STATUS      current
+    DESCRIPTION
+        "Sub-tree for Convergent Development Business Unit products"
+    ::= { siemensICNProducts 1 }     
+    
+siemensICNAccessionMIB OBJECT-IDENTITY
+    STATUS      current
+    DESCRIPTION
+        "Sub-tree for the Accession objects and events definition"
+    ::= { convergentDevBusUnitProd 1 } 
+    
+siemensICNBU OBJECT-IDENTITY
+    STATUS      current
+    DESCRIPTION
+        "Sub-tree for Business Units registration"
+    ::= { siemensICNReg 2 }
+    
+
+convergentDevBusUnitReg OBJECT-IDENTITY
+    STATUS      current
+    DESCRIPTION
+        "Sub-tree for Convergent Development Business Unit registration"
+    ::= { siemensICNBU 1 } 
+
+accession OBJECT-IDENTITY
+    STATUS      current
+    DESCRIPTION
+        "Sub-tree for Accession Registration"
+    ::= { convergentDevBusUnitReg 1 } 
+
+END

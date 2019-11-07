@@ -1,0 +1,810 @@
+BRAS-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    -- from rfc1902.txt:
+    MODULE-IDENTITY, OBJECT-TYPE, OBJECT-IDENTITY,
+    Counter32, Integer32, Gauge32, IpAddress, enterprises, mib-2
+                                                        FROM SNMPv2-SMI
+
+    -- from rfc1903.txt
+    TEXTUAL-CONVENTION, DisplayString, RowStatus        FROM SNMPv2-TC
+
+    -- from rfc2233.txt
+    ifIndex                                             FROM IF-MIB;
+
+
+sni             OBJECT IDENTIFIER ::= { enterprises 231}
+siemensUnits    OBJECT IDENTIFIER ::= {sni 7}
+oenProductMibs  OBJECT IDENTIFIER ::= {siemensUnits 1}
+sn              OBJECT IDENTIFIER ::= {oenProductMibs 4}
+
+
+
+bras    MODULE-IDENTITY
+           LAST-UPDATED    "200007060000Z"
+           ORGANIZATION    "SIEMENS AG"
+           CONTACT-INFO
+           "   ICN WN CS EP C13
+               Hofmannstr. 51
+               81359 Munich, Germany
+
+               Thomas Rosenstock
+               Tel:   +49 (0)89 722 43209
+               Fax:   +49 (0)89 722 62211
+               Email: Thomas.Rosenstock@icn.siemens.de "
+
+           DESCRIPTION
+              "The MIB module that describes the MIB objects
+              for management of the RAS functionality in
+              Internode Step 3. This MIB will be used by the
+              Integrated Packet Service Unit (IPSU) and the
+              Packet Hub (PHUB)."
+           ::= { sn 5 }
+
+
+brasMIBObjects  OBJECT IDENTIFIER ::= {bras 1}
+brasMIBTraps    OBJECT IDENTIFIER ::= {bras 2}
+brasMIBTrapVars OBJECT IDENTIFIER ::= {bras 3}
+
+--      BRAS-MIB contains following groups:
+
+-- brasConfig contains objects for global B-RAS configuration:
+brasConfig              OBJECT IDENTIFIER ::= { brasMIBObjects 1 }
+
+-- brasStatistics contains objects for global B-RAS statistics:
+brasStatistics          OBJECT IDENTIFIER ::= { brasMIBObjects 2 }
+
+-- brasDomain contains domain and connection specific objects:
+brasDomain                      OBJECT IDENTIFIER ::= { brasMIBObjects 3 }
+brasDomainAdmin                 OBJECT IDENTIFIER ::= { brasDomain 1}
+brasSubscriberConnection        OBJECT IDENTIFIER ::= { brasDomain 2}
+brasDomainCompulsoryTunneling   OBJECT IDENTIFIER ::= { brasDomain 3}
+
+
+-- first the TEXTUAL CONVENTIONS:
+
+BrasPppAuthenticationMethod ::= TEXTUAL-CONVENTION
+        STATUS current
+        DESCRIPTION
+            "Authentication method for PPP connections"
+        SYNTAX INTEGER {
+                none(0),
+                pap(1),
+                chap(2),
+                eap(3),
+                other(4)
+                }
+
+-- if a more general ATM address type is needed
+-- (E.164, NSAP, subaddresses,...), take
+-- IpoaAtmAddr from IPOA-MIB (RFC2320)
+BrasE164Number ::= TEXTUAL-CONVENTION
+        STATUS current
+        DESCRIPTION
+            "E.164 Address, area code in ATM Forum format"
+        SYNTAX OCTET STRING (SIZE (0..20))
+
+-- The textual convention InterfaceIndex is taken from the IF-MIB
+-- (RFC 2233).
+InterfaceIndex ::= TEXTUAL-CONVENTION
+       DISPLAY-HINT "d"
+       STATUS current
+       DESCRIPTION
+            "A unique value, greater than zero, for each interface
+            or interface sub-layer in the managed system.  It is
+            recommended that values are assigned contiguously
+            starting from 1.  The value for each interface sub-
+            layer must remain constant at least from one re-
+            initialization of the entity's network management
+            system to the next re-initialization."
+       SYNTAX Integer32 (1..2147483647)
+
+
+
+-- =====================================================
+
+-- Global B-RAS data are:
+
+brasOwnHostName OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..255))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The own hostname of this B-RAS. This name is
+        used for tunnel setup"
+    ::= { brasConfig 1}
+
+brasDefaultSubscrAuthen OBJECT-TYPE
+    SYNTAX      BrasPppAuthenticationMethod
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Default subscriber authentication method. Can be
+        either none, PAP or CHAP. This default can be
+        redefined for each domain separatly."
+    DEFVAL      { none }
+    ::= { brasConfig 2 }
+
+
+brasDefaultSubscrPppTimeout OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Default timeout for the subscriber PPP session in seconds"
+    DEFVAL      { 60 }
+    ::= {brasConfig 3 }
+
+----------------------- Global B-RAS statistics ------------------------------
+brasCurrentSubscrConnectPvc OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "current number of PVC for subscriber connections"
+    ::= { brasStatistics 1 }
+
+brasCurrentSubscrConnectSvc OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "current number of SVC for subscriber connections"
+    ::= { brasStatistics 2 }
+
+brasCurrentDomainConnectPvc OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "current number of PVC for domain connections"
+    ::= { brasStatistics 3 }
+
+brasCurrentDomainConnectSvc OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "current number of SVC for domain connections"
+    ::= { brasStatistics 4 }
+
+brasCurrentDomainConnectIp OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "current number of IP connections to domain"
+    ::= { brasStatistics 5 }
+
+brasCurrentPppSessions OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "current number of PPP sessions"
+    ::= { brasStatistics 6 }
+
+brasCurrentDomainsDefined OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Number of domains currently defined"
+    ::= { brasStatistics 7 }
+
+brasCurrentDomainsConnectServed OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Number of domains currently served"
+    ::= { brasStatistics 8 }
+
+brasNumberSubscriberConnections OBJECT-TYPE
+    SYNTAX      Counter32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Number of subscriber connections"
+    ::= { brasStatistics 9 }
+
+-- ==============================================
+-- now the domain specific data:
+
+brasDomainAdminTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BrasDomainEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "The brasDomainAdminTable contains all information
+        known about a specific domain (ISP or VPN).
+        These data must be configured by SNMP and will
+        be used as default values for domain connections
+        if there are no RADIUS data available. It is assumed
+        that all L2TP and IP over ATM connections to the
+        domain are configured equally.
+        The brasDomainAdminTable always has to contain one row with
+        brasDomainName 'home', which represents a domain with
+        default settings. This row has to be created and configured
+        explicitly like any other row. This 'home' entry is used when
+        the Telco operates as ISP itself or a subscriber dials in
+        without a domain suffix."
+    ::= { brasDomainAdmin 1 }
+
+brasDomainAdminEntry OBJECT-TYPE
+    SYNTAX      BrasDomainEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry containing management information applicable to
+        a particular domain"
+    INDEX       { brasDomainName }
+    ::= { brasDomainAdminTable 1 }
+
+BrasDomainEntry ::= SEQUENCE {
+        brasDomainName                          DisplayString,
+        brasDomainServiceType                   INTEGER,
+        brasDomainTunnelType                    INTEGER,
+        brasDomainTunnelProxyAuthen             INTEGER,
+        brasDomainDefaultPppAccountMode         INTEGER,
+        brasDomainL2tpAccountMode               INTEGER,
+        brasDomainPrimDnsAddress                IpAddress,
+        brasDomainSecDnsAddress                 IpAddress,
+        brasDomainPrimRadiusAuthenAddress       IpAddress,
+        brasDomainPrimRadiusAuthenSecret        OCTET STRING,
+        brasDomainSecRadiusAuthenAddress        IpAddress,
+        brasDomainSecRadiusAuthenSecret         OCTET STRING,
+        brasDomainPrimRadiusAccountAddress      IpAddress,
+        brasDomainPrimRadiusAccountSecret       OCTET STRING,
+        brasDomainSecRadiusAccountAddress       IpAddress,
+        brasDomainSecRadiusAccountSecret        OCTET STRING,
+        brasDomainNumberCurrentUser             Gauge32,
+        brasDomainNumberActiveConnections       Gauge32,
+        brasDomainL2tpHDLCHeader                INTEGER,
+        brasDomainAdminRowStatus                RowStatus
+        }
+
+
+brasDomainName OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE(1..80))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The name which identifies the domain"
+    ::= {brasDomainAdminEntry 1 }
+
+brasDomainServiceType OBJECT-TYPE
+    SYNTAX      INTEGER {none(0), pi(1), vpop(2), vpn(3), tunnel(4) }
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Service type of this domain:
+        (0)     none
+        (1)     public Internet Access (Telco is acting as ISP) :
+                PPP is terminated. Forwarding of packets is based on
+                regular IP routing. (The 'home' row in this table
+                has to be of this type.)
+        (2)     virtual PoP for ISP: PPP is terminated.
+                Forwarding of IP packets is based on VC lookup
+                (no IP routing). Thus the connection to the corporate
+                has to be a one-hop connection.
+        (3)     VPN (Virtual Private Network) : PPP is terminated.
+                Forwarding of IP packets is based on VC lookup
+                (no IP routing). Thus the connection to the corporate
+                has to be a one-hop connection.
+        (4)     L2TP tunneling: Several PPP sessions from different
+                subscribers are multiplexed into one or more L2TP
+                tunnels. This service is also called 'Relay Service'"
+    DEFVAL      { 0 }
+    ::= {brasDomainAdminEntry 2}
+
+brasDomainTunnelType OBJECT-TYPE
+    SYNTAX      INTEGER { none(0), tunnelOverAal5(1), tunnelOverIpOneHop(2), tunnelOverIpRouted(3) }
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "In case of brasDomainServiceType is set to tunnel(4), this object
+        determines the type of the tunnel. (Otherwise it is ignored.)
+        (0)     none
+        (1)     l2tp tunnel directly over AAL5
+        (2)     l2tp tunnel over UDP/IP/AAL5 (1 hop, not routed)
+        (3)     l2tp tunnel is routed over IP "
+    DEFVAL      { 0 }
+    ::= {brasDomainAdminEntry 3 }
+
+brasDomainTunnelProxyAuthen OBJECT-TYPE
+    SYNTAX      INTEGER { noProxyAuthen(0), proxyAuthen(1) }
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "This object determines whether a proxy authentication for
+        tunnel to this domain is allowed or not.
+        noProxyAuthen(0)        :       proxy authentication is NOT allowed
+        proxyAuthen(1)          :       proxy authentication is allowed."
+    ::= {brasDomainAdminEntry 4 }
+
+brasDomainDefaultPppAccountMode OBJECT-TYPE
+    SYNTAX      INTEGER { none(0), local(1), isp(2)}
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Accounting mode for PPP sessions:
+        (0)     none
+        (1)     Local accounting
+        (2)     Accounting at ISP"
+    DEFVAL      { 0 }
+    ::= {brasDomainAdminEntry 5 }
+
+brasDomainL2tpAccountMode OBJECT-TYPE
+    SYNTAX      INTEGER { none(0), local(1), isp(2)}
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Accounting mode for L2TP sessions:
+        (0)     none
+        (1)     Local accounting
+        (2)     Accounting at ISP"
+    DEFVAL      { 0 }
+    ::= {brasDomainAdminEntry 6 }
+
+brasDomainPrimDnsAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "IP address of primary subscriber DNS server."
+    ::= {brasDomainAdminEntry 7 }
+
+brasDomainSecDnsAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "IP address of secondary subscriber DNS server."
+    ::= {brasDomainAdminEntry 8 }
+
+brasDomainPrimRadiusAuthenAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "IP address of the primary RADIUS authentication server"
+    ::= {brasDomainAdminEntry 9 }
+
+brasDomainPrimRadiusAuthenSecret OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(0..32))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Secret of the primary RADIUS authentication server"
+    ::= {brasDomainAdminEntry 10 }
+
+brasDomainSecRadiusAuthenAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "IP address of the secondary RADIUS authentication server"
+    ::= {brasDomainAdminEntry 11 }
+
+brasDomainSecRadiusAuthenSecret OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(0..32))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Secret of the secondary RADIUS authentication server"
+    ::= {brasDomainAdminEntry 12 }
+
+brasDomainPrimRadiusAccountAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "IP address of the primary RADIUS accounting server"
+    ::= {brasDomainAdminEntry 13 }
+
+brasDomainPrimRadiusAccountSecret OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(0..32))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Secret of the primary RADIUS accounting server"
+    ::= {brasDomainAdminEntry 14 }
+
+brasDomainSecRadiusAccountAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "IP address of the secondary RADIUS accounting server"
+    ::= {brasDomainAdminEntry 15 }
+
+brasDomainSecRadiusAccountSecret OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(0..32))
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Secret of the secondary RADIUS accounting server"
+    ::= {brasDomainAdminEntry 16 }
+
+brasDomainNumberCurrentUser OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Number of users currently logged into this domain"
+    ::= {brasDomainAdminEntry 17 }
+
+brasDomainNumberActiveConnections OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Number of currently active domain connections"
+    ::= {brasDomainAdminEntry 18 }
+
+brasDomainL2tpHDLCHeader OBJECT-TYPE
+    SYNTAX      INTEGER {other(0), hdlc(1)}
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Identifies whether L2TP uses HDLC header or other.
+        other   (0)
+        hdlc    (1)
+        In future releases the HDLC header might be omitted,
+        but currently it is always required"
+    DEFVAL      { 1 }
+    ::= {brasDomainAdminEntry 19 }
+
+
+brasDomainAdminRowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Used to create new rows in this table"
+    ::= {brasDomainAdminEntry 20 }
+
+
+-- ===================================
+
+brasDomainMappingTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BrasDomainMappingEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "The brasDomainMapping table simplifies the task of
+        listing all connections for a specific domain.
+        The index 'brasDomainName' is defined in the brasDomainAdminTable,
+        ifIndex in ifTable."
+    ::= { brasDomainAdmin 2 }
+
+brasDomainMappingEntry OBJECT-TYPE
+    SYNTAX      BrasDomainMappingEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry in the brasDomainMappingTable"
+    INDEX       { brasDomainName, brasDomainMappingConnType, ifIndex }
+    ::= { brasDomainMappingTable 1 }
+
+BrasDomainMappingEntry ::= SEQUENCE {
+        brasDomainMappingConnType       INTEGER
+        }
+
+brasDomainMappingConnType OBJECT-TYPE
+    SYNTAX      INTEGER {none(0), subscr(1), domain(2) }
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Connection Type:
+        (0)     none
+        (1)     subscriberConnection
+        (2)     domainConnection"
+    ::= {brasDomainMappingEntry 1 }
+
+
+-- ===================================
+
+brasDomainIpPoolTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BrasDomainIpPoolTableEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This table can be used to configure several IP pools
+        for one domain."
+    ::= { brasDomainAdmin 3 }
+
+brasDomainIpPoolEntry OBJECT-TYPE
+    SYNTAX      BrasDomainIpPoolTableEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry in the brasDomainIpPoolTable."
+    INDEX       { brasDomainName, brasDomainIpPoolIndex }
+    ::= { brasDomainIpPoolTable 1 }
+
+BrasDomainIpPoolTableEntry ::= SEQUENCE {
+        brasDomainIpPoolIndex           Integer32,
+        brasDomainIpPoolLow             IpAddress,
+        brasDomainIpPoolHigh            IpAddress,
+        brasDomainIpPoolRowStatus       RowStatus
+        }
+
+brasDomainIpPoolIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Index of this IP pool"
+    ::= {brasDomainIpPoolEntry 1 }
+
+brasDomainIpPoolLow OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "start address of IP pool"
+    ::= {brasDomainIpPoolEntry 2 }
+
+brasDomainIpPoolHigh OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "End address of IP pool"
+    ::= {brasDomainIpPoolEntry 3 }
+
+brasDomainIpPoolRowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Used to create new rows in this table"
+    ::= {brasDomainIpPoolEntry 4 }
+
+-- ===================================
+
+brasDomainLnsTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BrasDomainLnsTableEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "This table defines IP addresses of LNS (L2TP Network Server)
+         for every domain."
+    ::= { brasDomainAdmin 4 }
+
+brasDomainLnsEntry OBJECT-TYPE
+    SYNTAX      BrasDomainLnsTableEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry in the brasDomainLnsTable."
+    INDEX       { brasDomainName, brasDomainLnsIndex }
+    ::= { brasDomainLnsTable 1 }
+
+BrasDomainLnsTableEntry ::= SEQUENCE {
+        brasDomainLnsIndex      INTEGER,
+        brasDomainLnsAddress    IpAddress,
+        brasDomainLnsStatus     RowStatus
+        }
+
+brasDomainLnsIndex OBJECT-TYPE
+    SYNTAX      INTEGER (1..10)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Index of this LNS. A maximum of 10 LNS per domain are configurable."
+    ::= {brasDomainLnsEntry 1 }
+
+brasDomainLnsAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Index of this LNS:
+        prim(1)         primary LNS server
+        sec(2)          secondary LNS server"
+    ::= {brasDomainLnsEntry 2 }
+
+brasDomainLnsStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Used to create, modify or delete rows in this table."
+    ::= {brasDomainLnsEntry 3 }
+
+
+-- ===================================
+-- The brasCompulsaryTunnelingTable defines whether domain-specific
+-- users (identified by its PVC) have to be tunneled to a specific ISP
+
+brasCompulsoryTunnelingTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BrasCompulsoryTunnelingTableEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        ""
+    ::= { brasDomainCompulsoryTunneling 1 }
+
+brasCompulsoryTunnelingEntry OBJECT-TYPE
+    SYNTAX      BrasCompulsoryTunnelingTableEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        ""
+    INDEX       { ifIndex }
+    ::= { brasCompulsoryTunnelingTable 1 }
+
+BrasCompulsoryTunnelingTableEntry ::= SEQUENCE {
+        brasCompulsoryDomainName        DisplayString,
+        brasCompulsoryTunnelingStatus   RowStatus
+        }
+
+brasCompulsoryDomainName OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "The name of the domain where the user has to be tunneled to
+        when he comes in on this PVC."
+    ::= {brasCompulsoryTunnelingEntry 1 }
+
+brasCompulsoryTunnelingStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-create
+    STATUS      current
+    DESCRIPTION
+        "Used to create, modify or delete rows in this table"
+    ::= {brasCompulsoryTunnelingEntry 2 }
+
+-- ===================================
+
+brasSubscriberConnectionTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BrasSubscriberConnectionTableEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "A SUBSCRIBER CONNECTION describes all parameters
+        and states of an existing connection (PVC, SVC)
+        to an subscriber.
+        The table is indexed with ifIndex of the interface
+        over which data packets are sent to the subscriber.
+        (In case of the IPSU these are the AAL5 interfaces.)"
+    ::= { brasSubscriberConnection 1 }
+
+brasSubscriberConnectionEntry OBJECT-TYPE
+    SYNTAX      BrasSubscriberConnectionTableEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry in the brasSubscriberConnectionTable"
+    INDEX       { ifIndex }
+    ::= { brasSubscriberConnectionTable 1 }
+
+BrasSubscriberConnectionTableEntry ::= SEQUENCE {
+        brasSubscrConnectType           INTEGER,
+        brasSubscrName                  DisplayString,
+        brasSubscrReqDomainName         DisplayString,
+        brasSubscrDialledNumber         BrasE164Number,
+        brasSubscrDiallingNumber        BrasE164Number,
+        brasSubscrConnectionStatus      INTEGER,
+        brasSubscrAuthenMethod          BrasPppAuthenticationMethod,
+        brasSubscrIpAddress                     IpAddress,
+        brasSubscrUpperIfIndex          InterfaceIndex,
+        brasSubscrLocalL2tpCid          Integer32,
+        brasSubscrNetPppIfIndex         InterfaceIndex
+        }
+
+brasSubscrConnectType OBJECT-TYPE
+    SYNTAX      INTEGER {other(0), pvc(1), svc(2)}
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Connection type:
+        (0)     other
+        (1)     PVC
+        (2)     SVC"
+    ::= {brasSubscriberConnectionEntry 1 }
+
+brasSubscrName OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "name of the user on this connection"
+    ::= {brasSubscriberConnectionEntry 2 }
+
+brasSubscrReqDomainName OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Name of the requested domain"
+    ::= {brasSubscriberConnectionEntry 3 }
+
+brasSubscrDialledNumber OBJECT-TYPE
+    SYNTAX      BrasE164Number
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Dialled Number"
+    ::= {brasSubscriberConnectionEntry 4 }
+
+brasSubscrDiallingNumber OBJECT-TYPE
+    SYNTAX      BrasE164Number
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Dialling Number"
+    ::= {brasSubscriberConnectionEntry 5 }
+
+brasSubscrConnectionStatus OBJECT-TYPE
+    SYNTAX      INTEGER {idle(0), wait(1), accept(2), actNoTunnel(3), actTunnel(4)}
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Connection status:
+        (0)     idle
+        (1)     waiting for authentication
+        (2)     accepted, not yet active
+        (3)     active, not tunneled
+        (4)     active, tunneled"
+    ::= {brasSubscriberConnectionEntry 6 }
+
+brasSubscrAuthenMethod OBJECT-TYPE
+    SYNTAX      BrasPppAuthenticationMethod
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Authentication method which was negotiated"
+    ::= {brasSubscriberConnectionEntry 7 }
+
+brasSubscrIpAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "IP address assigned to the subscriber"
+    ::= {brasSubscriberConnectionEntry 8 }
+
+brasSubscrUpperIfIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "ifIndex of the upper layer interface
+        (this might be L2TP or PPP)"
+    ::= {brasSubscriberConnectionEntry 9 }
+
+brasSubscrLocalL2tpCid OBJECT-TYPE
+    SYNTAX      Integer32 (0..65535)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "corresponding local CID of a L2TP session (if any).
+        This CID corresponds to L2TPSessionStatsLocalCID
+        in L2TP-MIB."
+    ::= {brasSubscriberConnectionEntry 10 }
+
+brasSubscrNetPppIfIndex OBJECT-TYPE
+    SYNTAX      InterfaceIndex
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Corresponding ifIndex for the PPP/IP connection to the domain
+        (if any)"
+    ::= {brasSubscriberConnectionEntry 11 }
+
+--OBJECT-TYPE
+--    SYNTAX
+--    MAX-ACCESS        read-only
+--    STATUS    current
+--    DESCRIPTION
+--      ""
+--    ::= {subscriberConnectionEntry  }
+
+
+END
+

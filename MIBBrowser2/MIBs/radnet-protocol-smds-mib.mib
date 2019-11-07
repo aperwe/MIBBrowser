@@ -1,0 +1,160 @@
+-- @(#)rnet_smds.mib
+-- ----------------------------------------------------------------------
+-- RADNET SMDS MIB
+-- Copyright (c) 1996 RADNET Ltd.
+-- ----------------------------------------------------------------------
+--
+-- MIB Module :   RADNET-PROTOCOL-SMDS-MIB
+--
+-- Revision   :   V2.102
+--
+-- Description:   Definition of SMDS protocol.
+-- ----------------------------------------------------------------------
+RADNET-PROTOCOL-SMDS-MIB DEFINITIONS ::= BEGIN
+
+	IMPORTS
+      OBJECT-TYPE, MODULE-IDENTITY          	
+								FROM SNMPv2-SMI
+	
+		ifIndex				FROM RFC1213-MIB
+
+		sipDxiEntry  			FROM SIP-MIB
+
+		rnetProtocol, RnetConnectType
+								FROM RADNET-PROTOCOL-MIB;
+			
+
+               rnetProtocolSmds MODULE-IDENTITY
+                    LAST-UPDATED "9709021300Z"
+                    ORGANIZATION "RADNET"
+                    CONTACT-INFO
+                      "          Eitan Mardiks
+                        Postal:  RADNET Ltd.
+				24 Raul Wallenberg St.
+				Tel-Aviv 69719, Israel.
+                        Tel:     +972 3 6455700
+                        Fax:     +972 3 6480582
+                        E-Mail:  eitan@gate.radnet.co.il"
+
+                    DESCRIPTION
+                     "Definition of SMDS protocol."
+                    ::= { rnetProtocol 12 }
+
+
+-- --------------------------------------------------------------
+-- rnetSmds Group
+-- --------------------------------------------------------------
+
+rnetProtocolSmdsIf		OBJECT IDENTIFIER ::= { rnetProtocolSmds 1 }
+
+-- --------------------------------------------------------------
+-- RADNET SIP DXI TABLE
+-- --------------------------------------------------------------
+
+rnetSipDxiTable	OBJECT-TYPE
+	SYNTAX  SEQUENCE OF RnetSipDxiEntry
+	MAX-ACCESS  not-accessible
+	STATUS  current
+	DESCRIPTION
+		"This table contains one more column to support
+       changing the type of Frame Checksum used by the DXI."
+	::= { rnetProtocolSmdsIf 1 }
+
+rnetSipDxiEntry	OBJECT-TYPE
+	SYNTAX  RnetSipDxiEntry
+	MAX-ACCESS  not-accessible
+	STATUS  current
+   DESCRIPTION
+      "This object contains idication of the type 
+		 of Frame Checksum used by the DXI."
+	AUGMENTS { sipDxiEntry }
+	::= { rnetSipDxiTable 1 }
+
+RnetSipDxiEntry ::= SEQUENCE {
+	rnetSipDxiCRC
+		INTEGER,
+	rnetSipDxiHBP
+		INTEGER
+	}
+
+rnetSipDxiCRC	OBJECT-TYPE
+	SYNTAX	INTEGER {
+			crc16(1),
+			crc32(2)
+		}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"The value of this object indicates the type of 
+		 Frame Checksum that can be used by the DXI. 
+		 Current choices include CCITT CRC16 or CRC32."
+	DEFVAL { crc16 }
+	::= { rnetSipDxiEntry 1 }
+
+rnetSipDxiHBP	OBJECT-TYPE
+	SYNTAX	INTEGER {
+			disabled(1),
+			enabled(2)
+		}
+	MAX-ACCESS	read-write
+	STATUS	current
+	DESCRIPTION
+		"The value of this object indicates whether 
+		 the active heart beat poll is enabled 
+		 or disabled."
+	DEFVAL { disabled }
+	::= { rnetSipDxiEntry 2 }
+
+-- --------------------------------------------------------------
+-- RADNET SMDS CONFIG TABLE
+-- --------------------------------------------------------------
+
+rnetProtocolSmdsConfigTable OBJECT-TYPE
+    SYNTAX SEQUENCE OF  RnetProtocolSmdsConfigEntry
+    MAX-ACCESS  not-accessible
+    STATUS  current
+    DESCRIPTION
+       "The SMDS Configuration table."
+    ::= { rnetProtocolSmdsIf 2 }
+
+rnetProtocolSmdsConfigEntry OBJECT-TYPE
+    SYNTAX  RnetProtocolSmdsConfigEntry
+    MAX-ACCESS  not-accessible
+    STATUS  current
+    DESCRIPTION
+       "An entry in the SMDS Configuration table."
+    INDEX  { ifIndex }
+    ::= { rnetProtocolSmdsConfigTable 1 }
+
+RnetProtocolSmdsConfigEntry ::= SEQUENCE {
+	 rnetProtocolSmdsConnectIdentifier
+		 INTEGER,
+    rnetProtocolSmdsConnectType
+		 RnetConnectType						 	
+         }
+
+rnetProtocolSmdsConnectIdentifier	OBJECT-TYPE
+	 SYNTAX	INTEGER
+	 MAX-ACCESS	read-only
+	 STATUS current
+    DESCRIPTION
+		  "This object is implemented only for an interface
+			which is cross-connected to VCL and represents id 
+			of connection to which the interface belongs."
+	::= { rnetProtocolSmdsConfigEntry 1 }
+
+rnetProtocolSmdsConnectType OBJECT-TYPE
+    SYNTAX  RnetConnectType
+    MAX-ACCESS  read-only
+    STATUS  current
+    DESCRIPTION
+        "This object describes the type of the connection
+	      to which the interface belongs. This object, together
+	      with rnetProtocolSmdsConnectIdentifier, determines
+	      the connection to which the interface belongs.
+	      If the interface is not connected, the value of
+	      this object has no meaning."
+	::= { rnetProtocolSmdsConfigEntry 2 }
+
+
+END

@@ -1,0 +1,4941 @@
+--
+--                  WALKair Management Information Base
+--                          walkair.mib
+--
+--                          30/07/2000
+--
+--
+--                    Floware System Solutions Ltd.
+--
+--
+--
+--  1. WALKair system architecture.
+--
+--     The WALKair system is a Wide-Band Wireless Local Loop system.
+--     The system includes two main units: Base Station (BS) and Terminal
+--     Station (TS). Each BS supports up to 16 radio links. Each radio link
+--     support up to 16 TS's.
+--
+--     The BS and the TS are built of Basic Units (BU).
+--     Each BU supports one air link and handles both the air traffic and the
+--     Telecom interfaces.
+--     The base station can include up to 16 BU's and the terminal station
+--     usually includes one BU.
+--
+--     Each BU provides up to 3 Telecom ports. Each Telecom port is supported
+--     by a BU daughter card. Several types of telecom daughter cards are
+--     available: G.703 (E1), ISDN BRI S/T, ISDN BRI U, X.21 / V.35.
+--
+--     Each BU includes a non-volatile memory for storing all configuration
+--     data and parameters.
+--
+--     Each BU includes an IF module.
+--     In a one BU BS or TS, the IF module interfaces with an outdoor RF
+--     up-converter unit (RFU).
+--     In a multi-BU base station all IF modules are connected to an
+--     IFMUX unit. The IFMUX unit interfaces with the outdoor RFU.
+--
+--
+--                                                  |===|====TS A=======|
+--                                      /=====>   |===|====TS B=======| |
+--        Base Station       |=====|  /         |===|====TS C=======| |=|
+--     |=================|===| RFU |<           |RFU| Basic Unit BU |=|
+--     | IFMUX           |=| |=====|  \         |===|===============|
+--     |=================| |            \
+--     | Basic Unit BU 1 |=|              \
+--     |=================| |                \    |===|====TS D=======|
+--     | Basic Unit BU 2 |=|                  \=>|RFU| Basic Unit BU |
+--     |=================|                       |===|===============|
+--
+--
+--
+--      Figure 1-1: BS BU 1 supports TS A,B,C. BS BU 2 supports TS D.
+--
+--  2. WALKAir Agent
+--
+--     The WALKair management architecture is based on SNMP standards.
+--
+--     The SNMP agent resides in each Base Station BU.
+--     The agent is responsible to provide management capabilities
+--     for the base station BU and for all Terminal Stations supported.
+--
+--     The Terminal Station does not have an SNMP agent.
+--     Instead it has a small management kernel which interfaces the
+--     BS BU SNMP agent using the air link Embedded Operation Channel (EOC).
+--
+--     Only one BU in a base station is connected to the management
+--     system. The connection can be provided using one of the following
+--     methods: Inband over a Telecom channel, Remote using a serial
+--     RS-232 interface and a modem or PAD, or direct using Ehternet.
+--
+--     All base station BU's are connected using the BU extension bus.
+--     This bus is used to route the management SNMP traffic between the
+--     the BU's.
+--
+--  3. Addressing WALKair Agents
+--
+--     Each Base Station BU has an IP address. The IP address is set in the
+--     BU using the LCI during installation.
+--     The manager address each BS BU using it's IP address.
+--
+--     The IP addresses of all managed Base STation BUs are set to the manager
+--     by the operator.
+--
+--     The BU physically connected to the Manager serves as a router to the
+--     other base station BU's. The routing is done via the base station
+--     extension bus or using an external HUB.
+--
+--     Each base station will be allocated a subnet IP address space
+--     for it's BU's IP addresses.
+--
+--     The terminal stations are referenced using their index number (0-15).
+--     The terminal station index is the index under which they are registered in
+--     the buSrvTs table.
+--     Since a terminal station is not connected to an IP network and
+--     does not have an IP address, the manager will send requests for
+--     terminal station information to the Base Station BU connected to it.
+--
+--     The terminal station index number number will be written in the community
+--     string of the SNMP message. By looking at the community string the
+--     BS BU SNMP agent will determine how to process the SNMP message.
+--
+--     When referring to the BS BU itself, the manager will use the value 255 in
+--     the community string.
+--
+--  4. WALKAir MIB (Proprietary)
+--
+--     The WALKair MIB includes the proprietary definitions of all the
+--     objects required to manage the WALKair system.
+--     This document defines the proprietary objects required.
+--     Additionally,  standard MIBs are used.
+--
+
+FLOWARE-MIB	DEFINITIONS ::= BEGIN
+
+IMPORTS
+        MODULE-IDENTITY, OBJECT-TYPE, 
+        IpAddress, Counter32, TimeTicks
+                                                FROM SNMPv2-SMI
+        DisplayString,RowStatus,AutonomousType
+									            FROM SNMPv2-TC
+        ifIndex
+                                                FROM RFC1213-MIB
+        TRAP-TYPE                               
+		                                        FROM RFC-1215
+		IANAifType
+		                                        FROM IANAifType-MIB
+		FileName,DownloadAction,Decibel,
+		TSNumber,DeviceId,ServiceId
+                                                FROM FLOWARE-TC
+		products
+		                                        FROM FLOWARE-ROOT;
+
+
+-- enterprises  OBJECT IDENTIFIER ::=
+--   { iso org(3) dod(6) internet(1) private(4) 1 }
+
+--floware            OBJECT IDENTIFIER ::= { enterprises 2933 }
+--products           OBJECT IDENTIFIER ::= { floware 1 }
+
+walkair MODULE-IDENTITY
+   LAST-UPDATED "0006141400Z"					   
+   ORGANIZATION "Floware System Solutions Ltd."
+   CONTACT-INFO " Klara Milman
+		Postal: Floware System Solutions
+			P.O.Box 812
+			Or Yehuda 60250
+			ISRAEL
+		Tel:    972-3-5382211
+		Fax:    972-3-5382211
+		E-mail: klara@floware.com "
+    DESCRIPTION 
+        "WALKair MIB Definitions - Release 30."
+--    REVISION    "000061400Z"
+--    DESCRIPTION
+    ::= { products 1 }
+
+basicUnit          OBJECT IDENTIFIER ::= { walkair 1 }
+rfUnit             OBJECT IDENTIFIER ::= { walkair 2 }
+ifUnit             OBJECT IDENTIFIER ::= { walkair 3 } 
+antenna            OBJECT IDENTIFIER ::= { walkair 4 }
+muxIf              OBJECT IDENTIFIER ::= { walkair 5 }
+-- v5              OBJECT IDENTIFIER ::= { walkair 6 }
+bandwidth          OBJECT IDENTIFIER ::= { walkair 7 }
+frameRelay		   OBJECT IDENTIFIER ::= { walkair 8 }
+testing			   OBJECT IDENTIFIER ::= { walkair 9 }
+
+
+-- ***##############################################################***
+--              Groups within the Basic Unit MIB
+-- ***##############################################################***
+
+buSystem          OBJECT IDENTIFIER ::= { basicUnit 1 }
+buServices	      OBJECT IDENTIFIER ::= { basicUnit 2 }
+--buDirectory       OBJECT IDENTIFIER ::= { basicUnit 3 }  - removed
+buSwConfig        OBJECT IDENTIFIER ::= { basicUnit 4 }
+buAlarms          OBJECT IDENTIFIER ::= { basicUnit 5 }
+buPerformance     OBJECT IDENTIFIER ::= { basicUnit 6 }
+buInterface  	  OBJECT IDENTIFIER ::= { basicUnit 7 }
+buTraps           OBJECT IDENTIFIER ::= { basicUnit 99 }
+
+
+-- ####################################################################
+-- Basic Unit System and informational parameters group
+-- ####################################################################
+
+
+buSysSerialNo OBJECT-TYPE
+    SYNTAX      INTEGER(0..2147483647)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	"Basic Unit serial number;  uniquely identifies the Basic Unit."
+    ::= { buSystem 1 }
+
+buSysSerialId OBJECT-TYPE
+    SYNTAX      INTEGER(0..2147483647)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Basic Unit serial number Identification part; BS / TS code, Customer code, Country code."
+    ::= { buSystem 2 }
+
+buSysCustomerId OBJECT-TYPE
+    SYNTAX      INTEGER(0..2147483647)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Basic Unit customer ID; Relevant only at the TS."
+    ::= { buSystem 3 }
+
+buSysExtBusAddr OBJECT-TYPE
+    SYNTAX      INTEGER(1..16)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "BU's sector serial number (used to be The BU's extension bus (HDLC) address.)"
+    ::= { buSystem 4 }
+
+buSysType OBJECT-TYPE
+    SYNTAX      INTEGER {
+		      baseStation(1),
+		      terminalStation(2)
+			}
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	"Basic Unit type."
+    ::= { buSystem 5 }
+
+buSysHwRev OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE(4))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The Basic Unit hardware Revision, in a 'Vxxx' string
+	 format."
+    ::= { buSystem 6 }
+
+buSysLedStatus OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(8))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "LEDs status.
+     Each byte represents particular LED:
+     1   : external Alarm
+     2   : internal Alarm
+	 3   : ethernet ( only for BS_BU )
+	 4-6 : telecomm leds
+     7-8 : spare
+     Within each byte, bits 0-3 are the color, 4-7 are 
+     the blink rate.
+     Supported color codes:
+     0000 : Black (LED is off)
+     0001 : Green
+     0010 : Yellow
+     0011 : Red
+     Supported blink rates:
+     0000 : no blink
+     0001 : blink"
+    ::= { buSystem 7 }
+
+buSysStuffDelete OBJECT-TYPE
+    SYNTAX      INTEGER {
+                      disable(1),
+                      enable(2)
+			}
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"Basic Unit operational mode, which depends on the
+	clock accuracy type of the switch."
+    DEFVAL { disable }
+    ::= { buSystem 8 }
+
+buSysLastRestart OBJECT-TYPE
+    SYNTAX      INTEGER {
+	                  powerOn(1),
+                      unknown(2),
+                      cpuOverload(3),
+                      taskRequest(4),
+                      userRequest(5)
+                }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The cause of last restart."
+    ::= { buSystem 9 }
+
+
+buSysAdminStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+                      disable(1),
+                      enable(2)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Basic Unit Administration Status:
+         Enable -     The TS BU is enabled
+         Disable -    All telecom interfaces and functionality of the TS BU
+                      are disabled.
+                      The radio link to the BS is enabled thus the operator
+                      can enable the TS using the EMS.
+         In TS, disabling this causes total shutdown of radio channels without 
+         possibility for remote recovery - so the manager does not set this
+         variable (use buTsBuAdminStatus[] instead)."
+    ::= { buSystem 10 }
+
+buSysOperStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+                      disconnected(1),
+                      connected(2)
+                }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        " BU's Operation Status. 
+          For BS-BU : downlink channel status.
+          For TS-BU : channel status "
+    ::= { buSystem 11 }
+
+ buSysFeaturesMask OBJECT-TYPE
+    SYNTAX  OCTET STRING (SIZE(4))    
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        " Features supported by system. Relevant for BS-BU only.
+		  1 in corresponding bit means that feature is supported,
+		  0 - feature is not supported. 
+          The bits representation is as follows :
+          bit0 (1) - v5 isdn
+          bit1 (2) - not used
+          bit2 (4) - not used
+          bit3 (8) - not used
+          bit4 (16) - not used
+          bit5 (32) - not used
+          bit6 (64) - not used
+          bit7 (128) - not used
+          bit8 (256) - not used
+          bit9 (512) - not used
+          bit10 (1024) - not used
+          bit11 (2048) - not used
+          bit12 (4096) - not used
+          bit13 (8192) - not used
+          bit14 (16384) - not used
+          bit15 (32768) - not used" 
+    ::= { buSystem 12 }
+
+buSysClockSourceMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                      automatic(1),
+                      manual(2)
+                }
+
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Base Unit system clock source selection mode "
+	   ::= { buSystem 13 }
+
+buSysClockSource OBJECT-TYPE
+    SYNTAX      INTEGER {
+                      internal(1),
+                      external(2),
+					  telecom1(3),
+					  telecom2(4),
+					  telecom3(5)
+                }
+
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Base Unit system clock source  "
+	   ::= { buSystem 14 }
+
+buSysClockOut OBJECT-TYPE
+    SYNTAX      INTEGER {
+                      disable(1),
+                      enable(2)
+                }
+
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Base Unit system clock out "
+	   ::= { buSystem 15 }
+
+-- ####################################################################
+-- Basic Unit Services group
+-- ####################################################################
+
+
+
+-- ####################################################################
+-- Basic Unit Leased Line Table
+-- ####################################################################
+
+buLeasedLineTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BuLeasedLineEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "This table represents the configuration of the Leased
+     Line Services established between the BU and the connected Terminal
+     Stations. It resides in the BS BU only."
+    ::= { buServices 1 }
+
+buLeasedLineEntry OBJECT-TYPE
+    SYNTAX      BuLeasedLineEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "Entry in the buLeasedLineTable."
+    INDEX   { buLLnIndex }
+    ::= { buLeasedLineTable 1 }
+
+BuLeasedLineEntry ::= SEQUENCE {
+    buLLnIndex                    INTEGER,
+    buLLnBsIfIndex                INTEGER,
+	buLLnBsFirstE1Channel	      INTEGER,
+    buLLnTsIndex                  TSNumber,
+    buLLnTsIfIndex                INTEGER,
+	buLLnTsFirstE1Channel         INTEGER,
+    buLLnBandwidth                INTEGER,
+    buLLnOperStatus               INTEGER,
+    buLLnAdminStatus              INTEGER,
+    buLLnRowStatus                RowStatus
+    }
+
+buLLnIndex OBJECT-TYPE
+    SYNTAX      INTEGER(1..64)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "An index to the Leased Line Table."
+    ::= { buLeasedLineEntry 1 }
+
+buLLnBsIfIndex OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The IfIndex supporting the Leased Line service on the
+     Base Station side."
+    ::= { buLeasedLineEntry 2 }
+
+
+buLLnBsFirstE1Channel OBJECT-TYPE
+    SYNTAX      INTEGER(0..31)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The first time slot allocated on BS interface for the specified
+     Leased Line.This parameter relevant only for E1 interfaces.
+     Should be 0 for other types "
+    ::= { buLeasedLineEntry 3 }
+
+
+buLLnTsIndex OBJECT-TYPE
+    SYNTAX      TSNumber
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The index of the BU supporting the
+     service on the Terminal Station side -
+     as appears in the base station's terminal 
+     table"
+    ::= { buLeasedLineEntry 4 }
+
+buLLnTsIfIndex OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The IfIndex supporting the Leased Line service on the
+     Terminal Station side."
+    ::= { buLeasedLineEntry 5 }
+
+
+
+buLLnTsFirstE1Channel OBJECT-TYPE
+    SYNTAX      INTEGER(0..31)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The first time slot allocated on TS interface for the specified
+     Leased Line"
+    ::= { buLeasedLineEntry 6 }
+
+buLLnBandwidth OBJECT-TYPE
+    SYNTAX      INTEGER (1..32)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "Leased Line bandwidth size in number of Air Time Slots. Each ATS is 64 Kbps "
+    ::= { buLeasedLineEntry 7 }
+
+buLLnOperStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+                         disconnected(1),
+                         connected(2),
+						 invalid(3),
+						 testing(4),
+						 lowerLayerDown(5)
+                        }
+
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "Current operational status of the Leased Line service" 
+     ::= { buLeasedLineEntry 8 }
+
+buLLnAdminStatus OBJECT-TYPE
+    SYNTAX      INTEGER	{
+                         disable(1),
+                         enable(2)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "Administered status of the Leased Line service" 
+    ::= { buLeasedLineEntry 9 }
+
+
+buLLnRowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The status of the current entry"
+    ::= { buLeasedLineEntry 10 }
+
+
+-- ####################################################################
+-- Basic Unit Terminals Table
+-- ####################################################################
+
+
+buTsTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BuTsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "The Basic Unit's Terminal Stations table."
+    ::= { buServices 2 }
+
+buTsEntry OBJECT-TYPE
+    SYNTAX      BuTsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "Entry in the buTsTable."
+    INDEX   { buTsIndex }
+    ::= { buTsTable 1 }
+
+BuTsEntry ::= SEQUENCE {
+    buTsIndex                 TSNumber,
+    buTsRowStatus             RowStatus,	
+    buTsBuSysCustomerId       INTEGER,
+    buTsBuAdminStatus         INTEGER,
+    buTsBuOperStatus          INTEGER,
+    buTsEstDistance           INTEGER,
+    buTsDistance              INTEGER
+    }
+
+buTsIndex OBJECT-TYPE
+    SYNTAX      TSNumber
+    MAX-ACCESS  read-only 
+    STATUS      current
+    DESCRIPTION
+    "The record index "
+    ::= { buTsEntry 1 }
+
+buTsRowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    " Row status of each entry "
+    ::= { buTsEntry 2 }
+
+buTsBuSysCustomerId OBJECT-TYPE
+    SYNTAX      INTEGER (0..2147483647)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The Terminal Station's BU customer ID."
+    ::= { buTsEntry 3 }
+
+
+buTsBuAdminStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+                     disable(1),
+                     enable(2)
+			}
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "TS BU Administration Status:
+         enable -     The TS BU is enabled
+         disable -    All telecom interfaces and functionality of the TS BU
+                      are disabled.
+                      The radio link to the BS is enabled thus the operator
+                      can enable the TS using the EMS.
+         This variable allows status change by the manager."
+     ::= { buTsEntry 4 }
+
+buTsBuOperStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+                      disconnected(1),
+                      connected(2)
+                }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        " Ts Operation Status." 
+    ::= {buTsEntry 5 }
+
+buTsEstDistance OBJECT-TYPE
+    SYNTAX      INTEGER(0..20)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The estimated-by-operator distance in kilometers between
+     the Base Station and the Terminal Station. Sould not
+     exceed the actual distance."
+    DEFVAL { 0 }
+    ::= { buTsEntry 6 }
+
+buTsDistance OBJECT-TYPE
+    SYNTAX      INTEGER(0..20)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "The measured distance in kilometers between
+     the Base Station and the Terminal Station."
+    ::= { buTsEntry 7 }
+
+
+
+-- ####################################################################
+-- Basic Unit Service Map Table
+-- ####################################################################
+
+
+buServiceMapTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BuServiceMapEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "This table contains the assignment of the Basic Unit telecom interfaces to
+     the different services."
+    ::= { buServices 3 }
+
+buServiceMapEntry OBJECT-TYPE
+    SYNTAX      BuServiceMapEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "Entry in the buServiceMapTable."
+    INDEX   { ifIndex }
+    ::= { buServiceMapTable 1 }
+
+BuServiceMapEntry ::= SEQUENCE {
+    buSmServiceMap    OCTET STRING,
+    buSmService       ServiceId     
+    }
+
+buSmServiceMap OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(32))
+    MAX-ACCESS  read-only 
+    STATUS      current
+    DESCRIPTION
+    "This variable contains the Telecom Interface channels assignment 
+     for the different services. Each one of 32 octets contains service 
+     defined on the corresponding 64Kbps channel. 
+     ServiceId TC is used for the service identification"
+        ::= { buServiceMapEntry 1 }
+
+buSmService OBJECT-TYPE
+    SYNTAX      ServiceId
+    MAX-ACCESS  read-only 
+    STATUS      current
+    DESCRIPTION
+    "This variable is not supported in the current version. None value 
+     is returned by agent."  
+        ::= { buServiceMapEntry 2 }
+
+
+-- ####################################################################
+-- Basic Unit Software Configuration group
+-- ####################################################################
+
+
+buSwModuleTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BuSwModuleEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+	"The Basic Unit Software Modules table."
+    ::= { buSwConfig 1 }
+
+buSwModuleEntry OBJECT-TYPE
+    SYNTAX      BuSwModuleEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "Entry in the buSwModuleTable."
+    INDEX   { buSwModuleIndex }
+    ::= { buSwModuleTable 1 }
+
+BuSwModuleEntry ::= SEQUENCE {
+    buSwModuleIndex         INTEGER,
+    buSwModuleName          DisplayString,
+    buSwModuleActiveVer     DisplayString,
+    buSwModuleActiveDesc    DisplayString,
+    buSwModuleActiveCS      INTEGER,
+    buSwModuleStandByVer    DisplayString,
+    buSwModuleStandByDesc   DisplayString,
+    buSwModuleStandByCS     INTEGER
+    }
+
+buSwModuleIndex OBJECT-TYPE
+    SYNTAX      INTEGER(0..2147483647)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "An index to the Software Modules Table."
+    ::= { buSwModuleEntry 1 }
+
+
+buSwModuleName  OBJECT-TYPE
+    SYNTAX     DisplayString (SIZE(0..15))
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+	"The software module name. For example: QUICC, DSP, ORCA, 
+     OMEQ, OMAS, TAF, BOOT."
+    ::= { buSwModuleEntry 2 }
+
+buSwModuleActiveVer  OBJECT-TYPE
+    SYNTAX     DisplayString (SIZE(0..15))
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        "The module active software version. This string
+        will have a zero length if the version is unknown."
+    ::= { buSwModuleEntry 3 }
+
+buSwModuleActiveDesc  OBJECT-TYPE
+    SYNTAX     DisplayString (SIZE(0..80))
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+	"The module active software description. This string
+	will have a zero length if the description is unknown."
+    ::= { buSwModuleEntry 4 }
+
+buSwModuleActiveCS OBJECT-TYPE
+    SYNTAX      INTEGER(0..65535)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	"The module active software check-sum."
+    ::= { buSwModuleEntry 5 }
+
+buSwModuleStandByVer  OBJECT-TYPE
+    SYNTAX     DisplayString (SIZE(0..15))
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        "The module stand-by software version. This string
+        will have a zero length if the version is unknown."
+    ::= { buSwModuleEntry 6 }
+
+buSwModuleStandByDesc  OBJECT-TYPE
+    SYNTAX     DisplayString (SIZE(0..80))
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+	"The module stand-by software description. This string
+	will have a zero length if the description is unknown."
+    ::= { buSwModuleEntry 7 }
+	
+buSwModuleStandByCS OBJECT-TYPE
+    SYNTAX      INTEGER(0..65535)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	"The module stand-by software check-sum."
+    ::= { buSwModuleEntry 8 }
+
+
+buSwDownload        OBJECT IDENTIFIER ::= { buSwConfig 2 }
+-- always is destined to BS - community should be BS0 
+
+buSwDownloadDestDevice  OBJECT-TYPE
+    SYNTAX     OCTET STRING (SIZE(3))
+--     {
+--		       baseStation(0),
+--		       terminalStation1(1),
+--		       terminalStation2(2),
+--		       terminalStation3(3),
+--		       terminalStation4(4),
+--		       terminalStation5(5),
+--		       terminalStation6(6),
+--		       terminalStation7(7),
+--		       terminalStation8(8),
+--		       terminalStation9(9),
+--		       terminalStation10(10),
+--		       terminalStation11(11),
+--		       terminalStation12(12),
+--		       terminalStation13(13),
+--		       terminalStation14(14),
+--		       terminalStation15(15),
+--		       terminalStation16(16)
+--	           }
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+	" 1 in the corresponding bit indicates the device to be downloaded from the TFTP server"
+    ::= { buSwDownload 1 }
+
+buSwDownloadFile  OBJECT-TYPE
+    SYNTAX     FileName
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+	"The file name to be downloaded from the TFTP server
+	when a download is next requested via this MIB." 
+	DEFVAL     {""}
+	::= { buSwDownload 2 }
+
+buSwDownloadTFTPServer  OBJECT-TYPE
+    SYNTAX     IpAddress
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+	"The IP address of the TFTP server that contains the
+	boot image to load when a download is next requested
+	via this MIB"
+	DEFVAL     {0}
+    ::= { buSwDownload 3 }
+
+buSwDownloadAction  OBJECT-TYPE
+    SYNTAX     DownloadAction
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+	"When this object is set to downloadToCurrent or
+	downloadToStandBy, the BU will discontinue its
+	normal operation and begin download of the image
+	specified by buSwDownloadFile from the server
+	specified by buSwDownloadTFTPServer using the TFTP
+	protocol. If downloadToCurrent is specified the new
+	image is written to the flash EPROM memory after
+	its checksum has been verified to be correct. If
+	downloadToStandBy is specified, the new image
+	is downloaded to Stand-By area, while normal
+	operation is still taking place. When the BU is not
+	downloading, this object will have a value of
+	none."
+	DEFVAL	   {none}
+    ::= { buSwDownload 4 }
+
+buSwDownloadLogTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BuSwDownloadLogEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+	"The Basic Unit Download Log Table."
+    ::= { buSwDownload 5 }
+
+buSwDownloadLogEntry OBJECT-TYPE
+    SYNTAX      BuSwDownloadLogEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "Entry in the buSwDownloadLogTable."
+    INDEX   { buSwDownloadLogDevice }
+    ::= { buSwDownloadLogTable 1 }
+
+BuSwDownloadLogEntry ::= SEQUENCE {
+   	buSwDownloadLogDevice       DeviceId,
+	buSwDownloadLogFile			FileName,
+	buSwDownloadLogTFTPServer	IpAddress,
+	buSwDownloadLogAction		DownloadAction,
+	buSwDownloadLogStartTime	TimeTicks,
+	buSwDownloadLogEndTime		TimeTicks,
+	buSwDownloadLogStatus		INTEGER
+    }
+
+buSwDownloadLogDevice OBJECT-TYPE
+    SYNTAX      DeviceId
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "Specification of the device. It is 1 to 16 for the Terminal Station,
+     65536 (0x00010000) for BS"
+    ::= { buSwDownloadLogEntry 1 }
+
+
+buSwDownloadLogFile  OBJECT-TYPE
+    SYNTAX     FileName
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+	"The name of the file which was downloaded to the device" 
+    ::= { buSwDownloadLogEntry 2 }
+
+
+buSwDownloadLogTFTPServer  OBJECT-TYPE
+    SYNTAX     IpAddress
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+	"The IP address of the TFTP server which was used for the download to 
+	the device" 
+    ::= { buSwDownloadLogEntry 3 }
+
+buSwDownloadLogAction   OBJECT-TYPE
+    SYNTAX     DownloadAction
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+	"The programm image : current or stand by which was updated"
+    ::= { buSwDownloadLogEntry 4 }
+
+
+buSwDownloadLogStartTime	OBJECT-TYPE
+    SYNTAX     TimeTicks
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+	"The time when the download process was started"
+    ::= { buSwDownloadLogEntry 5 }
+
+buSwDownloadLogEndTime	OBJECT-TYPE
+    SYNTAX     TimeTicks
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+	"The time when the download process was finished"
+    ::= { buSwDownloadLogEntry 6 }
+
+
+buSwDownloadLogStatus  OBJECT-TYPE
+    SYNTAX     INTEGER {
+	        none(1),
+		    downloadSuccess(2),
+			downloadInProgress(3),
+			downloadFileChecksumError(4),
+			downloadFileAddressExceedsMaxValue(5),
+			downloadFileAddressNotInOrder(6),
+			downloadFileFormatError(7),
+			downloadCongestion(8),
+			downloadFlashCrcError(9),
+			downloadAirLinkCorruption(10),
+			downloadTsNotRegistered(11),
+			downloadTsNotResponding(12),
+			downloadTsDisconnected(13),
+			downloadTftpNoResponseFromServer(14),
+			downloadTftpFileNotFound(15),
+			downloadTftpAccessViolation(16),
+		    downloadStatusUnknown(17),
+		    downloadGeneralError(18),
+			downloadAborted(19),
+			downloadFileCorrupted(20),
+			downloadSearchingServer(21)
+	       }
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+	"The status of the last download procedure, if any.
+	This object will have a value of downloadStatusUnknown(2)
+	if no download process has been performed."
+    ::= {buSwDownloadLogEntry 7  }
+
+buSwResetControl  OBJECT-TYPE
+    SYNTAX     INTEGER {
+		    running(1),
+		    reset(2),
+		    switchOver(3)
+	      }
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+	"Setting this object to	reset(2) causes the BU to reinitialize
+	configuration parameters in non-volatile memory to
+	default values and restart the application software.
+	Setting this object to switchOver(3) causes the BU
+	to switch between the stand-by and active software.
+	When the device is running normally,
+	this variable has a value of running(1)."
+    ::= { buSwConfig 3 }
+
+buConfigLoad        OBJECT IDENTIFIER ::= { buSwConfig 4 }
+-- always is destined to BS - community should be BS0 
+
+buConfigLoadAction  OBJECT-TYPE
+    SYNTAX     INTEGER {
+	        none(1),
+		    configLoadUpload(2),
+			configLoadDownload(3),
+			configLoadAbort(4),
+			configLoadOverwrite(5)
+	       }
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+	"The last configuration upload/download operation, if any.
+	This object will have a value none(1) if no configuration
+	upload/download process has been performed. If action is configLoadDownload
+	RF calibration parameters are not overwritten during the download
+	process. If action is configLoadOverwrite , all configuration parameters are
+	overwritten "
+    ::= {buConfigLoad 1  }
+
+buConfigLoadStatus  OBJECT-TYPE
+    SYNTAX     INTEGER {
+	        none(1),
+			configLoadInProgress(2),
+		    configLoadSuccess(3),
+			configLoadAborted(4),
+			configLoadSoftwareVersionError(5),
+			configLoadFileCRCError(6),
+			configLoadFileFormatError(7),
+		    configLoadGeneralError(8),
+			configLoadFileCorrupted(9)
+	       }
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+	"The status of the last configuration upload/download procedure, 
+	if any.	This object will have a value none(1) if no configuration
+	upload/download process has been performed."
+    ::= {buConfigLoad 2  }
+
+buConfigLoadTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BuConfigLoadEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+	"The Basic Unit Configuration Upload/Download table. The configuration data is
+	accessed as consecutive blocks of 512 bytes. A table row corresponds to a block"
+    ::= { buConfigLoad 3 }
+
+buConfigLoadEntry OBJECT-TYPE
+    SYNTAX      BuConfigLoadEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "Entry in the buConfigLoadTable."
+    INDEX   { buConfigLoadIndex }
+    ::= { buConfigLoadTable 1 }
+
+BuConfigLoadEntry ::= SEQUENCE {
+    buConfigLoadIndex       INTEGER,
+	buConfigLoadBlock       OCTET STRING
+    }
+
+buConfigLoadIndex OBJECT-TYPE
+    SYNTAX      INTEGER(1..32)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "Index to the Configuration Load Table."
+    ::= { buConfigLoadEntry 1 }
+
+buConfigLoadBlock OBJECT-TYPE
+    SYNTAX      OCTET STRING(SIZE(1..512))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "An index to the Configuration Load Table."
+    ::= { buConfigLoadEntry 2 }
+
+
+
+buIfSwVersionTable OBJECT-TYPE						   
+    SYNTAX      SEQUENCE OF BuIfSwVersionEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+	"The Basic Unit If Software versions table."
+    ::= { buSwConfig 5 }
+
+buIfSwVersionEntry OBJECT-TYPE
+    SYNTAX      BuIfSwVersionEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "Entry in the buIfSwVersionTable."
+    INDEX   { ifIndex }
+    ::= { buIfSwVersionTable 1 }
+
+BuIfSwVersionEntry ::= SEQUENCE {
+    buIfSwVersionActiveVer     DisplayString,
+    buIfSwVersionActiveDesc    DisplayString,
+    buIfSwVersionActiveCS      INTEGER,
+    buIfSwVersionStandByVer    DisplayString,
+    buIfSwVersionStandByDesc   DisplayString,
+    buIfSwVersionStandByCS     INTEGER,
+	buIfHwRevision             DisplayString
+    }
+
+
+buIfSwVersionActiveVer  OBJECT-TYPE
+    SYNTAX     DisplayString (SIZE(0..15))
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        "The active software version running on the If card. This string
+        will have a zero length if the version is unknown."
+    ::= { buIfSwVersionEntry 1 }
+
+buIfSwVersionActiveDesc  OBJECT-TYPE
+    SYNTAX     DisplayString (SIZE(0..80))
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+	"The If active software version description. This string
+	will have a zero length if the description is unknown."
+    ::= { buIfSwVersionEntry 2 }
+
+buIfSwVersionActiveCS OBJECT-TYPE
+    SYNTAX      INTEGER(0..65535)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	"The If active software check-sum."
+    ::= { buIfSwVersionEntry 3 }
+
+buIfSwVersionStandByVer  OBJECT-TYPE
+    SYNTAX     DisplayString (SIZE(0..15))
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        "The If stand-by software version. This string
+        will have a zero length if the version is unknown."
+    ::= { buIfSwVersionEntry 4 }
+
+buIfSwVersionStandByDesc  OBJECT-TYPE
+    SYNTAX     DisplayString (SIZE(0..80))
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+	"The If stand-by software description. This string
+	will have a zero length if the description is unknown."
+    ::= { buIfSwVersionEntry 5 }
+	
+buIfSwVersionStandByCS OBJECT-TYPE
+    SYNTAX      INTEGER(0..65535)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	"The If stand-by software check-sum."
+    ::= { buIfSwVersionEntry 6 }
+
+buIfHwRevision  OBJECT-TYPE
+    SYNTAX     DisplayString (SIZE(4))
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        "The Interface Card hardware revision"
+    ::= { buIfSwVersionEntry 7 }
+
+
+-- ####################################################################
+-- Basic Unit Alarm group
+-- ####################################################################
+
+buAlrmType       OBJECT-TYPE
+        SYNTAX  INTEGER 
+        MAX-ACCESS  read-write
+        STATUS	current
+        DESCRIPTION
+                "This variable contains the number of the trap transmitted 
+                 when alarm is ON "
+        ::= { buAlarms 2 }
+
+buAlrmSeverity       OBJECT-TYPE
+        SYNTAX	INTEGER {
+                        major(1),
+                        minor(2),
+                        warning(3),
+						info(4)
+                        }
+        MAX-ACCESS  read-write
+        STATUS	current
+        DESCRIPTION
+                "Alarm Severity."
+        ::= { buAlarms 3 }
+
+buAlrmState       OBJECT-TYPE
+        SYNTAX	INTEGER {
+	           			on(1),
+                     off(2)
+                        }
+        MAX-ACCESS  read-write
+        STATUS	current
+        DESCRIPTION
+                "Alarm State."
+        ::= { buAlarms 4 }
+
+buAlrmSource	  OBJECT-TYPE
+        SYNTAX	AutonomousType
+        MAX-ACCESS  read-write
+        STATUS	current
+        DESCRIPTION
+                "Source of  this Alarm. Given in an OBJECT-IDENTIFIER
+		format, this object points to the source of the alarm.
+		For examlpe: { ifIndex 3 }. If the BU itself is the
+		alarm source and not an interface then
+		{ floware products bu } should be the value of this
+		object."
+        ::= { buAlarms 5 }
+
+buAlrmData       OBJECT-TYPE
+        SYNTAX  DisplayString (SIZE(32))
+        MAX-ACCESS  read-write
+        STATUS  current
+        DESCRIPTION
+                "Alarm Data parameter string.
+                 The data string includes additional alarm information.
+                 The data string can be displayed with the alarm notification."
+        ::= { buAlarms 6 }
+
+buAlarmTrapCtrl	  OBJECT-TYPE
+        SYNTAX	INTEGER {
+                        disable(1),
+                        enable(2)
+                        }
+        MAX-ACCESS  read-write
+        STATUS	current
+        DESCRIPTION
+                "When set to enable(2) alarm traps should be sent
+                to the manager. When set to disable(1) they shouldn't."
+        ::= { buAlarms 7 }
+
+buAlarmGetCurrent	  OBJECT-TYPE
+        SYNTAX	INTEGER {
+                        disable(1),
+                        enable(2)
+                        }
+        MAX-ACCESS  read-write
+        STATUS	current
+        DESCRIPTION
+                "When set to enable(2) all current alarms traps should be sent
+                 to the manager. When set to disable(1) they shouldn't."
+        ::= { buAlarms 8 }
+
+
+
+-- ####################################################################
+-- Basic Unit Air Performance Monitoring
+-- ####################################################################
+
+
+buApm          OBJECT IDENTIFIER ::= { buPerformance 2 }
+buApmCurrent   OBJECT IDENTIFIER ::= { buApm 1  }
+buApmInterval  OBJECT IDENTIFIER ::= { buApm 2  }
+buApmTotal     OBJECT IDENTIFIER ::= { buApm 3  }
+buApmActions   OBJECT IDENTIFIER ::= { buApm 4  }
+
+
+
+
+-- The Air Performance Monitoring current group contains various statistics
+-- being collected for the current 15 minute interval.
+
+buApmCurrentTs OBJECT IDENTIFIER ::= { buApmCurrent 1  }
+
+           buApmCurrentTsTimeElapsed OBJECT-TYPE
+               SYNTAX  INTEGER(0..899)
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of seconds that have elapsed  since
+                       the  beginning of the current error-measurement
+                       period on the TS."
+               ::= { buApmCurrentTs 1 }
+
+           buApmCurrentTsDlESs OBJECT-TYPE
+               SYNTAX  Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of Errored Seconds, encountered  by the
+                      air interface on the TS in the current 15 minute interval.
+                      noSuchInstance will be returned if no data is
+                      available."
+               ::= { buApmCurrentTs 2 }
+
+           buApmCurrentTsDlSESs OBJECT-TYPE
+               SYNTAX Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of Severely Errored Seconds
+                      encountered by a the air interface on the TS in the current 15
+                      minute interval. noSuchInstance will be returned
+                      if no data is available."
+               ::= { buApmCurrentTs 3 }
+
+           buApmCurrentTsDlUASs OBJECT-TYPE
+               SYNTAX  Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of Unavailable Seconds  encountered by
+                      the air interface on the TS in the current 15 minute interval.
+                      noSuchInstance will be returned if no data is
+                      available."
+               ::= { buApmCurrentTs 4 }
+
+           buApmCurrentTsDlDMs OBJECT-TYPE
+               SYNTAX Counter32
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The number of Degraded Minutes (DMs) encountered
+                      by the air interface on the TS in the current 15 minute
+                      interval. noSuchInstance will be returned if no
+                      data is available."
+               ::= { buApmCurrentTs 5 }
+
+           buApmCurrentTsDlSnrMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum downlink SNR as measured by the TS
+                       in the current 15 minute interval. 
+                       Reported in 0.1 dB units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentTs 6 }
+
+           buApmCurrentTsDlSnrMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum downlink SNR as measured by the TS
+                       in the current 15 minute interval. 
+                       Reported in 0.1 dB units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentTs 7 }
+
+           buApmCurrentTsDlSnrAvg OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The average downlink SNR as measured by the TS
+                       in the current 15 minute interval. 
+                       Reported in 0.1 dB units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentTs 8 }
+
+           buApmCurrentTsDlSigMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum downlink Signal Power level as measured 
+                       by the TS in the current 15 minute interval. 
+                       Reported in 0.1 dBm units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentTs 9 }
+
+           buApmCurrentTsDlSigMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum downlink Signal Power level as measured 
+                       by the TS in the current 15 minute interval. 
+                       Reported in 0.1 dBm units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentTs 10 }
+
+           buApmCurrentTsDlSigAvg OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The average downlink Signal Power level as measured 
+                       by the TS in the current 15 minute interval. 
+                       Reported in 0.1 dBm units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentTs 11 }
+
+
+		   buApmCurrentTsUlTxSigMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum uplink Signal Power Level transmitted
+                       by the TS in the current 15 minute interval. 
+                       Reported in 0.1 dBm units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentTs 12 }
+
+           buApmCurrentTsUlTxSigMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum uplink Signal Power Level transmitted
+                       by the TS in the current 15 minute interval. 
+                       Reported in 0.1 dBm units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentTs 13 }
+
+           buApmCurrentTsUlTxSigAvg OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The average uplink Signal Power Level transmitted
+                       by the TS in the current 15 minute interval. 
+                       Reported in 0.1 dBm units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentTs 14 }
+
+		  buApmCurrentTsDlAfcMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum AFC change made 
+                       by the TS in the current 15 minute interval. 
+                       Reported in 0.1 Hz units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentTs 15 }
+
+           buApmCurrentTsDlAfcMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum AFC change made  
+                       by the TS in the current 15 minute interval. 
+                       Reported in 0.1 Hz units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentTs 16 }
+
+           buApmCurrentTsDlFer OBJECT-TYPE
+               SYNTAX Counter32
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The number of downlink Frame errors as reported  
+                       by the TS in the current 15 minute interval. 
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentTs 17 }
+
+
+buApmCurrentBs OBJECT IDENTIFIER ::= { buApmCurrent 2  }
+           
+           
+           buApmCurrentBsTimeElapsed OBJECT-TYPE
+               SYNTAX  INTEGER(0..899)
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of seconds that have elapsed  since
+                      the  beginning of the current error-measurement
+                      period on the BS."
+               ::= { buApmCurrentBs 1 }
+
+           buApmCurrentBsUlESs OBJECT-TYPE
+               SYNTAX  Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of Errored Seconds, encountered  by the
+                       air interface on the BS in the current 15 minute interval.
+                       noSuchInstance will be returned if no data is
+                       available."
+               ::= { buApmCurrentBs 2 }
+
+           buApmCurrentBsUlSESs OBJECT-TYPE
+               SYNTAX Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of Severely Errored Seconds
+                       encountered by a the air interface on the BS in the current 15
+                       minute interval. noSuchInstance will be returned
+                       if no data is available."
+               ::= { buApmCurrentBs 3 }
+
+           buApmCurrentBsUlUASs OBJECT-TYPE
+               SYNTAX  Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of Unavailable Seconds  encountered by
+                      the air interface on the BS in the current 15 minute interval.
+                      noSuchInstance will be returned if no data is
+                      available."
+               ::= { buApmCurrentBs 4 }
+
+           buApmCurrentBsUlDMs OBJECT-TYPE
+               SYNTAX Counter32
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The number of Degraded Minutes (DMs) encountered
+                      by the air interface on the BS in the current 15 minute
+                      interval. noSuchInstance will be returned if no
+                      data is available."
+               ::= { buApmCurrentBs 5 }
+
+           
+           buApmCurrentBsUlSnrMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum uplink SNR as measured by the BS
+                       in the current 15 minute interval. 
+                       Reported in 0.1 dB units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentBs 6 }
+
+           buApmCurrentBsUlSnrMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum uplink SNR as measured by the BS
+                       in the current 15 minute interval. 
+                       Reported in 0.1 dB units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentBs 7 }
+
+           buApmCurrentBsUlSnrAvg OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The average uplink SNR as measured by the BS
+                       in the current 15 minute interval. 
+                       Reported in 0.1 dB units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentBs 8 }
+
+           buApmCurrentBsUlSigMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum uplink Signal Power level as measured 
+                       by the BS in the current 15 minute interval. 
+                       Reported in 0.1 dBm units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentBs 9 }
+
+           buApmCurrentBsUlSigMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum uplink Signal Power level as measured 
+                       by the BS in the current 15 minute interval. 
+                       Reported in 0.1 dBm units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentBs 10 }
+
+           buApmCurrentBsUlSigAvg OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The average uplink Signal Power level as measured 
+                       by the BS in the current 15 minute interval. 
+                       Reported in 0.1 dBm units.
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentBs 11 }
+
+		   
+           buApmCurrentBsUlFer OBJECT-TYPE
+               SYNTAX Counter32
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The number of uplink Frame Burst errors as reported  
+                       by the BS in the current 15 minute interval. 
+                       noSuchInstance will be returned if no 
+                       data is available."
+               ::= { buApmCurrentBs 12 }
+
+
+-- The Air Performance Monitoring Interval Table
+
+buApmIntervalTs OBJECT IDENTIFIER ::= { buApmInterval 1  }
+
+
+           buApmValidIntervalsTs OBJECT-TYPE
+               SYNTAX INTEGER (0..96)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The number of  previous  intervals  for  which
+                      valid data was collected by TS.  The value will be 96
+                      unless the interface was brought on-line within
+                      the last 24 hours, in which case the value will
+                      be the number of complete 15  minute  intervals
+                      the since interface has been online."
+               ::= { buApmIntervalTs 1 }
+
+
+
+          buApmIntervalTsTable OBJECT-TYPE
+               SYNTAX  SEQUENCE OF BuApmIntervalTsEntry
+               MAX-ACCESS  not-accessible
+               STATUS  current
+               DESCRIPTION
+                      "The Air Performance Monitoring Interval Table contains various
+                      statistics collected by  TS Air Interface over
+                      the previous 24 hours of operation.  The past 24
+                      hours are broken into 96 completed 15 minute
+                      intervals."
+               ::= { buApmIntervalTs 2 }
+
+          buApmIntervalTsEntry OBJECT-TYPE
+               SYNTAX  BuApmIntervalTsEntry
+               MAX-ACCESS  not-accessible
+               STATUS  current
+               DESCRIPTION
+                      "An entry in the Ts Air Performance Monitoring Interval table."
+               INDEX   { buApmIntervalTsNumber }
+               ::= { buApmIntervalTsTable 1 }
+
+          BuApmIntervalTsEntry ::=
+               SEQUENCE {
+                   buApmIntervalTsNumber            INTEGER,
+                   buApmIntervalTsDlESs             Counter32,
+                   buApmIntervalTsDlSESs            Counter32,
+                   buApmIntervalTsDlUASs            Counter32,
+                   buApmIntervalTsDlDMs             Counter32,
+                   buApmIntervalTsDlSnrMin          INTEGER,
+                   buApmIntervalTsDlSnrMax          INTEGER,
+                   buApmIntervalTsDlSnrAvg          INTEGER,
+                   buApmIntervalTsDlSigMin          INTEGER,
+                   buApmIntervalTsDlSigMax          INTEGER,
+                   buApmIntervalTsDlSigAvg          INTEGER,
+				   buApmIntervalTsUlTxSigMin        INTEGER,
+                   buApmIntervalTsUlTxSigMax        INTEGER,
+                   buApmIntervalTsUlTxSigAvg        INTEGER,
+                   buApmIntervalTsDlAfcMin          INTEGER,
+                   buApmIntervalTsDlAfcMax          INTEGER,
+                   buApmIntervalTsDlFer             Counter32
+          }
+
+          buApmIntervalTsNumber OBJECT-TYPE
+               SYNTAX  INTEGER (1..96)
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "A number between 1 and 96, where 1 is the most
+                       recently completed 15 minute interval and 96 is
+                       the 15 minutes interval completed 23 hours and 45
+                       minutes prior to interval 1."
+               ::= { buApmIntervalTsEntry 1 }
+
+          buApmIntervalTsDlESs OBJECT-TYPE
+               SYNTAX  Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of Errored Seconds encountered by the	TS
+                       air interface in one of the previous 96,
+                       individual 15 minute, intervals."
+               ::= { buApmIntervalTsEntry 2 }
+
+          buApmIntervalTsDlSESs OBJECT-TYPE
+               SYNTAX  Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of Severely Errored Seconds
+                       encountered by the TS air interface in one of the
+                       previous 96, individual 15 minute, intervals. "
+               ::= { buApmIntervalTsEntry 3 }
+
+          buApmIntervalTsDlUASs OBJECT-TYPE
+               SYNTAX  Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of Unavailable Seconds encountered by
+                       the TS air interface in one of the previous 96,
+                       individual 15 minute, intervals. In the case where
+                       the agent is a proxy and valid data is not
+                       available, return noSuchInstance.  This object may
+                       decrease if the occurance of unavailable seconds
+                       occurs across an inteval boundary."
+               ::= { buApmIntervalTsEntry 4 }
+
+          buApmIntervalTsDlDMs OBJECT-TYPE
+               SYNTAX Counter32
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The number of Degraded Minutes (DMs) encountered
+                       by the TS air interface in one of the previous 96,
+                       individual 15 minute, intervals."
+               ::= { buApmIntervalTsEntry 5 }
+
+           buApmIntervalTsDlSnrMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum downlink SNR as measured by the TS
+                       in one of the 96 15 minute interval. 
+                       Reported in 0.1 dB units."
+               ::= { buApmIntervalTsEntry 6 }
+
+           buApmIntervalTsDlSnrMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum downlink SNR as measured by the TS
+                       in one of the 96 15 minute interval. 
+                       Reported in 0.1 dB units."
+               ::= { buApmIntervalTsEntry 7 }
+
+           buApmIntervalTsDlSnrAvg OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The average downlink SNR as measured by the TS
+                       in one of the 96 15 minute interval." 
+               ::= { buApmIntervalTsEntry 8 }
+
+           buApmIntervalTsDlSigMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum downlink Signal Power level as measured 
+                       by the TS in one of the 96 15 minute interval.
+                       Reported in 0.1 dBm units."
+               ::= { buApmIntervalTsEntry 9 }
+
+           buApmIntervalTsDlSigMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum downlink Signal Power level as measured 
+                       by the TS in one of the 96 15 minute interval.
+                       Reported in 0.1 dBm units."
+               ::= { buApmIntervalTsEntry 10 }
+
+           buApmIntervalTsDlSigAvg OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The average downlink Signal Power level as measured 
+                       by the TS in one of the 96 15 minute interval.
+                       Reported in 0.1 dBm units."
+               ::= { buApmIntervalTsEntry 11 }
+
+ 
+           buApmIntervalTsUlTxSigMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum uplink Signal Power Level transmitted
+                       by the TS in one of the 96 15 minute interval. 
+                       Reported in 0.1 dBm units."
+               ::= { buApmIntervalTsEntry 12 }
+
+           buApmIntervalTsUlTxSigMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum uplink Signal Power Level transmitted
+                       by the TS in one of the 96 15 minute interval. 
+                       Reported in 0.1 dBm units."
+               ::= { buApmIntervalTsEntry 13 }
+
+           buApmIntervalTsUlTxSigAvg OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The average uplink Signal Power Level transmitted
+                       by the TS in one of the 96 15 minute interval. 
+                       Reported in 0.1 dBm units."
+               ::= { buApmIntervalTsEntry 14 }
+
+ 
+           buApmIntervalTsDlAfcMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum AFC change made 
+                       by the TS in one of the 96 15 minute interval. 
+                       Reported in 0.1 Hz units."
+               ::= { buApmIntervalTsEntry 15 }
+
+           buApmIntervalTsDlAfcMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum AFC change made  
+                       by the TS in one of the 96 15 minute interval. 
+                       Reported in 0.1 Hz units."
+               ::= { buApmIntervalTsEntry 16 }
+
+           buApmIntervalTsDlFer OBJECT-TYPE
+               SYNTAX Counter32
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The number of downlink Frame errors as reported  
+                       by the TS in one of the 96 15 minute interval." 
+               ::= { buApmIntervalTsEntry 17 }
+
+        
+
+
+buApmIntervalBs OBJECT IDENTIFIER ::= { buApmInterval 2  }
+
+
+          buApmValidIntervalsBs OBJECT-TYPE
+               SYNTAX INTEGER (0..96)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The number of  previous  intervals  for  which
+                      valid data was collected by BS.  The value will be 96
+                      unless the interface was brought on-line within
+                      the last 24 hours, in which case the value will
+                      be the number of complete 15  minute  intervals
+                      the since interface has been online."
+               ::= { buApmIntervalBs 1 }
+
+
+
+          buApmIntervalBsTable OBJECT-TYPE
+               SYNTAX  SEQUENCE OF BuApmIntervalBsEntry
+               MAX-ACCESS  not-accessible
+               STATUS  current
+               DESCRIPTION
+                      "The Air Performance Monitoring Interval Table contains various
+                       statistics collected by  BS Air Interface over
+                       the previous 24 hours of operation.  The past 24
+                       hours are broken into 96 completed 15 minute
+                       intervals."
+               ::= { buApmIntervalBs 2 }
+
+          buApmIntervalBsEntry OBJECT-TYPE
+               SYNTAX  BuApmIntervalBsEntry
+               MAX-ACCESS  not-accessible
+               STATUS  current
+               DESCRIPTION
+                      "An entry in the Air Performance Monitoring Interval table."
+               INDEX   { buApmIntervalBsNumber }
+               ::= { buApmIntervalBsTable 1 }
+
+          BuApmIntervalBsEntry ::=
+               SEQUENCE {
+                   buApmIntervalBsNumber            INTEGER,
+                   buApmIntervalBsUlESs             Counter32,
+                   buApmIntervalBsUlSESs            Counter32,
+                   buApmIntervalBsUlUASs            Counter32,
+                   buApmIntervalBsUlDMs             Counter32,
+                   buApmIntervalBsUlSnrMin          INTEGER,
+                   buApmIntervalBsUlSnrMax          INTEGER,
+                   buApmIntervalBsUlSnrAvg          INTEGER,
+                   buApmIntervalBsUlSigMin          INTEGER,
+                   buApmIntervalBsUlSigMax          INTEGER,
+                   buApmIntervalBsUlSigAvg          INTEGER,
+                   buApmIntervalBsUlFer             Counter32
+          }
+
+          buApmIntervalBsNumber OBJECT-TYPE
+               SYNTAX  INTEGER (1..96)
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "A number between 1 and 96, where 1 is the most
+                       recently completed 15 minute interval and 96 is
+                       the 15 minutes interval completed 23 hours and 45
+                       minutes prior to interval 1."
+               ::= { buApmIntervalBsEntry 1 }
+
+          buApmIntervalBsUlESs OBJECT-TYPE
+               SYNTAX  Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of Errored Seconds encountered by the	BS
+                       air interface in one of the previous 96,
+                       individual 15 minute, intervals. "
+               ::= { buApmIntervalBsEntry 2 }
+
+          buApmIntervalBsUlSESs OBJECT-TYPE
+               SYNTAX  Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of Severely Errored Seconds
+                       encountered by the BS air interface in one of the
+                       previous 96, individual 15 minute, intervals."
+               ::= { buApmIntervalBsEntry 3 }
+
+          buApmIntervalBsUlUASs OBJECT-TYPE
+               SYNTAX  Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of Unavailable Seconds encountered by
+                       the BS air interface in one of the previous 96,
+                       individual 15 minute, intervals.This object may
+                       decrease if the occurance of unavailable seconds
+                       occurs across an inteval boundary."
+               ::= { buApmIntervalBsEntry 4 }
+
+          buApmIntervalBsUlDMs OBJECT-TYPE
+               SYNTAX Counter32
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The number of Degraded Minutes (DMs) encountered
+                       by the BS air interface in one of the previous 96,
+                       individual 15 minute, intervals. In the case where
+                       the agent is a proxy and valid data is not
+                       available, return noSuchInstance."
+               ::= { buApmIntervalBsEntry 5 }
+
+ 
+          buApmIntervalBsUlSnrMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum uplink SNR as measured by the BS
+                       in one of the 96 15 minute interval. 
+                       Reported in 0.1 dB units."
+               ::= { buApmIntervalBsEntry 6 }
+
+           buApmIntervalBsUlSnrMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum uplink SNR as measured by the BS
+                       in one of the 96 15 minute interval. 
+                       Reported in 0.1 dB units."
+               ::= { buApmIntervalBsEntry 7 }
+
+           buApmIntervalBsUlSnrAvg OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The average uplink SNR as measured by the BS
+                       in one of the 96 15 minute interval. 
+                       Reported in 0.1 dB units."
+               ::= { buApmIntervalBsEntry 8 }
+
+           buApmIntervalBsUlSigMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum uplink Signal Power level as measured 
+                       by the BS in one of the 96 15 minute interval. 
+                       Reported in 0.1 dBm units."
+               ::= { buApmIntervalBsEntry 9 }
+
+           buApmIntervalBsUlSigMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum uplink Signal Power level as measured 
+                       by the BS in one of the 96 15 minute interval. 
+                       Reported in 0.1 dBm units."
+               ::= { buApmIntervalBsEntry 10 }
+
+           buApmIntervalBsUlSigAvg OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The average uplink Signal Power level as measured 
+                       by the BS in one of the 96 15 minute interval. 
+                       Reported in 0.1 dBm units."
+               ::= { buApmIntervalBsEntry 11 }
+
+           buApmIntervalBsUlFer OBJECT-TYPE
+               SYNTAX Counter32
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The number of uplink Frame Burst errors as reported  
+                       by the BS in the one of the 96 minute interval." 
+               ::= { buApmIntervalBsEntry 12 }
+
+ 
+-- The APM Total Group
+-- The APM Total Table contains the cumulative sum
+-- of the various statistics for the 24 hour period
+-- preceding the current interval.
+
+buApmTotalTs   OBJECT IDENTIFIER ::= { buApmTotal 1  }
+
+          buApmTotalTsDlESs OBJECT-TYPE
+               SYNTAX  Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The sum of Errored Seconds encountered by the TS air
+                       interface in the previous 24 hour interval.
+                       Invalid 15 minute intervals count as 0."
+               ::= { buApmTotalTs 1 }
+
+          buApmTotalTsDlSESs OBJECT-TYPE
+               SYNTAX  Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of Severely Errored Seconds
+                       encountered by the TS air interface in the previous 24
+                       hour interval.  Invalid 15 minute intervals count
+                       as 0."
+               ::= { buApmTotalTs 2 }
+
+          buApmTotalTsDlUASs OBJECT-TYPE
+               SYNTAX  Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of Unavailable Seconds encountered by
+                       the TS air interface in the previous 24 hour interval.
+                       Invalid 15 minute intervals count as 0."
+               ::= { buApmTotalTs 3 }
+
+          buApmTotalTsDlDMs OBJECT-TYPE
+               SYNTAX Counter32
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The number of Degraded Minutes (DMs) encountered
+                       by the TS air interface in the previous 24 hour
+                       interval.  Invalid 15 minute intervals count as
+                       0."
+               ::= { buApmTotalTs 4 }
+
+
+          buApmTotalTsDlSnrMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum downlink SNR as measured by the TS
+                       in all of the 96 15 minute interval. 
+                       Reported in 0.1 dB units."
+               ::= { buApmTotalTs 5 }
+
+           buApmTotalTsDlSnrMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum downlink SNR as measured by the TS
+                       in all of the 96 15 minute interval. 
+                       Reported in 0.1 dB units."
+               ::= { buApmTotalTs 6 }
+
+           buApmTotalTsDlSnrAvg OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The average downlink SNR as measured by the TS
+                       in all of the 96 15 minute interval. 
+                       Reported in 0.1 dB units. "
+               ::= { buApmTotalTs 7 }
+
+           buApmTotalTsDlSigMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum downlink Signal Power level as measured 
+                       by the TS in all of the 96 15 minute interval. 
+                       Reported in 0.1 dBm units."
+               ::= { buApmTotalTs 8 }
+
+           buApmTotalTsDlSigMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum downlink Signal Power level as measured 
+                       by the TS in all of the 96 15 minute interval. 
+                       Reported in 0.1 dBm units."
+               ::= { buApmTotalTs 9 }
+
+           buApmTotalTsDlSigAvg OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The average downlink Signal Power level as measured 
+                       by the TS in all of the 96 15 minute interval. 
+                       Reported in 0.1 dBm units."
+               ::= { buApmTotalTs 10 }
+
+          buApmTotalTsUlTxSigMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum uplink Signal Power Level transmitted
+                       by the TS in all of the 96 15 minute interval. 
+                       Reported in 0.1 dBm units."
+               ::= { buApmTotalTs 11 }
+
+           buApmTotalTsUlTxSigMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum uplink Signal Power Level transmitted
+                       by the TS in all of the 96 15 minute interval. 
+                       Reported in 0.1 dBm units."
+               ::= { buApmTotalTs 12 }
+
+           buApmTotalTsUlTxSigAvg OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The average uplink Signal Power Level transmitted
+                       by the TS in all of the 96 15 minute interval. 
+                       Reported in 0.1 dBm units."
+               ::= { buApmTotalTs 13 }
+		  
+           buApmTotalTsDlAfcMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum AFC change made 
+                       by the TS in all of the 96 15 minute interval. 
+                       Reported in 0.1 Hz units."
+               ::= { buApmTotalTs 14 }
+
+           buApmTotalTsDlAfcMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum AFC change made  
+                       by the TS in all one of the 96 15 minute interval. 
+                       Reported in 0.1 Hz units."
+               ::= { buApmTotalTs 15 }
+
+		   buApmTotalTsDlFer OBJECT-TYPE
+               SYNTAX Counter32
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The number of downlink Frame errors as reported  
+                       by the TS in all of the 96 15 minute interval." 
+               ::= { buApmTotalTs 16 }
+
+
+
+buApmTotalBs   OBJECT IDENTIFIER ::= { buApmTotal 2  }
+
+
+          buApmTotalBsUlESs OBJECT-TYPE
+               SYNTAX  Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The sum of Errored Seconds encountered by the BS air
+                       interface in the previous 24 hour interval.
+                       Invalid 15 minute intervals count as 0."
+               ::= { buApmTotalBs 1 }
+
+          buApmTotalBsUlSESs OBJECT-TYPE
+               SYNTAX  Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of Severely Errored Seconds
+                       encountered by the BS air interface in the previous 24
+                       hour interval.  Invalid 15 minute intervals count
+                       as 0."
+               ::= { buApmTotalBs 2 }
+
+          buApmTotalBsUlUASs OBJECT-TYPE
+               SYNTAX  Counter32
+               MAX-ACCESS  read-only
+               STATUS  current
+               DESCRIPTION
+                      "The number of Unavailable Seconds encountered by
+                       the BS air interface in the previous 24 hour interval.
+                       Invalid 15 minute intervals count as 0."
+               ::= { buApmTotalBs 3 }
+
+          buApmTotalBsUlDMs OBJECT-TYPE
+               SYNTAX Counter32
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The number of Degraded Minutes (DMs) encountered
+                      by the BS air interface in the previous 24 hour
+                      interval.  Invalid 15 minute intervals count as
+                      0."
+               ::= { buApmTotalBs 4 }
+
+           buApmTotalBsUlSnrMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum uplink SNR as measured by the BS
+                       in all of the 96 15 minute interval. 
+                       Reported in 0.1 dB units."
+               ::= { buApmTotalBs 5 }
+
+           buApmTotalBsUlSnrMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum uplink SNR as measured by the BS
+                       in all of the 96 15 minute interval. 
+                       Reported in 0.1 dB units."
+               ::= { buApmTotalBs 6 }
+
+           buApmTotalBsUlSnrAvg OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The average uplink SNR as measured by the BS
+                       in all of the 96 15 minute interval. 
+                       Reported in 0.1 dB units."
+               ::= { buApmTotalBs 7 }
+
+           buApmTotalBsUlSigMin OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The minimum uplink Signal Power level as measured 
+                       by the BS in all of the 96 15 minute interval. 
+                       Reported in 0.1 dBm units."
+               ::= { buApmTotalBs 8 }
+
+           buApmTotalBsUlSigMax OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The maximum uplink Signal Power level as measured 
+                       by the BS in all of the 96 15 minute interval. 
+                       Reported in 0.1 dBm units."
+               ::= { buApmTotalBs 9 }
+
+           buApmTotalBsUlSigAvg OBJECT-TYPE
+               SYNTAX INTEGER(0..2147483647)
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The average uplink Signal Power level as measured 
+                       by the BS in all of the 96 15 minute interval. 
+                       Reported in 0.1 dBm units."
+               ::= { buApmTotalBs 10 }
+
+            buApmTotalBsUlFer OBJECT-TYPE
+               SYNTAX Counter32
+               MAX-ACCESS read-only
+               STATUS current
+               DESCRIPTION
+                      "The number of uplink Frame Burst errors as reported  
+                       by the BS in the all of the 96 minute interval. "
+               ::= { buApmTotalBs 11 }
+
+-- ####################################################################
+-- buApmActions
+-- ####################################################################
+
+            buApmResetBsCounter  OBJECT-TYPE
+			   SYNTAX INTEGER
+               MAX-ACCESS read-write
+               STATUS current
+               DESCRIPTION
+                      "Set of this variable will cause reset of Air  
+                       Performance counters on BS-BU "
+               ::= { buApmActions 1 }
+
+            buApmResetTsCounter  OBJECT-TYPE
+			   SYNTAX INTEGER
+               MAX-ACCESS read-write
+               STATUS current
+               DESCRIPTION
+                      "Set of this variable will cause reset of Air  
+                       Performance counters on TS-BU "
+               ::= { buApmActions 2 }
+
+
+
+-- ####################################################################
+-- Basic Unit Interface group
+-- ####################################################################
+
+-- ####################################################################
+-- Basic Unit Interface Table
+-- ####################################################################
+
+buIfTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BuIfEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "This table represents the telecomm interfaces types configured by user
+     for the Base Station and for the Terminal Station registered to it"
+    ::= { buInterface 1 }
+
+buIfEntry OBJECT-TYPE
+    SYNTAX      BuIfEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "Entry in the buIfTable."
+    INDEX   { buIfIndex }
+    ::= { buIfTable 1 }
+
+BuIfEntry ::= SEQUENCE {
+    buIfIndex             INTEGER,
+    buIfType              IANAifType,
+	buIfLoopbackType      INTEGER,
+    buIfMaxBandwidth 	  INTEGER
+    }
+
+buIfIndex OBJECT-TYPE
+    SYNTAX      INTEGER (2..4)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The Identification of the BU telecomm interface"
+    ::= { buIfEntry 1 }
+
+buIfType OBJECT-TYPE
+    SYNTAX      IANAifType
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The type of the BU telecomm interface. ds1(18) should be used for
+     the E1 , v35(45) for V35, x213(93) for X21 , other (1) for not configured"
+    ::= { buIfEntry 2 }
+
+buIfLoopbackType OBJECT-TYPE
+    SYNTAX      INTEGER	{
+                          none    (1),
+                          remote  (2),
+						  local   (3),
+						  payload (4),
+						  board   (5),  -- not supported, future use
+						  matrix  (6),  -- not supported
+						  other   (7)
+                        }
+
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The type of the loopback applied for the BU telecomm interface
+     Note that board and matrix looback is NOT supported."
+    ::= { buIfEntry 3 }
+
+buIfMaxBandwidth OBJECT-TYPE
+    SYNTAX      INTEGER	{
+                          none       (1),
+                          bw2Mbps    (2),
+                          bw4Mbps    (3)
+                        }
+
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The maximum bandwidth supported by BS-BU telecomm interface"
+    ::= { buIfEntry 4 }
+
+
+-- ####################################################################
+-- Basic Unit Serial Data Interface Configuration Table
+-- ####################################################################
+
+buSdiConfigTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BuSdiConfigEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "This table contains the definitions for the serial data interface
+    on TS and BS. Corresponding entry of this table exist for each
+    V35/X21 interfaces  "
+    ::= { buInterface 2 }
+
+buSdiConfigEntry OBJECT-TYPE
+    SYNTAX      BuSdiConfigEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "Entry in the buIfTable."
+    INDEX   { buSdiIfIndex }
+    ::= { buSdiConfigTable 1 }
+
+BuSdiConfigEntry ::= SEQUENCE {
+    buSdiIfIndex          INTEGER,
+    buSdiIfDataRate       INTEGER,
+    buSdiIfOperatingMode  INTEGER,
+    buSdiIfTimingMode     INTEGER,
+    buSdiIfClockMode      INTEGER,
+    buSdiIfRxClockMode    INTEGER
+    }
+
+
+buSdiIfIndex OBJECT-TYPE
+    SYNTAX      INTEGER (2..4) 
+	MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"V35/X21 Interface index - as defined in the ifTable"
+    ::= { buSdiConfigEntry 1 }
+
+
+buSdiIfDataRate OBJECT-TYPE
+    SYNTAX      INTEGER (1..32)
+	MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"Data rate in n * 64Kbps"
+    ::= { buSdiConfigEntry 2 }
+
+buSdiIfOperatingMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          dce (1),
+                          dte (2)
+                        }
+	MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"Interface operating mode"
+    ::= { buSdiConfigEntry 3 }
+
+buSdiIfTimingMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          internal (1),
+                          external (2)
+                        }
+	MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"Interface timing mode"
+    ::= { buSdiConfigEntry 4 }
+
+buSdiIfClockMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          standard (1),
+                          inverse (2)
+                        }
+	MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"Interface clock mode"
+    ::= { buSdiConfigEntry 5 }
+
+buSdiIfRxClockMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          standard (1),
+                          inverse (2)
+                        }
+	MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"Interface receive clock mode"
+    ::= { buSdiConfigEntry 6 }
+
+-- ####################################################################
+-- Basic Unit E1 Configuration Table
+-- ####################################################################
+
+buE1ConfigTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BuE1ConfigEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "This table contains the definitions for the E1 interface
+    on TS and BS. Corresponding entry of this table exist for each
+    E1 interface  "
+    ::= { buInterface 3 }
+
+buE1ConfigEntry OBJECT-TYPE
+    SYNTAX      BuE1ConfigEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "Entry in the buE1ConfigTable.The entry is automatically created
+     by the agent each type interface of type E1 is configured, and
+     is automatically deleted each time E1 interface is deleted "
+    INDEX   { buE1ifIndex }
+    ::= { buE1ConfigTable 1 }
+
+BuE1ConfigEntry ::= SEQUENCE {
+    buE1ifIndex           INTEGER,
+    buE1LineType          INTEGER,
+    buE1LossAlarmMode     INTEGER,
+	buE1SignallingMode    INTEGER
+   }
+
+buE1ifIndex OBJECT-TYPE
+    SYNTAX      INTEGER (2..4) 
+	MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"E1 Interface index - as defined in the ifTable"
+    ::= { buE1ConfigEntry 1 }
+
+buE1LineType OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          unframed (1),
+                          ddf (2),
+                          mffCrc4 (3),
+                          mffCrc4Ext (4)
+                        }
+	MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"E1 Interface framing format .
+	 DDF : Double Frame , No CRC
+	 MFF-CRC4 : Multi Frame with CRC4
+	 MFF-CRC4_EXT : Multi Frame with CRC4 and with extension"
+    ::= { buE1ConfigEntry 2 }
+ 
+
+buE1LossAlarmMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          itut(1),
+                          etsi (2)
+                        }
+	MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"E1 Loss Alarm Mode "
+    ::= { buE1ConfigEntry 3 }
+
+buE1SignallingMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          transparent(1),
+                          ccs (2),
+						  none (3)
+                        }
+	MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"E1 Signalling mode.  "
+    ::= { buE1ConfigEntry 4 }
+
+
+-- ####################################################################
+-- Basic Unit Interface Reset Control Table
+-- ####################################################################
+
+buIfResetControlTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BuIfResetControlEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+	"The Basic Unit Interface Card Reset control table."
+    ::= { buInterface 5 }
+
+buIfResetControlEntry OBJECT-TYPE
+    SYNTAX      BuIfResetControlEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "Entry in the buIfResetControlTable."
+    INDEX   { ifIndex }
+    ::= { buIfResetControlTable 1 }
+
+BuIfResetControlEntry ::= SEQUENCE {
+    buIfResetControl     INTEGER
+    }
+
+
+buIfResetControl  OBJECT-TYPE
+    SYNTAX     INTEGER {
+		    running(1),
+		    reset(2),
+		    switchOver(3),
+			halt(4)
+	      }
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+	"Setting this object to	reset(2) causes the Interface Card to reinitialize
+	configuration parameters in non-volatile memory to
+	default values and to restart the application software.
+	Setting this object to switchOver(3) causes the interface card
+	to switch between the stand-by and active software.
+	When the device is running normally,
+	this variable has a value of running(1)."
+    ::= { buIfResetControlEntry 1 }									
+
+
+
+
+
+
+
+-- ####################################################################
+-- Basic Unit Traps group
+-- ####################################################################
+
+
+buTrapDestTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BuTrapDestEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "This table contains IP addresses of the management stations
+     to transmit traps to.It resides in the BS BU only."
+    ::= { buTraps 3 }
+
+buTrapDestEntry OBJECT-TYPE
+    SYNTAX      BuTrapDestEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "Entry in the buTrapDestTable."
+    INDEX   { buTrapDestIpAddress }
+    ::= { buTrapDestTable 1 }
+
+BuTrapDestEntry ::= SEQUENCE {
+    buTrapDestIpAddress         IpAddress,
+    buTrapDestState             INTEGER,
+    buTrapDestAuthorizedMngr    INTEGER,
+    buTrapDestCommunity         DisplayString,
+    buTrapDestRowStatus         RowStatus
+    }
+
+buTrapDestIpAddress OBJECT-TYPE
+    SYNTAX      IpAddress
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "IP address of the Management Station to send trap
+     Also an index to the Trap Destination Table."
+    ::= { buTrapDestEntry 2 }
+
+buTrapDestState OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          disable(1),
+                          enable(2)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "When set to enable (2) trap will be sent to the Management Station
+     with corresponding IP address , otherwize it will be not "
+    ::= { buTrapDestEntry 3 }
+
+buTrapDestAuthorizedMngr OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          disable(1),
+                          enable(2)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "When set to enable (2) and trap is alarm trap ,the same value 
+     of buAlarmType variable will be sent for the On and Off alarm,
+     otherwize different values of buAlarmTypes will be sent "
+    ::= { buTrapDestEntry 4 }
+
+buTrapDestCommunity OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE(0..10))
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Community string for trap transmitting by BS-BU and it's TS_BUs"
+    ::= { buTrapDestEntry 5 }
+
+buTrapDestRowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The status of the row in the Trap Dest Table."
+    ::= { buTrapDestEntry 6 }
+
+buTrapSource  OBJECT-TYPE
+    SYNTAX    DisplayString (SIZE(3..12)) 
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "This string should be BS for BS and the TS<customer id> TS transmitting trap"
+    ::= { buTraps 4 }
+
+-- ***##############################################################***
+--                            Alarm Traps
+--          
+-- ***##############################################################***
+-- This part of mib was cut because of problems with compilation
+-- 22.11.2000 J.Uminska 
+--telecomLocalLoopbackOn       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when Telecom Interface enters 
+--	             the Local Loopback state"
+--        ::= 1 
+--
+--telecomLocalLoopbackOff       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when Telecom Interface exits 
+--	             the Local Loopback state"
+--        ::= 2 
+--
+--telecomRemoteLoopbackOn       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when Telecom Interface enters 
+--	             the Remote Loopback state"
+--        ::= 3 
+--
+--telecomRemoteLoopbackOff       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when  Telecom Interface exits 
+--	             the Remote Loopback state"
+--        ::= 4 
+--
+--telecomPayloadLoopbackOn      TRAP-TYPE  
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when Telecom Interface enters  
+--	             the Payload Loopback state"
+--        ::= 5 
+--
+--telecomPayloadLoopbackOff      TRAP-TYPE  
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when Telecom Interface exits 
+--	             the Payload Loopback state"
+--        ::= 6 
+--
+--telecomChannelLoopbackOn      TRAP-TYPE   
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when Telecom Interface enters 
+--	             the Channel Loopback state"
+--        ::= 7
+--
+--telecomChannelLoopbackOff      TRAP-TYPE   
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when Telecom Interface exits 
+--	             the Channel Loopback state"
+--        ::= 8
+--
+--telecomIfDisabledOn           TRAP-TYPE      
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the operational status of the 
+--	             telecom interface becomes disable"
+--        ::= 9
+--
+--telecomIfDisabledOff           TRAP-TYPE      
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the operational status of the 
+--	             telecom interface becomes enable"
+--        ::= 10
+--
+--e1AlarmIndicationSignalOn  TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the AIS is detected on the E1 
+--	             interface"
+--        ::= 11
+--
+--e1AlarmIndicationSignalOff  TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the AIS terminated on the E1 
+--	             interface"
+--        ::= 12
+--
+--e1LossOfFrameAlignmentOn  TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the LFA is detected on the E1 
+--	             interface"
+--        ::= 13
+--
+--e1LossOfFrameAlignmentOff  TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the LFA is terminated on the E1 
+--	             interface"
+--        ::= 14
+--
+--e1LossOfSignalOn  TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the LOS is detected  on the E1 
+--	             interface"
+--        ::= 15
+--
+--e1LossOfSignalOff  TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the LOS is terminated on the E1 
+--	             interface"
+--        ::= 16
+--
+--e1LossOfMultiframeAllignmentOn TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the LMFA is detected  on the E1 
+--	             interface"
+--        ::= 17
+--
+--e1LossOfMultiframeAllignmentOff TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the LMFA is terminated on the E1 
+--	             interface"
+--        ::= 18
+--
+--e1RemoteAlarmIndicationCrcOn TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the RAI and CRC errors are detected on
+--	             the E1 interface"
+--        ::= 19
+--
+--e1RemoteAlarmIndicationCrcOff TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the RAI and CRC errors are terminated
+--	             on the E1 interface"
+--        ::= 20
+--
+--e1RemoteAlarmIndicationOn TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the RAI is detected  on the E1 
+--	             interface"
+--        ::= 21
+--
+--e1RemoteAlarmIndicationOff TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the RAI is terminated  on the E1 
+--	             interface"
+--        ::= 22
+--
+--telecomIfFaultOn TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when telecom interface fault is detected"
+--        ::= 23
+--
+--telecomIfFaultOff TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when telecom interface fault is terminated"
+--        ::= 24
+--
+--buDisabledOn               TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when BU operational status became disable"
+--        ::= 25
+--
+--buDisabledOff               TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when BU operational status became enable"
+--        ::= 26
+--
+--diagnosticsRamFaultOn      TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when RAM test fault is detected"
+--        ::= 27
+--
+--diagnosticsRamFaultOff      TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when RAM test passed"
+--        ::= 28
+--
+--diagnosticsE2promFaultOn   TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when E2prom test fault is detected"
+--        ::= 29
+--
+--diagnosticsE2promFaultOff   TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when E2prom test passed"
+--        ::= 30
+--
+--diagnosticsFlashFaultOn    TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when Flash memory test fault is detected "
+--        ::= 31
+--
+--diagnosticsFlashFaultOff    TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when Flash memory test passed"
+--        ::= 32
+--
+--diagnosticsMatrixFaultOn   TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when Matrix test fault is detected"
+--        ::= 33
+--
+--diagnosticsMatrixFaultOff   TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when Matrix test passed"
+--        ::= 34
+--
+--diagnosticsSwVersionFaultOn      TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when wrong software version is detected "
+--        ::= 35
+--
+--diagnosticsSwVersionFaultOff      TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when software version test passed"
+--        ::= 36
+--
+--diagnosticsOrcaFaultOn       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when Orca test failed"
+--        ::= 37
+--
+--diagnosticsOrcaFaultOff       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when Orca test passed"
+--        ::= 38
+--
+--diagnosticsDspFaultOn       TRAP-TYPE 		
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the DSP test failed"
+--        ::= 39
+--
+--diagnosticsDspFaultOff       TRAP-TYPE 		
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the DSP test passed"
+--        ::= 40
+--
+--illegalServiceConfigurationOn       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when illegal service configuration
+--	             is detected "
+--        ::= 41
+--
+--illegalServiceConfigurationOff       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when service configuration is OK"
+--        ::= 42
+--
+--tsAthenticationFaultOn       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	""
+--        ::= 43
+--
+--tsAthenticationFaultOff       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	""
+--        ::= 44
+--
+--radioLinkInterferenceOn       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the radio link interference is detected
+--	             by BS"
+--        ::= 45
+--
+--radioLinkInterferenceOff       TRAP-TYPE
+--	ENTERPRISE walkair
+--    VARIABLES {
+--            buAlrmType,
+--            buAlrmSeverity,
+--            buAlrmState,
+--            buAlrmSource,
+--            buAlrmData,
+--            buTrapSource
+--            }
+--DESCRIPTION	"This trap is sent when the radio link interference condition is
+--	             terminated"
+--        ::= 46
+--
+--radioLinkLossOn       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when BS detected the loss of 
+--	             the downlink   "
+--        ::= 47
+--
+--radioLinkLossOff       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when BS detected the radiolink
+--	             establishment"
+--        ::= 48
+--
+--mostTsRadioLinkLossOn       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--            buAlrmData,
+--            buTrapSource
+--            }
+--DESCRIPTION	"This trap is sent when BS detected loss of the radiolink
+--	             with more then 50% of TSs"
+--        ::= 49
+--
+--mostTsRadioLinkLossOff       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when mostTsRadioLinkLoss condition is
+--	             terminated"
+--        ::= 50
+--
+--tsRadioLinkLossOn       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when BS detected loss of the rdiolink with
+--	             one of TSs registered with it"
+--        ::= 51
+--
+--tsRadioLinkLossOff       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--            buAlrmSeverity,
+--            buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when TsRadioLinkLoss condition is terminated"
+--        ::= 52
+--
+--ifuLockOn       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the IF synthesizer failed to lock on
+--	             the frequency set on the synthesizer"
+--        ::= 53
+--
+--ifuLockOff       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the ifu Lock condition terminated "
+--        ::= 54
+--
+--accumulatedLinksBerThreshold1On       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--            buAlrmType,
+--            buAlrmSeverity,
+--            buAlrmState,
+--            buAlrmSource,
+--            buAlrmData,
+--            buTrapSource
+--            }
+--DESCRIPTION	""
+--    ::= 55
+--
+--accumulatedLinksBerThreshold1Off       TRAP-TYPE
+--	ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	""
+--        ::= 56
+--
+--accumulatedLinksBerThreshold2On       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	""
+--        ::= 57
+--
+--accumulatedLinksBerThreshold2Off       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--            buAlrmType,
+--            buAlrmSeverity,
+--            buAlrmState,
+--            buAlrmSource,
+--            buAlrmData,
+--            buTrapSource
+--            }
+--DESCRIPTION	""
+--    ::= 58 
+--
+--radioLinkBerThreshold1On       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	""
+--        ::= 59
+--
+--radioLinkBerThreshold1Off       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	""
+--        ::= 60
+--
+--radioLinkBerThreshold2On       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--            buAlrmType,
+--            buAlrmSeverity,
+--            buAlrmState,
+--            buAlrmSource,
+--            buAlrmData,
+--            buTrapSource
+--            }
+--DESCRIPTION	""
+--    ::= 61
+--
+--radioLinkBerThreshold2Off       TRAP-TYPE
+--	ENTERPRISE walkair
+--    VARIABLES {
+--            buAlrmType,
+--            buAlrmSeverity,
+--            buAlrmState,
+--            buAlrmSource,
+--            buAlrmData,
+--            buTrapSource
+--            }
+--DESCRIPTION	""
+--    ::= 62
+--
+--e1BerThresholdOn       TRAP-TYPE
+--		ENTERPRISE walkair
+--            VARIABLES {
+--                    buAlrmType,
+--                    buAlrmSeverity,
+--                    buAlrmState,
+--                    buAlrmSource,
+--                    buAlrmData,
+--                    buTrapSource
+--                    }
+--    	DESCRIPTION	""
+--            ::= 63
+--    
+--    e1BerThresholdOff       TRAP-TYPE
+--    		ENTERPRISE walkair
+--            VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	""
+--        ::= 64
+--
+--rfuPowerLossOn       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the RFU power loss is detected"
+--        ::= 65
+--  
+--rfuPowerLossOff       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the RFU power loss is terminated"
+--        ::= 66
+-- 
+--serviceConfigNotAckOn       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--             buAlrmType,
+--             buAlrmSeverity,
+--             buAlrmState,
+--             buAlrmSource,
+--             buAlrmData,
+--             buTrapSource
+--             }
+--	DESCRIPTION	"This trap is sent when acknoledge for the service 
+--	             configuration was not received from TS"
+--     ::= 67
+--
+--	serviceConfigNotAckOff       TRAP-TYPE
+--		ENTERPRISE walkair
+--     VARIABLES {
+--             buAlrmType,
+--                 buAlrmSeverity,
+--                 buAlrmState,
+--                 buAlrmSource,
+--                 buAlrmData,
+--                 buTrapSource
+--                 }
+-- 	DESCRIPTION	"This trap is sent when acknoledge for the service 
+-- 	             configuration was received from TS"
+--         ::= 68
+-- 
+-- softwarewDownloadStart       TRAP-TYPE
+-- 		ENTERPRISE walkair
+--         VARIABLES {
+--                 buTrapSource
+--                 }
+-- 	DESCRIPTION	"This trap is sent when the software download process
+-- 	             is started "
+--         ::= 69
+-- 
+-- softwarewDownloadEnd       TRAP-TYPE
+-- 		ENTERPRISE walkair
+--         VARIABLES {
+--                 buTrapSource
+--                 }
+--	DESCRIPTION	"This trap is sent when the software download process
+--	             is finished"
+--       ::= 70
+--
+--	softwarewDownloadAbort       TRAP-TYPE
+--		ENTERPRISE walkair
+--       VARIABLES {
+--               buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the software download process
+--	             is aborted"
+--        ::= 71
+--
+--switchVersionFailedOn       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the switch between the current and 
+--	             the standby software versions failed"
+--        ::= 72
+--
+--switchVersionFailedOff       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the switch between the current and 
+--	             the standby software versions succeeded"
+--        ::= 73
+--
+--   lsdiLossOfClockOn  TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--				buAlrmSource,
+--                buAlrmData,
+--				buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when LSDI clock loss detected"
+--        ::= 74
+--
+--lsdiLossOfClockOff  TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--				buAlrmSource,
+--                buAlrmData,
+--				buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the LSDI interrface recovered from clock loss "
+--        ::= 75
+--
+--telecomIfBoardLoopbackOn      TRAP-TYPE  
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--				buAlrmSource,
+--                buAlrmData,
+--				buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when telecom interface Board loopback activated"
+--        ::= 76 
+--
+--telecomIfBoardLoopbackOff      TRAP-TYPE  
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--				buAlrmSource,
+--                buAlrmData,
+--				buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when telecom interface Board loopback removed"
+--        ::= 77 
+--
+--telecomIfMatrixRemoteLoopbackOn      TRAP-TYPE  
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--				buAlrmSource,
+--                buAlrmData,
+--				buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when telecom interface Matrix loopback activated"
+--        ::= 78 
+--
+--telecomIfMatrixRemoteLoopbackOff      TRAP-TYPE  
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--				buAlrmSource,
+--                buAlrmData,
+--				buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when telecom interface Matrix loopback removed"
+--        ::= 79 
+--			  
+--telecomIfTypeDoesNotMatchOn      TRAP-TYPE  
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--				buAlrmSource,
+--                buAlrmData,
+--				buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the actual telecomm interface type does not match
+--	             configured type"
+--        ::= 80 
+--
+--telecomIfTypeDoesNotMatchOff      TRAP-TYPE  
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--				buAlrmSource,
+--                buAlrmData,
+--				buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the condition when the actual telecomm interface type
+--	             does not match the configured type was terminated"
+--        ::= 81 
+--
+--
+--telecomIfDown      TRAP-TYPE  
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--				buAlrmSource,
+--                buAlrmData,
+--				buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the telecom interface operational status is Down"
+--        ::= 82 
+--
+--
+--telecomIfUp      TRAP-TYPE  
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--				buAlrmSource,
+--                buAlrmData,
+--				buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the telecom interface operational status is Up"
+--        ::= 83 
+--
+--
+--cpeEvent      TRAP-TYPE  
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmData,
+--				buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the event is received from the Customer
+--	             premices equipment connected to the TS"
+--        ::= 84
+--         
+--v52LinkIdFailure      TRAP-TYPE  
+--		ENTERPRISE walkair
+--        VARIABLES {
+--            buAlrmData,
+--				buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the V5.2 LinkId procedure failed"
+--        ::= 85
+--
+--v5RestartInterfaceFail      TRAP-TYPE  
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmData,
+--				buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the restart of the V5 Interface
+--	             procedure failed"
+--        ::= 86
+--
+--
+--ifmuxDisconnected TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the IFMUX redundancy cable disconnection 
+--	             is detected "
+--        ::= 87
+
+--
+--ifmuxConnected TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the IFMUX redundancy cable connection is detected"
+--        ::= 88
+
+--
+--rfuRedundCableDisconnected TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--               }
+--	DESCRIPTION	"This trap is sent when the RFU redundancy cable disconnect is detected"
+--        ::= 89
+--
+--
+--rfuRedundCableConnected TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buAlrmType,
+--                buAlrmSeverity,
+--                buAlrmState,
+--                buAlrmSource,
+--                buAlrmData,
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the RFU redundancy cable connection is detected"
+--        ::= 90
+--
+--
+--rfuAFailed       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buTrapSource
+--                }
+--	    DESCRIPTION	"This trap is sent when RFU A failure is detected"
+--        ::= 91
+--
+--rfuBFailed       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buTrapSource
+--                }
+--	    DESCRIPTION	"This trap is sent when RFU B failure is detected"
+--        ::= 92
+--
+--oduSwitchingFailed       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buTrapSource
+--                }
+--	    DESCRIPTION	"This trap is sent when switching to the redundant RFU  failed"
+--        ::= 93
+--
+--oduSwitchingToRfuA       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buTrapSource
+--                }
+--	    DESCRIPTION	"This trap is sent when switching from RFU B to RFU A occured"
+--        ::= 94
+--
+--oduSwitchingToRfuB       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buTrapSource
+--                }
+--	    DESCRIPTION	"This trap is sent when switching from RFU A to RFU B occured"
+--        ::= 95
+--
+--configurationDownloadStart       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the configuration download process
+--	             is started "
+--        ::= 96
+--
+--configurationDownloadEnd       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the configuration download process
+--	             is finished"
+--        ::= 97
+--
+--configurationDownloadAbort       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the configuration download process
+--	             is aborted"
+--        ::= 98
+--
+--resetRequired       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--                buTrapSource
+--                }
+--	DESCRIPTION	"This trap is sent when the configuration download process
+--	             is finished and user is trying to change WALKAir parameters "
+--        ::= 99
+--
+--physIfConfMismatch       TRAP-TYPE
+--		ENTERPRISE walkair
+--        VARIABLES {
+--		            buAlrmData, 
+--                    buTrapSource
+--                  }
+--	DESCRIPTION	"This trap is sent when the configuration of the physical port
+--	             does not match the Logical Interface defined over this port "
+--        ::= 100
+ 
+-- ***##############################################################***
+--              Groups within the RF Unit MIB
+-- ***##############################################################***
+
+
+rfuConfig                OBJECT IDENTIFIER ::= { rfUnit 1 }
+rfuFrequency             OBJECT IDENTIFIER ::= { rfUnit 2 }
+rfuModemWorkingPoint	 OBJECT IDENTIFIER ::= { rfUnit 3 }
+
+
+
+-- ####################################################################
+-- RF Unit Configuration group
+-- ####################################################################
+
+
+rfuConfHeadType OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          hdif(1), 
+                          hd35A(2),
+                          hd35B(3),
+                          hd35C(4),
+                          hd105(5),	
+                          hd26A(6),
+                          hd26B(7),
+                          hd26C(8),
+                          hd26D(9),
+                          hd26E(10),
+                          hd26F(11),
+                          hd26G(12),
+                          hd26H(13),
+						  hd36A(14),
+						  hd36B(15),
+						  hd36C(16),
+						  hd36D(17),
+						  hd36E(18)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"RF Unit head  type."
+    ::= { rfuConfig 1 }
+
+rfuConfRedundancyStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          enable(1),
+                          disable(2)
+                        }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "enable - means that a redundant RF Unit exists in the Base Station 
+        (or Terminal Station)."
+    ::= { rfuConfig 2 }
+
+rfuConfActiveUnit OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          main(1),
+                          redundant(2)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "Which of the RF Units existing in the Base Station (or
+        Terminal Station) is currently active."
+    DEFVAL { 1 }
+    ::= { rfuConfig 3 }
+
+rfuConfStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          active(1),
+                          inactive(2)
+                        }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "RF Unit operational status."
+    ::= { rfuConfig 4 }
+
+rfuConfCableLengthA OBJECT-TYPE
+    SYNTAX      INTEGER (0..500)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The length of the cable connecting the RFU A, in meters."
+    ::= { rfuConfig 5 }
+
+rfuConfCableTypeA OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          other(1),
+                          lmr400(2),
+                          cf14Cu2y50Ohm(3)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The type of the cable connecting the RFU A."
+    ::= { rfuConfig 6 }
+
+rfuConfCableGainValidA OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          notValid(1),
+                          valid(2)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "Validity of cable to the RFU A gain parameters"
+    ::= { rfuConfig 7 }
+
+rfuConfCableTxGainA OBJECT-TYPE
+    SYNTAX      Decibel
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "Tx cable to RFU A gain  "
+    ::= { rfuConfig 8 }
+
+
+rfuConfCableRxGainA OBJECT-TYPE
+    SYNTAX      Decibel
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "Rx cable gain"
+    ::= { rfuConfig 9 }
+
+rfuConfHeadHwRevA OBJECT-TYPE
+    SYNTAX      INTEGER (65..90)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"RFU A head hardware revision - ascii character from A to Z "
+    ::= { rfuConfig 10 }
+
+
+
+rfuConfActiveUnitSelectMode OBJECT-TYPE
+    SYNTAX      INTEGER  {
+                          automatic(1),
+                          manual(2)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"RF Active Unit Selection mode  "
+    ::= { rfuConfig 11 }
+
+
+rfuConfActiveUnitOperStatus OBJECT-TYPE
+    SYNTAX      INTEGER  {
+                          up(1),
+                          down(2)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"RF Active Unit Selection mode  "
+    ::= { rfuConfig 12 }
+
+
+rfuConfCableLengthB OBJECT-TYPE
+    SYNTAX      INTEGER (0..500)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The length of the cable connecting the RFU B, in meters."
+    ::= { rfuConfig 13 }
+
+rfuConfCableTypeB OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          other(1),
+                          lmr400(2),
+                          cf14Cu2y50Ohm(3)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The type of the cable connecting the RFU B."
+    ::= { rfuConfig 14 }
+
+rfuConfCableGainValidB OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          notValid(1),
+                          valid(2)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "Validity of cable to the RFU B gain parameters"
+    ::= { rfuConfig 15 }
+
+rfuConfCableTxGainB OBJECT-TYPE
+    SYNTAX      Decibel
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "Tx cable to the RFU B gain "
+    ::= { rfuConfig 16 }
+
+
+rfuConfCableRxGainB OBJECT-TYPE
+    SYNTAX      Decibel
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "Rx cable to the RFU B gain"
+    ::= { rfuConfig 17 }
+
+
+rfuConfHeadHwRevB OBJECT-TYPE
+    SYNTAX      INTEGER (65..90)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"RFU B head hardware revision - ascii character from A to Z "
+    ::= { rfuConfig 18 }
+
+
+
+-- ####################################################################
+-- RF Unit Frequency group
+-- ####################################################################
+
+-- ####################################################################
+-- RF Available Frequency Table
+-- ####################################################################
+
+rfuFreqAvailTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF RfuFreqAvailEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+	"The RF Unit available frequencies table."
+    ::= { rfuFrequency 1 }
+
+rfuFreqAvailEntry OBJECT-TYPE
+    SYNTAX      RfuFreqAvailEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+	"Entry in the rfuFreqAvailTable."
+    INDEX   { rfuFreqAvailIndex }
+    ::= { rfuFreqAvailTable 1 }
+
+RfuFreqAvailEntry ::= SEQUENCE {
+    rfuFreqAvailIndex           INTEGER,
+    rfuFreqAvailRfBandChnl      INTEGER,
+    rfuFreqAvailRowStatus       RowStatus
+    }
+
+rfuFreqAvailIndex OBJECT-TYPE
+    SYNTAX      INTEGER(1..100)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"An index to the Frequency Table."
+    ::= { rfuFreqAvailEntry 1 }
+
+rfuFreqAvailRfBandChnl OBJECT-TYPE
+    SYNTAX      INTEGER(0..2147483647)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "An available frequency RF Band Channel."
+    ::= { rfuFreqAvailEntry 2 }
+
+rfuFreqAvailRowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "Row status of each entry "
+    ::= { rfuFreqAvailEntry 3 }
+
+rfuFreqSelected OBJECT-TYPE
+    SYNTAX      INTEGER(0..2147483647)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	"The frequency currently selected for transmission.
+	Represented as the value of the selected frequency's
+	index in the Frequency Table. If no frequency is
+	selected a '0' should be returned."
+    ::= { rfuFrequency 2 }
+
+rfuFreqAutoSel OBJECT-TYPE
+    SYNTAX      INTEGER {
+                          disable(1),
+                          enable(2)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "Disable/enable automatic frequency selection."
+    DEFVAL { disable }
+    ::= { rfuFrequency 3 }
+
+
+-- ####################################################################
+--   RFU parameters specific to the RFU head
+-- ####################################################################
+
+rfuHeadFreqTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF RfuHeadFreqEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+	"The mapping between RFU and IFU channels"
+    ::= { rfuFrequency 10 }
+
+rfuHeadFreqEntry OBJECT-TYPE
+    SYNTAX      RfuHeadFreqEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+	"Entry in the rfuHeadFreqTable."
+    INDEX   { rfuHeadFrIndex }
+    ::= { rfuHeadFreqTable 1 }
+
+RfuHeadFreqEntry ::= SEQUENCE {
+	rfuHeadFrIndex           INTEGER,
+    rfuHeadFrChannel         INTEGER,
+    rfuHeadFrUpLinkFreq      INTEGER,
+    rfuHeadFrDownLinkFreq    INTEGER
+	 }
+
+rfuHeadFrIndex OBJECT-TYPE
+    SYNTAX      INTEGER(1..100)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	"Sequential number of the entry in the rfuHeadFreqTable."
+    ::= { rfuHeadFreqEntry 1 }
+
+
+rfuHeadFrChannel OBJECT-TYPE
+    SYNTAX      INTEGER(1..2147483647)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	"Channel number in the RF band in full RF band range."
+    ::= { rfuHeadFreqEntry 2 }
+
+
+rfuHeadFrUpLinkFreq OBJECT-TYPE
+    SYNTAX      INTEGER(1..2147483647)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	"RF channel frequency in the UpLink in KHz "
+    ::= { rfuHeadFreqEntry 3 }
+
+
+rfuHeadFrDownLinkFreq OBJECT-TYPE
+    SYNTAX      INTEGER(1..2147483647)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	"RF channel frequency in the DownLink in KHz "
+    ::= { rfuHeadFreqEntry 4 }
+
+
+
+-- ***##############################################################***
+--              Modem Working Point Group
+-- ***##############################################################***
+
+rfuMwpBsNominalPowerTx OBJECT-TYPE
+    SYNTAX      Decibel
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"BS BU Modem Working Point nominal transmit power"
+    ::= { rfuModemWorkingPoint 1 }
+
+rfuMwpBsNominalPowerRx  OBJECT-TYPE
+    SYNTAX      Decibel
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"BS BU Modem Working Point nominal receive power "
+    ::= { rfuModemWorkingPoint 2 }
+
+rfuMwpBsDefNominalPowerTx  OBJECT-TYPE
+    SYNTAX      Decibel
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	"BS BU Modem Working Point nominal transmit power default value "
+    ::= { rfuModemWorkingPoint 3 }
+
+rfuMwpBsDefNominalPowerRx OBJECT-TYPE
+    SYNTAX      Decibel
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	"BS BU Modem Working Point Nominal receive power default value"
+    ::= { rfuModemWorkingPoint 4 }
+
+rfuMwpTsInitPowerTx	   OBJECT-TYPE
+    SYNTAX      Decibel
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"TS BU Modem Working Point initial transmit power "
+    ::= { rfuModemWorkingPoint 5 }
+
+rfuMwpTsMaxPowerTx	 OBJECT-TYPE
+    SYNTAX      Decibel
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"TS BU Modem Working Point maximum transmit power "
+    ::= { rfuModemWorkingPoint 6 }
+
+rfuMwpTsInitPowerRx	  OBJECT-TYPE
+    SYNTAX      Decibel
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"TS BU Modem Working Point initial receive power "
+    ::= { rfuModemWorkingPoint 7 }
+
+rfuMwpTsDefInitPowerTx	   OBJECT-TYPE
+    SYNTAX      Decibel
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	"TS BU Modem Working Point initial transmit power default value "
+    ::= { rfuModemWorkingPoint 8 }
+
+rfuMwpTsDefMaxPowerTx	 OBJECT-TYPE
+    SYNTAX      Decibel
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	"TS BU Modem Working Point maximum transmit power default value "
+    ::= { rfuModemWorkingPoint 9 }
+
+rfuMwpTsDefInitPowerRx	  OBJECT-TYPE
+    SYNTAX      Decibel
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	"TS BU Modem Working Point initial receive power default value "
+    ::= { rfuModemWorkingPoint 10 }
+
+
+-- ***##############################################################***
+--              Groups within the If Unit
+-- ***##############################################################***
+
+ifuConfig          OBJECT IDENTIFIER ::= { ifUnit 1 }
+
+ifuConfHwRev OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE(4))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The IF Unit hardware revision, in a 'Vxxx' string
+         format, where x ranges between 000 to 007 (Bond, James Bond)."
+    ::= { ifuConfig 2 }
+
+-- ***##############################################################***
+--              Groups within the muxIf MIB
+-- ***##############################################################***
+
+muxIfMuxType OBJECT-TYPE
+    SYNTAX      INTEGER {
+                      notExist(1),
+                      mux8(2),
+                      mux16(3)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "Type of the mux "	
+    ::= { muxIf 1 }
+
+muxIfMuxOperStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+                      up(1),
+                      down(2),
+                      testing(3)
+                        }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "Mux operational status"
+    ::= { muxIf 2 }
+
+muxIfMuxAdminStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+                      up(1),
+                      down(2)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "Mux administrative status"
+    ::= { muxIf 3 }
+
+muxIfMuxAdminStatusSelectMode OBJECT-TYPE
+    SYNTAX      INTEGER {
+                      automatic(1),
+                      manual(2)
+                        }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "Mux administrative status selection mode. In the automatic mode BU
+     is selecting the status according predefined and hard coded algorithm"
+    ::= { muxIf 4 }
+
+ 
+muxIfMuxLedsStatus OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(2))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "LEDs status.
+     Each byte represents particular LED:
+     1   : Power
+     2   : Fail
+     Within each byte, bits 0-3 are the color, 4-7 are 
+     the blink rate.
+     Supported color codes:
+     0000 : Black (LED is off)
+     0001 : Green
+     0010 : Yellow
+     0011 : Red
+     Supported blink rates:
+     0000 : no blink
+     0001 : blink"
+    ::= { muxIf 5 }
+
+
+-- ***##############################################################***
+--              Groups within the Antenna MIB
+-- ***##############################################################***
+
+
+antennaConfig          OBJECT IDENTIFIER ::= { antenna 1 }
+
+
+-- ####################################################################
+-- Antenna Configuration group
+-- ####################################################################
+
+
+antConfType OBJECT-TYPE
+    SYNTAX      INTEGER {
+                      other(1),
+                      vertical(2),
+                      horizontal(3)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "Antenna type."
+    ::= { antennaConfig 1 }
+
+antConfSector OBJECT-TYPE
+    SYNTAX      INTEGER {
+                      sector60(1),
+                      sector120(2), -- invalid - backward compatibility only
+                      sector15(3),
+                      sector30(4),
+                      sector45(5),
+                      sector90(6)
+                        }
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+        "The sector angle covered by the Antenna in degrees."
+    ::= { antennaConfig 2 }
+
+antConfHeading OBJECT-TYPE
+    SYNTAX      INTEGER (0..3599)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The direction which the antenna is facing, in tenths
+        of a degree."
+    ::= { antennaConfig 3 }
+
+antConfAltitude OBJECT-TYPE
+    SYNTAX      INTEGER (-500..8000)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+	"The height (relative to sea level) where the antenna
+        is placed, in meters."
+    ::= { antennaConfig 4 }
+
+-- ***##############################################################***
+--              Bandwidth
+-- ***##############################################################***
+
+bwAvailableAtsNum OBJECT-TYPE
+    SYNTAX      INTEGER (0..64)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+	" Number of available Air Time Slots " 
+    ::= { bandwidth 1 }
+
+
+-- ***##############################################################***
+--              Frame Relay
+-- ***##############################################################***
+
+frPrvLportTable OBJECT-TYPE
+   SYNTAX  SEQUENCE OF FrPrvLportEntry
+   MAX-ACCESS  not-accessible
+   STATUS  current
+   DESCRIPTION
+           "The Frame Relay Logical Port table.This table is an addition
+            to the frLportTable defined in the rfc1604 "
+   ::= { frameRelay 1 }
+  
+frPrvLportEntry OBJECT-TYPE
+   SYNTAX  FrPrvLportEntry
+   MAX-ACCESS  not-accessible
+   STATUS  current
+   DESCRIPTION
+            "An entry in the Frame Relay Logical Port
+             Information table."
+   INDEX   { ifIndex }
+   ::= { frPrvLportTable 1 }
+  
+FrPrvLportEntry ::=	SEQUENCE {
+   frPrvLportRowStatus
+            RowStatus
+   }
+
+frPrvLportRowStatus OBJECT-TYPE
+    SYNTAX      RowStatus
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The status of the current entry"
+    ::= { frPrvLportEntry 1 }
+
+
+frConcentrationRatio OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "Concentration ratio defined in the system."
+    ::= { frameRelay 2 }
+
+
+frE1TsAssignTable OBJECT-TYPE
+   SYNTAX  SEQUENCE OF FrE1TsAssignEntry
+   MAX-ACCESS  not-accessible
+   STATUS  current
+   DESCRIPTION
+   "The Frame Relay E1 Time Slots Assignment table.This table 
+    contains the E1 Time Slots over which FR Logical Port is
+    defined"
+   ::= { frameRelay 3 }
+  
+frE1TsAssignEntry OBJECT-TYPE
+   SYNTAX  FrE1TsAssignEntry
+   MAX-ACCESS  not-accessible
+   STATUS  current
+   DESCRIPTION
+   "An entry in the Framr Relay Time Slots Assignment table"
+   INDEX   { ifIndex }
+   ::= { frE1TsAssignTable 1 }
+  
+FrE1TsAssignEntry ::=	SEQUENCE {
+   frTsAssignment  INTEGER
+   }
+
+frTsAssignment OBJECT-TYPE
+    SYNTAX      INTEGER	(1..32)
+    MAX-ACCESS  read-write
+    STATUS      current
+    DESCRIPTION
+    "The bitmap represnting the assignment of the E1 Time Slots.Each one
+     of 32 bits represents 32 E1 time slots. Value 1 in the corresponding bit
+     means that corresponding time slot is in use "
+    ::= { frE1TsAssignEntry 1 }
+
+
+-- ***##############################################################***
+--              Testing
+-- ***##############################################################***
+
+berMeterTest     OBJECT IDENTIFIER ::= { testing 1 }
+
+bmTestDestDevice  OBJECT-TYPE
+    SYNTAX     INTEGER
+--     {
+--		       terminalStation1(0),
+--		       terminalStation2(1),
+--		       terminalStation3(2),
+--		       terminalStation4(3),
+--		       terminalStation5(4),
+--		       terminalStation6(5),
+--		       terminalStation7(6),
+--		       terminalStation8(7),
+--		       terminalStation9(8),
+--		       terminalStation10(9),
+--		       terminalStation11(10),
+--		       terminalStation12(11),
+--		       terminalStation13(12),
+--		       terminalStation14(13),
+--		       terminalStation15(14),
+--		       terminalStation16(15)
+--	           }
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+	" 1 in the corresponding bit indicates the TS to be tested"
+    ::= { berMeterTest 1 }
+
+bmTestBerThreshold  OBJECT-TYPE
+    SYNTAX     INTEGER
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+	"The BER threshold to transmit trap to the Management Station"
+	DEFVAL     {0}
+	::= { berMeterTest 2 }
+
+bmTestUsedUpATS  OBJECT-TYPE
+    SYNTAX     INTEGER
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+	"Number of Uplink Air Time Slots used in the test"
+	DEFVAL     {0}
+    ::= { berMeterTest 3 }
+
+
+bmTestUsedDnATS  OBJECT-TYPE
+    SYNTAX     INTEGER
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+	"Number of Downlink Air Time Slots used in the test"
+	DEFVAL     {0}
+    ::= { berMeterTest 4 }
+
+
+bmTestDuration  OBJECT-TYPE
+    SYNTAX     INTEGER
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+	"Duration of the BER test in minutes"
+	DEFVAL	   {0}
+    ::= { berMeterTest 5 }
+
+
+bmTestIssueTrap  OBJECT-TYPE
+    SYNTAX     INTEGER
+	            {
+				  disable(1),
+				  enable(2)
+				}
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+	"If this object is set to enable - trap is transmitted in case of BER threshold
+	 is exceeded"
+	DEFVAL	   {disable}
+    ::= { berMeterTest 6 }
+
+bmTestAction  OBJECT-TYPE
+    SYNTAX     INTEGER
+	            {
+				  start(1),
+				  stop(2),
+				  none(3)
+				}
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+	"Action to activate and to stop the test"
+	DEFVAL	   {none}
+    ::= { berMeterTest 7 }
+
+bmTestType  OBJECT-TYPE
+    SYNTAX     INTEGER
+	            {
+				  unicast(1),
+				  multicast(2)
+				}
+    MAX-ACCESS read-write
+    STATUS     current
+    DESCRIPTION
+	"During the Unicast test data is transmitted to TSs sequentially, otherwise
+	 data is broadcasted to all TSs defined in the test "
+	DEFVAL	   {unicast}
+    ::= { berMeterTest 8 }
+
+
+bmTestResultsTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF BmTestResultsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+	"BER Meter Test results."
+    ::= { berMeterTest 9 }
+
+bmTestResultsEntry OBJECT-TYPE
+    SYNTAX      BmTestResultsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+    "Entry in the bmTestResultsTable."
+    INDEX   { bmTestDeviceId }
+    ::= { bmTestResultsTable 1 }
+
+BmTestResultsEntry ::= SEQUENCE {
+   	bmTestDeviceId       DeviceId,
+	bmTestNumOfUpErrors  INTEGER,
+	bmTestNumOfDnErrors  INTEGER,
+	bmTestElapseTime     INTEGER,
+	bmTestUsedATS        INTEGER,
+	bmTestStatus	     INTEGER,
+	bmTestNumOfCntOvfl	 INTEGER,
+	bmTestNumOfStarv     INTEGER
+    }
+
+bmTestDeviceId OBJECT-TYPE
+    SYNTAX      DeviceId
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "Specification of the device. It is 1 to 16 for the Terminal Station"
+    ::= { bmTestResultsEntry 1 }
+
+bmTestNumOfUpErrors OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "Number of errors in the Uplink occured since the beginning of the test"
+    ::= { bmTestResultsEntry 2 }
+
+bmTestNumOfDnErrors OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "Number of errors in the Downlink occured since the beginning of the test"
+    ::= { bmTestResultsEntry 3 }
+
+bmTestElapseTime OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "Time in minutes elapced since the beginning of the test"
+    ::= { bmTestResultsEntry 4 }
+
+bmTestUsedATS OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "Number of ATS used in the test. Number	of transmitted bits is equal to 
+     (Number of used ATS * 8 * Number of Frames * 40) "
+    ::= { bmTestResultsEntry 5 }
+
+bmTestStatus OBJECT-TYPE
+    SYNTAX      INTEGER
+	              {
+				    active(1),	       
+					complete(2),      
+					idle(3),	       
+				  	pend(4),	       
+				  	stop(5),	       
+				  	stopUser(6),	   
+				  	stopLinkDown(7),	
+				  	stopStartNack(8),	
+				  	stopNoStartAck(9),
+				  	stopOverflow(10),	
+				  	stopTerminal(11),	
+				  	stopReport(12)	   
+				  }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "Status of test procedure"
+    ::= { bmTestResultsEntry 6 }
+
+bmTestNumOfCntOvfl OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "Number of times the counter overflow was detected "
+    ::= { bmTestResultsEntry 7 }
+
+bmTestNumOfStarv OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+    "Number of times task starvation was detected "
+    ::= { bmTestResultsEntry 8 }
+
+
+END

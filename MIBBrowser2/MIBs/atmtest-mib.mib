@@ -1,0 +1,722 @@
+
+               ATMTEST-MIB DEFINITIONS ::= BEGIN
+
+               IMPORTS
+                  MODULE-IDENTITY, OBJECT-IDENTITY,
+                  OBJECT-TYPE
+--                  OBJECT-TYPE, mib-2
+                      FROM SNMPv2-SMI
+                  MODULE-COMPLIANCE, OBJECT-GROUP
+                      FROM SNMPv2-CONF
+						radnetDrafts
+							 FROM RADNET-PRIVATE-MIB
+                  atmVplEntry, atmVclEntry
+                      FROM ATM-MIB;
+
+
+               atmTESTMIB MODULE-IDENTITY
+                    LAST-UPDATED "9706031200Z"
+                    ORGANIZATION "IETF AToMMIB Working Group"
+                    CONTACT-INFO
+                      "          Michael Noto
+                        Postal:  Network Equipment Technologies
+                                 800 Saginaw Drive RM 21.1.111
+                                 Redwood City, CA 94063
+                        Tel:     +1 415 569-7134
+                        E-mail:  noto@net.com
+
+                                 Kaj Tesink
+                        Postal:  Bell Communications Research
+                                 331 Newman Springs Road
+                                 Red Bank, NJ 07701
+                                 US
+                        Tel:     +1 908 758 5254
+                        Fax:     +1 908 758 4177
+                        E-mail:  kaj@cc.bellcore.com"
+                    DESCRIPTION
+"This MIB Module provides ATM Loopback Tests and supporting objects that
+must be supported by ATM devices providing ATM Loopback Tests."
+                    ::= { radnetDrafts 4 }
+
+               atmTESTMIBObjects  OBJECT IDENTIFIER ::= {atmTESTMIB 1}
+
+               -- In case this module is put on the standards track
+               --  replace the following:
+               -- "atmTESTMIB MODULE-IDENTITY ::= {experimental XX}" with
+               -- "atmTESTMIB MODULE-IDENTITY ::= {mib-2 YY}"
+               -- and assign YY by IANA.
+
+
+               -- This ATMTEST-MIB Module consists of the following groups:
+               --   ATM Testing Support:
+               --      (1) ATM Loopback Testing Group
+               --      (2) ATM End-Point Group
+
+
+-- (1) ATM Loopback Testing Group
+
+-- This group contains information for interfaces
+-- supporting ATM Loopback Tests
+-- This group includes the following:
+-- 1. ATM Loopback Objects
+-- 2. List of ATM Loopback Test Types
+
+               atmLoopbackTestGroup OBJECT IDENTIFIER ::= {
+                                                  atmTESTMIBObjects 1}
+
+
+               -- 1. ATM Loopback Objects
+               --    The following objects are defined for use in
+               --    performing ATM Loopback Tests.
+
+               atmLoopbackID    OBJECT-TYPE
+                    SYNTAX         OCTET STRING(SIZE(16))
+                    MAX-ACCESS     read-write
+                    STATUS         current
+                    DESCRIPTION
+"This identifier is used to identify this local ATM device. The value of
+this object can be used by other ATM devices to identify this local ATM
+device as the device that is being requested to loopback the OAM Loopback
+cell. The default for this field is all 1's, which would indicate a segment
+OAM Loopback Test. Location Identifiers of less than 16 octets are left
+justified, and padded with all '0's."
+                   DEFVAL  { 'ffffffffffffffffffffffffffffffff'H }
+                   ::= { atmLoopbackTestGroup 1 }
+
+              -- 2. List of ATM Loopback Test Types
+              -- The following loopback test types are defined:
+              --      atmLoopbackVpE2e
+              --      atmLoopbackVcE2e
+              --      atmLoopbackVpSegment
+              --      atmLoopbackVcSegment
+              --      atmLoopbackVpLocationID
+              --      atmLoopbackVcLocationID
+              --      atmLoopbackVpServcInternal
+              --      atmLoopbackVcServcInternal
+
+
+              atmLoopbackTestTypes OBJECT IDENTIFIER ::= {
+                                            atmLoopbackTestGroup 4 }
+
+
+              atmLoopbackVpE2e  OBJECT-IDENTITY
+                   STATUS       current
+                   DESCRIPTION
+"This is an end-to-end loopback test performed on a designated VP (Virtual
+Path).  To perform this test an end-to-end loopback OAM cell is inserted at
+one of the end-points of the designated VP connection (e.g., at a host) via
+VCI=4 (the VCI value for VP OAM end-to-end cells), travels to the other
+end-point of the VP connection, and then loops back to the originating
+end-point on the designated VP.
+Success is achieved if the loopback OAM cell returns to the originating
+end-point within 5 seconds, otherwise, the test fails.
+
+The manager-station performs a loopback test by making use of the
+testTable) defined in [10].  In order to run this test the object
+'testType' in the testTable shall be set to atmLoopbackVpE2e, and the
+object testTarget points to the row in the atmVplTable in [1] corresponding
+to the VP designated for the test. Before starting a test, a
+manager-station must first obtain 'ownership' of the entry in the testTable
+for the interface to be tested (follow procedure defined in [10]).  Once
+the manager-station obtains ownership, a loopback test for a given
+interface can be invoked by first setting up parameters necessary for the
+loopback test (e.g., set the testTarget), and then setting the value of
+'testType' in the testTable equal to 'atmLoopbackVpE2e'.  This will cause
+the atmLoopbackVpE2e test to be invoked on the VP with the VPI
+corresponding to the testTarget.
+
+After invoking a loopback test, wait for the test completion by polling for
+the object 'testResult'. A value of 'inProgress(3)' will result if the test
+is still in progress.  Once the test is completed, the object 'testResult'
+will have a value of 'success(2)' if the loopback OAM cell returned to
+                     the originator of the test within 5 seconds, if
+                     not, a value of 'failed(7)' will result.  If the
+                     ATM system does not support this type of loopback
+                     test, then a value of 'notSupported(4)' will be
+                     provided.  Other possible values for the
+                     'testResult' object are 'unAbleToRun(5)' and
+                     'aborted(6)'."
+                  ::= { atmLoopbackTestTypes 1 }
+
+
+             atmLoopbackVcE2e  OBJECT-IDENTITY
+                  STATUS       current
+                  DESCRIPTION
+                    "This is an end-to-end loopback test performed on a
+                    designated VC (Virtual Channel).  To perform this
+                    test an end-to-end loopback OAM cell is inserted at
+                    one of the end-points of the designated VC
+                    connection (e.g., at a host) via PTI=5 (the PTI
+                    value used for VC OAM end-to-end cells), travels to
+                    the other end-point of the VC connection, and then
+                    loops back to the originating end-point on the
+                    designated VC.  Success is achieved if the loopback
+                    OAM cell returns to the originating end-point within
+                    5 seconds, otherwise, the test fails.
+
+                    The manager-station performs a loopback test by
+                    making use of the testTable) defined in [10].  In
+                    order to run this test the object 'testType' in the
+                    testTable shall be set to atmLoopbackVcE2e, and the
+                    object testTarget points to the row in the
+                    atmVclTable in [1] corresponding to the VC
+                    designated for the test.
+
+                    Before starting a test, a manager-station must first
+                    obtain 'ownership' of the entry in the testTable for
+                    the interface to be tested (follow procedure defined
+                    in [10]).  Once the manager-station obtains
+                    ownership, a loopback test for a given interface can
+                    be invoked by first setting up parameters necessary
+                    for the loopback test (e.g., set the testTarget),
+                    and then setting the value of 'testType' in the
+                    testTable equal to 'atmLoopbackVcE2e'.  This will
+                    cause the atmLoopbackVcE2e test to be invoked on the
+                    VC with the VPI/VCI corresponding to the testTarget.
+                    After invoking a loopback test, wait for the test
+                    completion by polling for the object 'testResult'.
+                    A value of 'inProgress(3)' will result if the test
+                    is still in progress.  Once the test is completed,
+                    the object 'testResult' will have a value of
+                    'success(2)' if the loopback OAM cell returned to
+                    the originator of the test within 5 seconds, if not,
+                    a value of 'failed(7)' will result.  If the ATM
+                    system does not support this type of loopback test,
+                    then a value of 'notSupported(4)' will be provided.
+                    Other possible values for the 'testResult' object
+                    are 'unAbleToRun(5)' and 'aborted(6)'."
+                 ::= { atmLoopbackTestTypes 2 }
+
+
+            atmLoopbackVpSegment  OBJECT-IDENTITY
+                 STATUS           current
+                 DESCRIPTION
+                   "This is a loopback test performed on a designated
+                   segment of a VP (Virtual Path).  To perform this test
+                   a segment OAM cell is inserted at one of the segment
+                   end-points of the designated VP connection (e.g., at
+                   a host) via VCI=3 (the VCI used for VP OAM segment
+                   cells), travels across the segment on the designated
+                   VP to the device pre-configured as the corresponding
+                   segment end-point, and then loops back to the
+                   originating segment end-point on the designated VP.
+                   Success is achieved if the loopback OAM cell returns
+                   to the originating end-point within 5 seconds,
+                   otherwise, the test fails.
+
+                   In order to use the atmLoopbackVpSegment test, a
+                   segment must be defined by setting up segment end-
+                   points using the atmVplEndptSegmentEndPoint object
+                   from the atmVplEndptTable.  The
+                   atmVplEndptSegmentEndPoint is set to
+                   isaVpSegmentEndPoint(1) for each segment end-point.
+                   Note that this object is by default set to
+                   isaVpSegmentEndPoint(1) if the atmVplTable supports
+                   one end of a UNI.  In such a case, a UNI VP loopback
+                   test would be achieved when the atmLoopbackVpSegment
+                   test was initiated over the UNI.
+
+                   The manager-station performs a loopback test by
+                   making use of the testTable) defined in [10].  In
+                   order to run this test the object 'testType' in the
+                   testTable shall be set to atmLoopbackVpE2e, and the
+                   object testTarget points to the row in the
+                   atmVplTable in [1] corresponding to the VP designated
+                   for the test.
+
+                   Before starting a test, a manager-station must first
+                   obtain 'ownership' of the entry in the testTable for
+                   the interface to be tested (follow procedure defined
+                   in [10]).  Once the manager-station obtains
+                   ownership, a loopback test for a given interface can
+                   be invoked by first setting up parameters necessary
+                   for the loopback test (e.g., set the testTarget), and
+                   then setting the value of 'testType' in the testTable
+                   equal to 'atmLoopbackVpSegment'.  This will cause the
+                   atmLoopbackVpSegment test to be invoked on the VP
+                   with the VPI corresponding to the testTarget.
+
+                   After invoking a loopback test, wait for the test
+                   completion by polling for the object 'testResult'.  A
+                   value of 'inProgress(3)' will result if the test is
+                   still in progress.  Once the test is completed, the
+                   object 'testResult' will have a value of 'success(2)'
+                   if the loopback OAM cell returned to the originator
+                   of the test within 5 seconds, if not, a value of
+                   'failed(7)' will result.  If the ATM system does not
+                   support this type of loopback test, then a value of
+                   'notSupported(4)' will be provided.  Other possible
+                   values for the 'testResult' object are
+                   'unAbleToRun(5)' and 'aborted(6)'."
+                ::= { atmLoopbackTestTypes 3 }
+
+
+           atmLoopbackVcSegment  OBJECT-IDENTITY
+                STATUS           current
+                DESCRIPTION
+                  "This is a loopback test performed on a designated
+                  segment of a VC (Virtual Channel).  To perform this
+                  test a segment OAM cell is inserted at one of the
+                  segment end-points of the designated VC connection
+                  (e.g., at a host) via PTI=4 (the PTI value used for VC
+                  OAM segment cells), travels across the segment on the
+                  designated VC to the device pre-configured as the
+                  corresponding segment end-point, and then loops back
+                  to the originating segment end-point on the designated
+                  VC. Success is achieved if the loopback OAM cell
+                  returns to the originating end-point within 5 seconds,
+                  otherwise, the test fails.
+
+                  In order to use the atmLoopbackVcSegment test, a
+                  segment must be defined by setting up segment end-
+                  points using the atmVclEndptSegmentEndPoint object
+                  from the atmVclEndptTable.  The
+                  atmVclEndptSegmentEndPoint is set to
+                  isaVcSegmentEndPoint(1) for each segment end-point.
+                  Note that this object is by default set to
+                  isaVcSegmentEndPoint(1) if the atmVclTable supports
+                  one end of a UNI.  In such a case, a UNI VC loopback
+                  test would be achieved when the atmLoopbackVcSegment
+                  test was initiated over the UNI.
+
+                  The manager-station performs a loopback test by making
+                  use of the testTable) defined in [10].  In order to
+                  run this test the object 'testType' in the testTable
+                  shall be set to atmLoopbackVcE2e, and the object
+                  testTarget points to the row in the atmVclTable in [1]
+                  corresponding to the VC designated for the test.
+
+                  Before starting a test, a manager-station must first
+                  obtain 'ownership' of the entry in the testTable for
+                  the interface to be tested (follow procedure defined
+                  in [10]).  Once the manager-station obtains ownership,
+                  a loopback test for a given interface can be invoked
+                  by first setting up parameters necessary for the
+                  loopback test (e.g., set the testTarget), and then
+                  setting the value of 'testType' in the testTable equal
+                  to 'atmLoopbackVcSegment'.  This will cause the
+                  atmLoopbackVcSegment test to be invoked on the VC with
+                  the VPI/VCI corresponding to the testTarget.
+
+                  After invoking a loopback test, wait for the test
+                  completion by polling for the object 'testResult'.  A
+                  value of 'inProgress(3)' will result if the test is
+                  still in progress.  Once the test is completed, the
+                  object 'testResult' will have a value of 'success(2)'
+                  if the loopback OAM cell returned to the originator of
+                  the test within 5 seconds, if not, a value of
+                  'failed(7)' will result.  If the ATM system does not
+                  support this type of loopback test, then a value of
+                  'notSupported(4)' will be provided.  Other possible
+                  values for the 'testResult' object are
+                  'unAbleToRun(5)' and 'aborted(6)'."
+               ::= { atmLoopbackTestTypes 4 }
+
+
+          atmLoopbackVpLocationId  OBJECT-IDENTITY
+               STATUS              current
+               DESCRIPTION
+                 "This is a loopback test performed on a portion of a
+                 designated VP segment.  To perform this test a loopback
+                 OAM cell is inserted at a connection point of the
+                 designated VP connection (e.g., the end-point or a
+                 tandem point) with a value inserted in the Location
+                 Identifier ID field of the OAM cell that corresponds to
+                 the ATM device where the cell is to be looped back.
+                 The loopback cell then travels through the VP
+                 connection until it reaches the designated ATM device,
+                 where it is looped back to the loopback cell insertion
+                 point on the designated VP.  Success is achieved if the
+                 loopback OAM cell returns to the originating point of
+                 insertion within 5 seconds, otherwise, the test fails.
+
+                 The manager-station performs a loopback test by making
+                 use of the testTable) defined in [10].  In order to run
+                 this test the object 'testType' in the testTable shall
+                 be set to atmLoopbackVpE2e. The object testTarget
+                 points to the row in the atmVplTable in [1]
+                 corresponding to the VP designated for the test. The
+                 object testMoreInfo contains the desired Loopback
+                 Location ID.
+
+                 Before starting a test, a manager-station must first
+                 obtain 'ownership' of the entry in the testTable for
+                 the interface to be tested (follow procedure defined in
+                 [10]). Once the manager-station obtains ownership, a
+                 loopback test for a given interface can be invoked by
+                 first setting up parameters necessary for the loopback
+                 test (e.g., set testMoreInfo to AAAABBBBCCCCDDDD and
+                 set the testTarget), and then setting the value of
+                 'testType' in the testTable equal to
+                 'atmLoopbackVpSegment'.  This will cause the
+                 atmLoopbackVpLocationId test to be invoked on the VP
+                 with the VPI corresponding to the testTarget and looped
+                 back at loopback location ID= AAAABBBBCCCCDDDD.
+                 After invoking a loopback test, wait for the test
+                 completion by polling for the object 'testResult'.  A
+                 value of 'inProgress(3)' will result if the test is
+                 still in progress.  Once the test is completed, the
+                 object 'testResult' will have a value of 'success(2)'
+                 if the loopback OAM cell returned to the originator of
+                 the test within 5 seconds, if not, a value of
+                 'failed(7)' will result.  If the ATM system does not
+                 support this type of loopback test, then a value of
+                 'notSupported(4)' will be provided.  Other possible
+                 values for the 'testResult' object are 'unAbleToRun(5)'
+                 and 'aborted(6)'."
+               ::= { atmLoopbackTestTypes 5 }
+
+
+          atmLoopbackVcLocationId  OBJECT-IDENTITY
+               STATUS              current
+               DESCRIPTION
+                 "This is a loopback test performed on a portion of a
+                 designated Vc segment.  To perform this test a loopback
+                 OAM cell is inserted at a connection point of the
+                 designated VC connection (e.g., the end-point or a
+                 tandem point) with a value inserted in the Location
+                 Identifier ID field of the OAM cell that corresponds to
+                 the ATM device where the cell is to be looped back.
+                 The loopback cell then travels through the VC
+                 connection until it reaches the designated ATM device,
+                 where it is looped back to the loopback cell insertion
+                 point on the designated VC.  Success is achieved if the
+                 loopback OAM cell returns to the originating point of
+                 insertion within 5 seconds, otherwise, the test fails.
+
+                 The manager-station performs a loopback test by making
+                 use of the testTable) defined in [10].  In order to run
+                 this test the object 'testType' in the testTable shall
+                 be set to atmLoopbackVcE2e. The object testTarget
+                 points to the row in the atmVclTable in [1]
+                 corresponding to the VC designated for the test. The
+                 object testMoreInfo contains the desired Loopback
+                 Location ID.
+
+                 Before starting a test, a manager-station must first
+                 obtain 'ownership' of the entry in the testTable for
+                 the interface to be tested (follow procedure defined in
+                 [10]). Once the manager-station obtains ownership, a
+                 loopback test for a given interface can be invoked by
+                 first setting up parameters necessary for the loopback
+                 test (e.g., set testMoreInfo to AAAABBBBCCCCDDDD and
+                 set the testTarget), and then setting the value of
+                 'testType' in the testTable equal to
+                 'atmLoopbackVcSegment.d'.  This will cause the
+                 atmLoopbackVcLocationId test to be invoked on the VC
+                 with the VPI/VCI corresponding to the testTarget and
+                 looped back at loopback location ID= AAAABBBBCCCCDDDD.
+
+                 After invoking a loopback test, wait for the test
+                 completion by polling for the object 'testResult'.  A
+                 value of 'inProgress(3)' will result if the test is
+                 still in progress.  Once the test is completed, the
+                 object 'testResult' will have a value of 'success(2)'
+                 if the loopback OAM cell returned to the originator of
+                 the test within 5 seconds, if not, a value of
+                 'failed(7)' will result.  If the ATM system does not
+                 support this type of loopback test, then a value of
+                 'notSupported(4)' will be provided.  Other possible
+                 values for the 'testResult' object are 'unAbleToRun(5)'
+                 and 'aborted(6)'."
+               ::= { atmLoopbackTestTypes 6 }
+
+          atmLoopbackVpServcInternal  OBJECT-IDENTITY
+               STATUS              current
+               DESCRIPTION
+                 "This is a loopback test that the manager requests an
+                 agent to perform over the managed resource's internal
+                 portion of a designated VP (i.e., between the ingress
+                 and egress interfaces of the VP connection).  The agent
+                 is provided with the Ingress VPI, Egress Interface, and
+                 Egress VPI in order to run this internal test.  This
+                 test may be useful in proxy situations where the proxy
+                 agent represents a network.  Implementations of this
+                 test may be specific to the managed resource.  One
+                 implementation in a managed network may be as follows,
+                 the managed network inserts a segment loopback OAM cell
+                 at the network internal segment end-point
+                 (corresponding to the ingress connection point) for the
+                 designated VP connection.  The loopback cell then
+                 travels through the network's portion of the VP
+                 connection until it reaches the networks connection
+                 point to the egress, where it is looped back to the
+                 network's cell insertion point on the designated VP.
+                 Success is achieved if the loopback OAM cell returns to
+                 the originating internal network segment end-point
+                 within 5 seconds, otherwise, the test fails.
+
+                 The manager-station performs a loopback test by making
+                 use of the testTable) defined in [10].  In order to run
+                 this test the object 'testType' in the testTable shall
+                 be set to atmLoopbackVpServcInternal, and the object
+                 testTarget points to the row in the
+                 atmVpCrossConnectTable in [1] corresponding to the VP
+                 designated for the test.
+
+                 Before starting a test, a manager-station must first
+                 obtain 'ownership' of the entry in the testTable for
+                 the interface to be tested (follow procedure defined in
+                 [10]).  Once the manager-station obtains ownership, a
+                 loopback test for a given interface can be invoked by
+                 first setting up parameters necessary for the loopback
+                 test (e.g., set the testTarget), and then setting the
+                 value of 'testType' in the testTable equal to
+                 'atmLoopbackVpServcInternal'.  This will cause the
+                 atmLoopbackVpServcInternal test to be invoked on the VP
+                 crossconnect with the ingress and egress VPI values
+                 corresponding to the testTarget.
+
+                 After invoking a loopback test, wait for the test
+                 completion by polling for the object 'testResult'.  A
+                 value of 'inProgress(3)' will result if the test is
+                 still in progress.  Once the test is completed, the
+                 object 'testResult' will have a value of 'success(2)'
+                 if the loopback OAM cell returned to the originator of
+                 the test within 5 seconds, if not, a value of
+                 'failed(7)' will result.  If the ATM system does not
+                 support this type of loopback test, then a value of
+                 'notSupported(4)' will be provided.  Other possible
+                 values for the 'testResult' object are 'unAbleToRun(5)'
+                 and 'aborted(6)'."
+               ::= { atmLoopbackTestTypes 7 }
+
+          atmLoopbackVcServcInternal  OBJECT-IDENTITY
+               STATUS              current
+               DESCRIPTION
+                 "This is a loopback test that the manager requests an
+                 agent to perform over the managed resource's internal
+                 portion of a designated VC (i.e., between the ingress
+                 and egress interfaces of the VC connection).  The agent
+                 is provided with the Ingress VPI, Ingress VCI, Egress
+                 Interface, Egress VPI, and Egress VCI in order to run
+                 this internal test.  This test may be useful in proxy
+                 situations where the proxy agent represents a network.
+                 Implementations of this test may be specific to the
+                 managed resource.  One implemenation in a managed
+                 network may be as follows, the managed network inserts
+                 a segment loopback OAM cell at the network internal
+                 segment end-point (corresponding to the ingress
+                 connection point) for the designated VC connection.
+                 The loopback cell then travels through the network's
+                 portion of the VC connection until it reaches the
+                 networks connection point to the egress, where it is
+                 looped back to the network's cell insertion point on
+                 the designated VC.  Success is achieved if the loopback
+                 OAM cell returns to the originating internal network
+                 segment end-point within 5 seconds, otherwise, the test
+                 fails.
+
+                 The manager-station performs a loopback test by making
+                 use of the testTable) defined in [10].  In order to run
+                 this test the object 'testType' in the testTable shall
+                 be set to atmLoopbackVcServcInternal, and the object
+                 testTarget points to the row in the
+                 atmVcCrossConnectTable in [1] corresponding to the VC
+                 designated for the test.
+
+                 Before starting a test, a manager-station must first
+                 obtain 'ownership' of the entry in the testTable for
+                 the interface to be tested (follow procedure defined in
+                 [10]).  Once the manager-station obtains ownership, a
+                 loopback test for a given interface can be invoked by
+                 first setting up parameters necessary for the loopback
+                 test (e.g., set the testTarget), and then setting the
+                 value of 'testType' in the testTable equal to
+                 'atmLoopbackVcServcInternal'.  This will cause the
+                 atmLoopbackVcServcInternal test to be invoked on the VC
+                 crossconnect with the ingress and egress VPI/VCI values
+                 corresponding to the testTarget.
+
+                 After invoking a loopback test, wait for the test
+                 completion by polling for the object 'testResult'.  A
+                 value of 'inProgress(3)' will result if the test is
+                 still in progress.  Once the test is completed, the
+                 object 'testResult' will have a value of 'success(2)'
+                 if the loopback OAM cell returned to the originator of
+                 the test within 5 seconds, if not, a value of
+                 'failed(7)' will result.  If the ATM system does not
+                 support this type of loopback test, then a value of
+                 'notSupported(4)' will be provided.  Other possible
+                 values for the 'testResult' object are 'unAbleToRun(5)'
+                 and 'aborted(6)'."
+               ::= { atmLoopbackTestTypes 8 }
+
+
+          -- ************************************************
+          -- (2) ATM End-Point Group
+
+          -- This group contains information for interfaces
+          -- supporting ATM Loopback Tests
+          -- This group includes the following:
+          -- 1. ATM VP End-Point Table
+          -- 2. ATM VC End-Point Table
+
+          atmEndptGroup OBJECT IDENTIFIER ::= {
+                                             atmTESTMIBObjects 2}
+
+
+          -- 1. ATM VP End-Point Table
+
+
+              atmVplEndptTable OBJECT-TYPE
+                  SYNTAX           SEQUENCE OF AtmVplEndptEntry
+                  MAX-ACCESS       not-accessible
+                  STATUS           current
+                  DESCRIPTION
+                      "End-point Information for each VP."
+                  ::= { atmEndptGroup 1 }
+
+
+              atmVplEndptEntry OBJECT-TYPE
+                  SYNTAX  AtmVplEndptEntry
+                  MAX-ACCESS  not-accessible
+                  STATUS  current
+                  DESCRIPTION
+                      "An entry with end-point information about the ATM
+                      VP."
+                  AUGMENTS { atmVplEntry }
+                  ::= { atmVplEndptTable 1 }
+
+
+              AtmVplEndptEntry ::=
+                  SEQUENCE {
+                      atmVplEndptSegmentEndPoint     INTEGER
+                           }
+
+              atmVplEndptSegmentEndPoint OBJECT-TYPE
+                  SYNTAX  INTEGER {
+                                   isaVplSegmentEndPoint(1),
+                                   notaVplSegmentEndPoint(2)
+                                  }
+                  MAX-ACCESS  read-create
+                  STATUS  current
+                  DESCRIPTION
+                      "An indication of whether or not the VP interface
+                      has been configured to represent a VPC Segment
+                      End-Point. If the corresponding VP Link is a UNI,
+                      the value of this object is permanently set to 1
+                      (isaVplSegmentEndPoint). Otherwise, the default is
+                      set to 2 (notaVplSegmentEndPoint)."
+                  ::= { atmVplEndptEntry 1 }
+
+          -- 2. ATM VC End-Point Table
+
+
+              atmVclEndptTable OBJECT-TYPE
+                  SYNTAX           SEQUENCE OF AtmVclEndptEntry
+                  MAX-ACCESS       not-accessible
+                  STATUS           current
+                  DESCRIPTION
+                      "End-point Information for each VC."
+                  ::= { atmEndptGroup 2 }
+
+
+              atmVclEndptEntry OBJECT-TYPE
+                  SYNTAX  AtmVclEndptEntry
+                  MAX-ACCESS  not-accessible
+                  STATUS  current
+                  DESCRIPTION
+                      "An entry with end-point information about the ATM
+                      VC."
+                  AUGMENTS { atmVclEntry }
+                  ::= { atmVclEndptTable 1 }
+
+
+              AtmVclEndptEntry ::=
+                  SEQUENCE {
+                    atmVclEndptSegmentEndPoint  INTEGER
+                           }
+
+              atmVclEndptSegmentEndPoint OBJECT-TYPE
+                  SYNTAX  INTEGER {
+                                   isaVclSegmentEndPoint(1),
+                                   notaVclSegmentEndPoint(2)
+                                  }
+                  MAX-ACCESS  read-create
+                  STATUS  current
+                  DESCRIPTION
+                      "An indication of whether or not the VC interface
+                      has been configured to represent a VCC Segment
+                      End-Point. If the corresponding VC Link is a UNI,
+                      the value of this object is permanently set to 1
+                      (isaVclSegmentEndPoint). Otherwise, the default is
+                      set to 2 (notaVclSegmentEndPoint)."
+                  ::= { atmVclEndptEntry 1 }
+
+          -- ************************************************
+
+          -- Conformance Information
+
+          atmTESTMIBConformance   OBJECT IDENTIFIER ::= {atmTESTMIB 2}
+
+          atmTESTMIBGroups        OBJECT IDENTIFIER
+                           ::= {atmTESTMIBConformance 1}
+
+          atmTESTMIBCompliances   OBJECT IDENTIFIER
+                           ::= {atmTESTMIBConformance 2}
+
+          -- Compliance Statements
+
+          atmTESTMIBCompliance   MODULE-COMPLIANCE
+               STATUS         current
+               DESCRIPTION
+                 "The compliance statement for SNMP entities which
+                 represent ATM interfaces.  The compliance statements
+                 are used to determine if a particular group or object
+                 applies to hosts, networks/switches, or both."
+
+               MODULE  -- this module
+
+                 MANDATORY-GROUPS  { atmLoopbackGroup }
+
+          -- Objects in the ATM Loopback Test Group
+
+          OBJECT      atmLoopbackID
+          MIN-ACCESS  read-only
+          DESCRIPTION
+                   "Write access is not required. This object is
+                 required for ATM systems supporting the
+                 atmLoopbackVpLocationID and atmLoopbackVcLocationID
+                 tests."
+
+          OBJECT      atmVplEndptSegmentEndPoint
+          MIN-ACCESS  read-only
+          DESCRIPTION
+                   "Write access is not required.  This object is
+                 mandatory for systems that are supporting ATM loopback
+                 tests."
+
+          OBJECT      atmVclEndptSegmentEndPoint
+          MIN-ACCESS  read-only
+          DESCRIPTION
+                   "Write access is not required.  This object is
+                 mandatory for systems that are supporting ATM loopback
+                 tests."
+
+
+                      ::= { atmTESTMIBCompliances 1 }
+
+          -- **********************************************
+
+          -- Units of Conformance
+
+
+--          atmLoopbackGroup     OBJECT-GROUP
+
+--                 OBJECTS {
+--                      atmLoopbackID,
+--                      atmVplEndptSegmentEndPoint,
+--                      atmVclEndptSegmentEndPoint
+--                 }
+--                 STATUS    current
+--                 DESCRIPTION
+--                          "A collection of objects providing information
+--                        for Loopback Tests."
+--                ::= { atmTESTMIBGroups 1 }
+
+
+          END
+
+
+
